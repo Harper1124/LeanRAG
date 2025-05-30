@@ -26,9 +26,7 @@ EMBEDDING_MODEL = config['glm']['model']
 EMBEDDING_URL = config['glm']['base_url']
 TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
-WORKING_DIR = f"data"
-if not os.path.exists(WORKING_DIR):
-    os.mkdir(WORKING_DIR)
+
 def embedding(texts: list[str]) -> np.ndarray:
     model_name = EMBEDDING_MODEL
     client = OpenAI(
@@ -114,9 +112,9 @@ def get_reasoning_chain(global_config,db,entities_set):
     return  reasoning_path,reasoning_path_information_description
 def get_entity_description(global_config,db,entities_set):
     entity_informations=search_nodes(entities_set,db,global_config['working_dir'])
-    columns=['entity_name','entity_type','parent','description']
+    columns=['entity_name','parent','description']
     entity_descriptions="\t\t".join(columns)+"\n"
-    entity_descriptions+="\n".join([information[0]+"\t\t"+information[3]+"\t\t"+information[5]+"\t\t"+information[1] for information in entity_informations])
+    entity_descriptions+="\n".join([information[0]+"\t\t"+information[4]+"\t\t"+information[1] for information in entity_informations])
     return entity_descriptions
         
 def get_aggregation_description(global_config,db,reasoning_path,if_findings=False):
@@ -154,6 +152,7 @@ def query_graph(global_config,db,query,topk=10):
     """
     e=time.time()
     
+    print(describe)
     sys_prompt =PROMPTS["response"].format(context_data=describe)
     response=use_llm_func(query,system_prompt=sys_prompt)
     g=time.time()
@@ -166,18 +165,18 @@ if __name__=="__main__":
     db = pymysql.connect(host='localhost', user='root',
                       passwd='123', charset='utf8')
     global_config={}
-    
+    WORKING_DIR = f"ttt"
     global_config['use_llm_func']=deepseepk_model_if_cache
     global_config['embeddings_func']=embedding
     global_config['working_dir']=WORKING_DIR
     
-    query="What's the relationship between  Polices and Digital era?"
+    query="What's the relationship between  Research and Israel?"
     topk=10
     print(query_graph(global_config,db,query,topk=topk))
-    beginning=time.time()
-    for i in range(10):
-        print(query_graph(global_config,db,query))
-    end=time.time()
-    print(f"total time: {end-beginning:.2f}s")
+    # beginning=time.time()
+    # for i in range(10):
+    #     print(query_graph(global_config,db,query))
+    # end=time.time()
+    # print(f"total time: {end-beginning:.2f}s")
     db.close()
     

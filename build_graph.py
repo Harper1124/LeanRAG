@@ -25,19 +25,18 @@ EMBEDDING_MODEL = config['glm']['model']
 EMBEDDING_URL = config['glm']['base_url']
 TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
-WORKING_DIR = f"datasets/mix/qwen_14b"
-if not os.path.exists(WORKING_DIR):
-    os.mkdir(WORKING_DIR)
 
-def get_common_rag_res():
+def get_common_rag_res(WORKING_DIR):
     # entity_path="processed_data/entity.jsonl"
     # relation_path="processed_data/relation.jsonl"
     # entity_path="data/entity.jsonl"
     # relation_path="data/relation.jsonl"
     # entity_path="test_data/entity.jsonl"
     # relation_path="test_data/relation.jsonl"
-    entity_path="datasets/mix/entity.jsonl"
-    relation_path="datasets/mix/relation.jsonl"
+    # entity_path="datasets/mix/entity.jsonl"
+    # relation_path="datasets/mix/relation.jsonl"
+    entity_path=f"{WORKING_DIR}/entity.jsonl"
+    relation_path=f"{WORKING_DIR}/relation.jsonl"
     # i=0
     e_dic={}
     with open(entity_path,"r")as f:
@@ -45,13 +44,11 @@ def get_common_rag_res():
             
             line=json.loads(xline)
             entity_name=str(line['entity_name'])
-            entity_type=line['entity_type']
             description=line['description']
             source_id=line['source_id']
             if entity_name not in e_dic.keys():
                 e_dic[entity_name]=dict(
                     entity_name=str(entity_name),
-                    entity_type=entity_type,
                     description=description,
                     source_id=source_id,
                     degree=0,
@@ -196,7 +193,7 @@ def embedding_data(entity_results):
     
             
 def hierarchical_clustering(global_config):
-    entity_results,relation_results=get_common_rag_res()
+    entity_results,relation_results=get_common_rag_res(global_config['working_dir'])
     all_entities=embedding_data(entity_results)
     hierarchical_cluster = Hierarchical_Clustering()
     all_entities,generate_relations,community =hierarchical_cluster.perform_clustering(global_config=global_config,entities=all_entities,relations=relation_results,WORKING_DIR=WORKING_DIR)
@@ -222,16 +219,18 @@ def hierarchical_clustering(global_config):
     save_community=[
     v for k, v in community.items()
 ]
-    write_jsonl(save_relation, f"{WORKING_DIR}/generate_relations.json")
-    write_jsonl(save_community, f"{WORKING_DIR}/community.json")
-    create_db_table_mysql(WORKING_DIR)
-    insert_data_to_mysql(WORKING_DIR)
+    write_jsonl(save_relation, f"{global_config['working_dir']}/generate_relations.json")
+    write_jsonl(save_community, f"{global_config['working_dir']}/community.json")
+    create_db_table_mysql(global_config['working_dir'])
+    insert_data_to_mysql(global_config['working_dir'])
     
 if __name__=="__main__":
     try:
         multiprocessing.set_start_method("spawn", force=True)  # 强制设置
     except RuntimeError:
         pass  # 已经设置过，忽略
+    
+    WORKING_DIR = f"ttt"
     num=2
     instanceManager=InstanceManager(
         ports=[8001+i for i in range(num)],
@@ -240,6 +239,7 @@ if __name__=="__main__":
         startup_delay=30
     )
     global_config={}
+    global_config['working_dir']=WORKING_DIR
     global_config['use_llm_func']=instanceManager.generate_text
     global_config['embeddings_func']=embedding
     global_config["special_community_report_llm_kwargs"]=field(

@@ -49,6 +49,7 @@ def truncate_data():
                     if i==20000:
                         break
     write_jsonl(res,entity_output_path)
+
 def deal_duplicate_entity(working_dir,output_path):
     relation_path=f"{working_dir}/relation.jsonl"
     relation_output_path=f"{output_path}/relation.jsonl"
@@ -129,7 +130,84 @@ def deal_duplicate_entity(working_dir,output_path):
             # e_dic[src_tgt]['degree']+=1
             # e_dic[tgt_src]['degree']+=1
     write_jsonl(all_relations,relation_output_path)
+def process_triple(file_path,output_path):
+    create_if_not_exist(output_path)
+    with open(file_path,"r") as f:
+        entities={}
+        relations=[]
+        for uline in f:
+            line=json.loads(uline)
+            triple=line['triple'].split("\t")
+            doc_name=line['doc_name']
+            page_idx=line['page_idx']
+            paragraph_idx=line['paragraph_idx']
+            source_id = doc_name + "_" + str(page_idx) + "_" + str(paragraph_idx)
+            head_entity=triple[0][1:-1]
+            head_description=triple[1][1:-1]
+            relation=triple[2][1:-1]
+            relation_description=triple[3][1:-1]
+            tail_entity=triple[4][1:-1]
+            tail_description=triple[5][1:-1]
+            
+            if head_entity not in entities.keys():
+                entities[head_entity]=dict(
+                    entity_name=str(head_entity),
+                    description=head_description,
+                    source_id=source_id,
+                    degree=0,
+                )
+            else:
+                entities[head_entity]['description']+=" | "+ head_description
+                if entities[head_entity]['source_id']!= source_id:
+                    entities[head_entity]['source_id']+= "|"+source_id
+            if tail_entity not in entities.keys():
+                entities[tail_entity]=dict(
+                    entity_name=str(tail_entity),
+                    description=tail_description,
+                    source_id=source_id,
+                    degree=0,
+                )
+            else:
+                entities[tail_entity]['description']+=" | "+ tail_description
+                if entities[tail_entity]['source_id']!= source_id:
+                    entities[tail_entity]['source_id']+= "|"+source_id
+            relations.append(dict(
+                src_tgt=head_entity,
+                tgt_src=tail_entity,
+                source=relation,
+                description=relation_description,
+                weight=1,
+                source_id=source_id
+            ))
+    write_jsonl(relations,f"{output_path}/relation.jsonl") 
+    res_entity=[]           
+    tokenizer = tiktoken.get_encoding("cl100k_base")
+    to_summarize = []
+    summary_prompt=PROMPTS['summary_entities']
+    for k,v in entities.items():
+        v['source_id']="|".join(set(v['source_id'].split("|")))
+        description=v['description']
+        tokens = len(tokenizer.encode(description))
+        if tokens > threshold:
+            to_summarize.append((k, description))
+        else:
+            res_entity.append(v)
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(summarize_entity, k, desc, summary_prompt, threshold, tokenizer): k
+            for k, desc in to_summarize
+        }
+        for future in tqdm(as_completed(futures), total=len(futures), desc="Summarizing descriptions"):
+            k, summarized_desc = future.result()
+            entities[k]['description'] = summarized_desc
+            res_entity.append(entities[k])
+
+    write_jsonl(res_entity,f"{output_path}/entity.jsonl")
+        
 if __name__=="__main__":
     # deal_duplicate_entity()
     # truncate_data()
-    deal_duplicate_entity("/cpfs04/user/zhangyaoze/workspace/entity_relation_extract/HiRAG/eval/datasets/mix/test","/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix")
+    # deal_duplicate_entity("/cpfs04/user/zhangyaoze/workspace/entity_relation_extract/HiRAG/eval/datasets/mix/test","/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix")
+    file_path="create_kg/data/processed_wtr_reports-kg-test/wtr03_e_by_page_block-head_20/new_triples_wtr03_e_by_page_block-head_20_descriptions.jsonl"
+    output_path="ttt"
+    process_triple(file_path,output_path)

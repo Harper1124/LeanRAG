@@ -348,7 +348,7 @@ def _process_paragraph_for_matching(args_tuple):
 
 def main():
     ## 读取配置文件
-    conf_path = "./config/create_kg_conf_test.yaml"
+    conf_path = "create_kg/config/create_kg_conf_test.yaml"
     with open(conf_path, "r", encoding="utf-8") as file:
         args = yaml.safe_load(file)
 

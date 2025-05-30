@@ -80,7 +80,7 @@ def create_db_table_mysql(working_dir):
     cur.execute("drop table if exists entities;")
     # 建表
     cur.execute("create table entities\
-        (entity_name varchar(500), description varchar(10000),source_id varchar(1000),entity_type varchar(500),\
+        (entity_name varchar(500), description varchar(10000),source_id varchar(1000),\
             degree int,parent varchar(1000),level int ,INDEX en(entity_name))character set utf8;")
     
     cur.execute("drop table if exists relations;")
@@ -115,20 +115,19 @@ def insert_data_to_mysql(working_dir):
                     # if "|Here" in description:
                     #     description=description.split("|Here")[0]
                     source_id="|".join(entity['source_id'].split("|")[:5])
-                    entity_type=entity['entity_type']
+                   
                     degree=entity['degree']
                     parent=entity['parent']
-                    val.append((entity_name,description,source_id,entity_type,degree,parent,level))
+                    val.append((entity_name,description,source_id,degree,parent,level))
             else:
                 entity=local_entity
                 entity_name=entity['entity_name']
                 description=entity['description']
                 source_id="|".join(entity['source_id'].split("|")[:5])
-                entity_type=entity['entity_type']
                 degree=entity['degree']
                 parent=entity['parent']
-                val.append((entity_name,description,source_id,entity_type,degree,parent,level))
-        sql = "INSERT INTO entities(entity_name, description, source_id, entity_type, degree,parent,level) VALUES (%s,%s,%s,%s,%s,%s,%s)"
+                val.append((entity_name,description,source_id,degree,parent,level))
+        sql = "INSERT INTO entities(entity_name, description, source_id, degree,parent,level) VALUES (%s,%s,%s,%s,%s,%s)"
         try:
         # 执行sql语句
             cursor.executemany(sql,tuple(val))
@@ -234,7 +233,7 @@ def search_community(entity_name,db,working_dir):
     return ret[0]
             # return ret[0]
 if __name__ == "__main__":
-    working_dir='data'
+    working_dir='ttt'
     # build_vector_search()
     # search_vector_search()
     create_db_table_mysql(working_dir)
