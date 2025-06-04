@@ -205,15 +205,16 @@ class InstanceManager:
                 **kwargs,
                 "chat_template_kwargs": {"enable_thinking": False}
             },
-            timeout=30
+            timeout=60
         )
             response.raise_for_status()
+            res=json.loads(response.content)
+            response_message = res["choices"][0]["message"]['content']#对结果进行后处理
         except Exception as e:
             print(f"Retry for Error: {e}")
             response = ""    
-
+            response_message=""
         
         
-        res=json.loads(response.content)
-        response_message = res["choices"][0]["message"]['content']#对结果进行后处理
+        
         return response_message

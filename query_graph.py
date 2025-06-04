@@ -82,14 +82,15 @@ def get_reasoning_chain(global_config,db,entities_set):
     maybe_edges=list(combinations(entities_set,2))
     reasoning_path=[]
     reasoning_path_information=[]
+    db_name=global_config['working_dir'].split("/")[-1]
     information_record=[]
     for edge in maybe_edges:
         a_path=[]
         b_path=[]
         node1=edge[0]
         node2=edge[1]
-        node1_tree=find_tree_root(db,global_config['working_dir'],node1)
-        node2_tree=find_tree_root(db,global_config['working_dir'],node2)
+        node1_tree=find_tree_root(db,db_name,node1)
+        node2_tree=find_tree_root(db,db_name,node2)
         
         # if node1_tree[1]!=node2_tree[1] :
         #     print("debug")
@@ -98,7 +99,7 @@ def get_reasoning_chain(global_config,db,entities_set):
                 a_path.append(i)
                 b_path.append(j)
                 if (i,j) not in information_record and (j,i)not in information_record:
-                    information=search_nodes_link(i,j,db,global_config['working_dir'],index-1)
+                    information=search_nodes_link(i,j,db,db_name,index)
                     if information!=None:
                         reasoning_path_information.append(information)
                         information_record.append((i,j))
@@ -137,6 +138,7 @@ def get_aggregation_description(global_config,db,reasoning_path,if_findings=Fals
 def query_graph(global_config,db,query,topk=10):
     use_llm_func: callable = global_config["use_llm_func"]
     b=time.time()
+    
     res_entity=search_vector_search(global_config['working_dir'],embedding(query),topk=topk)
     v=time.time()
     entity_descriptions=get_entity_description(global_config,db,res_entity)
@@ -152,27 +154,30 @@ def query_graph(global_config,db,query,topk=10):
     """
     e=time.time()
     
-    print(describe)
-    sys_prompt =PROMPTS["response"].format(context_data=describe)
+    # print(describe)
+    sys_prompt =PROMPTS["rag_response"].format(context_data=describe)
     response=use_llm_func(query,system_prompt=sys_prompt)
     g=time.time()
     print(f"embedding time: {v-b:.2f}s")
     print(f"query time: {e-v:.2f}s")
     
     print(f"response time: {g-e:.2f}s")
-    return response
+    return describe,response
 if __name__=="__main__":
     db = pymysql.connect(host='localhost', user='root',
-                      passwd='123', charset='utf8')
+                      passwd='123',  charset='utf8mb4')
     global_config={}
-    WORKING_DIR = f"ttt"
+    WORKING_DIR = f"/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix"
     global_config['use_llm_func']=deepseepk_model_if_cache
     global_config['embeddings_func']=embedding
     global_config['working_dir']=WORKING_DIR
     
-    query="What's the relationship between  Research and Israel?"
+    query="What is the main objection Mary has to the poem \"The Witch of Atlas\"?"
     topk=10
-    print(query_graph(global_config,db,query,topk=topk))
+    ref,response=query_graph(global_config,db,query,topk=topk)
+    print(ref)
+    print("#"*20)
+    print(response)
     # beginning=time.time()
     # for i in range(10):
     #     print(query_graph(global_config,db,query))

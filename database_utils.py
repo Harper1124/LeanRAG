@@ -69,7 +69,7 @@ def search_vector_search(working_dir,query,topk=10):
     return extract_results
 def create_db_table_mysql(working_dir):
     con = pymysql.connect(host='localhost', user='root',
-                      passwd='123', charset='utf8')
+                      passwd='123',  charset='utf8mb4')
     cur=con.cursor()
     dbname=os.path.basename(working_dir)
     cur.execute(f"drop database if exists {dbname};")
@@ -81,24 +81,24 @@ def create_db_table_mysql(working_dir):
     # 建表
     cur.execute("create table entities\
         (entity_name varchar(500), description varchar(10000),source_id varchar(1000),\
-            degree int,parent varchar(1000),level int ,INDEX en(entity_name))character set utf8;")
+            degree int,parent varchar(1000),level int ,INDEX en(entity_name))character set utf8mb4 COLLATE utf8mb4_unicode_ci;")
     
     cur.execute("drop table if exists relations;")
     cur.execute("create table relations\
-        (src_tgt varchar(500),tgt_src varchar(500), description varchar(10000),\
-            weight int,level int ,INDEX link(src_tgt,tgt_src))character set utf8;")
+        (src_tgt varchar(190),tgt_src varchar(190), description varchar(10000),\
+            weight int,level int ,INDEX link(src_tgt,tgt_src))character set utf8mb4 COLLATE utf8mb4_unicode_ci;")
     
     cur.execute("drop table if exists communities;")
     cur.execute("create table communities\
         (entity_name varchar(500), entity_description varchar(10000),findings text,INDEX en(entity_name)\
-             )character set utf8;")
+             )character set utf8mb4 COLLATE utf8mb4_unicode_ci ;")
     cur.close()
     con.close()
     
 def insert_data_to_mysql(working_dir):
     dbname=os.path.basename(working_dir)
     db = pymysql.connect(host='localhost', user='root',
-                      passwd='123',database=dbname, charset='utf8')
+                      passwd='123',database=dbname,  charset='utf8mb4')
     cursor = db.cursor()
     
     entity_path=os.path.join(working_dir,"all_entities.json")
@@ -149,7 +149,7 @@ def insert_data_to_mysql(working_dir):
             description=relation['description']
             weight=relation['weight']
             level=relation['level']
-            val.append((src_tgt,tgt_src,description,weight,level+1))
+            val.append((src_tgt,tgt_src,description,weight,level))
         sql = "INSERT INTO relations(src_tgt, tgt_src, description,  weight,level) VALUES (%s,%s,%s,%s,%s)"
         try:
         # 执行sql语句
@@ -186,15 +186,15 @@ def insert_data_to_mysql(working_dir):
 def find_tree_root(db,working_dir,entity):
     res=[entity]
     cursor = db.cursor()
-    
-    depth_sql=f"select max(level) from {working_dir}.entities"
+    db_name=os.path.basename(working_dir)
+    depth_sql=f"select max(level) from {db_name}.entities"
     cursor.execute(depth_sql)
     depth=cursor.fetchall()[0][0]#树的深度为max(level)+1，因为level是从0开始的，但最后一层的parent为root，没什么意义，所以就这样算了，不进行+1
     i=0
     
     while i< depth:
-        sql=f"select parent from {working_dir}.entities where entity_name='{entity}' and level={i} "
-        cursor.execute(sql)
+        sql=f"select parent from {db_name}.entities where entity_name=%s and level=%s "
+        cursor.execute(sql,(entity,i))
         ret=cursor.fetchall()
         # print(ret)
         i+=1
@@ -203,12 +203,13 @@ def find_tree_root(db,working_dir,entity):
     return res
 def search_nodes_link(entity1,entity2,db,working_dir,level):
     cursor = db.cursor()
-    sql=f"select * from {working_dir}.relations where src_tgt='{entity1}' and tgt_src='{entity2}' and level={level}"
-    cursor.execute(sql)
+    db_name=os.path.basename(working_dir)
+    sql=f"select * from {db_name}.relations where src_tgt=%s and tgt_src=%s and level=%s"
+    cursor.execute(sql,(entity1,entity2,level))
     ret=cursor.fetchall()
     if len(ret)==0:
-        sql=f"select * from {working_dir}.relations where src_tgt='{entity2}' and tgt_src='{entity1}' and level={level}"
-        cursor.execute(sql)
+        sql=f"select * from {db_name}.relations where src_tgt=%s and tgt_src=%s and level=%s"
+        cursor.execute(sql,(entity2,entity1,level))
         ret=cursor.fetchall()
     if len(ret)==0:
         return None
@@ -217,23 +218,24 @@ def search_nodes_link(entity1,entity2,db,working_dir,level):
 
 def search_nodes(entity_set,db,working_dir):
     res=[]
+    db_name=os.path.basename(working_dir)
     cursor = db.cursor()
     for entity in entity_set:
-        sql=f"select * from {working_dir}.entities where entity_name='{entity}' and level=0"
-        cursor.execute(sql)
+        sql=f"select * from {db_name}.entities where entity_name=%s and level=0"
+        cursor.execute(sql,(entity,))
         ret=cursor.fetchall()
         res.append(ret[0])
     return res
 def search_community(entity_name,db,working_dir):
-    
+    db_name=os.path.basename(working_dir)
     cursor = db.cursor()
-    sql=f"select * from {working_dir}.communities where entity_name='{entity_name}'"
-    cursor.execute(sql)
+    sql=f"select * from {db_name}.communities where entity_name=%s"
+    cursor.execute(sql,(entity_name,))
     ret=cursor.fetchall()
     return ret[0]
             # return ret[0]
 if __name__ == "__main__":
-    working_dir='ttt'
+    working_dir='/cpfs04/user/zhangyaoze/workspace/trag/datasets/cs'
     # build_vector_search()
     # search_vector_search()
     create_db_table_mysql(working_dir)

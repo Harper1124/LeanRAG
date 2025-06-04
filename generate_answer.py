@@ -6,6 +6,7 @@ import argparse
 import os
 import time
 import copy
+import pymysql
 import yaml
 from openai import OpenAI
 from query_graph import deepseepk_model_if_cache,embedding,field,query_graph
@@ -19,7 +20,7 @@ elif DATASET == "cs" or DATASET == "agriculture" or DATASET == "legal":
 
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
-def generate_answer(query_file, global_config ,output_file_path):
+def generate_answer(query_file, global_config,db ,output_file_path):
     queries = []
     answers= []
     with open(query_file, "r", encoding="utf-8") as infile:
@@ -29,7 +30,7 @@ def generate_answer(query_file, global_config ,output_file_path):
                 continue
             try:
                 json_obj = json.loads(line)
-                query = json_obj.get("query")
+                query = json_obj.get("input")
                 queries.append(query)
             except json.JSONDecodeError as e:
                 print(
@@ -37,16 +38,19 @@ def generate_answer(query_file, global_config ,output_file_path):
                 )
     queries = queries[:MAX_QUERIES]
     for query in queries:
-        response = query_graph(
+        ref,response = query_graph(
             query=query,
+            db=db,
             global_config=global_config,
         )
+        print(ref)
         answers.append({
+            "ref": ref,
             "answer": response,
         })
     write_jsonl(answers, output_file_path)
 if __name__ == "__main__":
-    WORKING_DIR="test_data"
+    WORKING_DIR="/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix"
     global_config={}
     global_config['use_llm_func']=deepseepk_model_if_cache
     global_config['embeddings_func']=embedding
@@ -54,4 +58,6 @@ if __name__ == "__main__":
         default_factory=lambda: {"response_format": {"type": "json_object"}}
     )
     global_config['working_dir']=WORKING_DIR
-    generate_answer("query_file.jsonl", global_config, "answer_file.jsonl")
+    db = pymysql.connect(host='localhost', user='root',
+                      passwd='123', charset='utf8')
+    generate_answer("/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix/mix.jsonl", global_config, db,f"{WORKING_DIR}/answer_file.jsonl")

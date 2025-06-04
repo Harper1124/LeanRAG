@@ -1,3 +1,4 @@
+import argparse
 from concurrent.futures import ProcessPoolExecutor,as_completed
 from dataclasses import field
 import json
@@ -229,8 +230,11 @@ if __name__=="__main__":
         multiprocessing.set_start_method("spawn", force=True)  # 强制设置
     except RuntimeError:
         pass  # 已经设置过，忽略
-    
-    WORKING_DIR = f"ttt"
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-p", "--path", type=str, default="mix")
+    args = parser.parse_args()
+
+    WORKING_DIR = args.path
     num=2
     instanceManager=InstanceManager(
         ports=[8001+i for i in range(num)],

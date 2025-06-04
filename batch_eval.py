@@ -28,9 +28,9 @@ GLM_MODEL = config['glm']['model']
 GLM_API_KEY = config['glm']['api_key']
 GLM_URL = config['glm']['base_url']
 
-OPENAI_MODEL = config['openai']['model']
-OPENAI_API_KEY = config['openai']['api_key']
-OPENAI_URL = config['openai']['base_url']
+# OPENAI_MODEL = config['openai']['model']
+# OPENAI_API_KEY = config['openai']['api_key']
+# OPENAI_URL = config['openai']['base_url']
 
 
 def eval_oq_openai_batch(query_file, result1_file, result2_file, output_file_path):  # with original query
@@ -410,20 +410,33 @@ def eval_oq_deepseek(query_file, result1_file, result2_file, output_file_path):
                 f"JSON decoding error in file {query_file} at line {line_number}: {e}"
                 )
     queries = queries[:MAX_QUERIES]
-
+    record=[]
     with open(result1_file, "r") as f:
         answers1 = f.readlines()
+        
     answers1 = [json.loads(i)["answer"] for i in answers1][:MAX_QUERIES]
 
     with open(result2_file, "r") as f:
         answers2 = f.readlines()
     answers2 = [json.loads(i)["answer"] for i in answers2][:MAX_QUERIES]
+    ans1=[]
+    ans2=[]
+    query=[]
+    for i in range(len(answers1)):
+        if "I don’t know based on the available data." not in answers1[i]:
+            ans1.append(answers1[i])
+            ans2.append(answers2[i])
+            query.append(queries[i])
+    # answers2 = [json.loads(i)["answer"] for i in answers2][:MAX_QUERIES]
+    answers1 = ans1
+    answers2 = ans2
+    queries = query
 
     # placement of answer 1 and 2 is swapped
-    queries += queries
-    temp = copy.deepcopy(answers1)
-    answers1 += answers2
-    answers2 += temp
+    # queries += queries
+    # temp = copy.deepcopy(answers1)
+    # answers1 += answers2
+    # answers2 += temp
 
     if not (len(queries) == len(answers1) == len(answers2)):
         print("Warning: the number of query and answer does not match, please check!")
@@ -492,6 +505,7 @@ def eval_oq_deepseek(query_file, result1_file, result2_file, output_file_path):
             messages=messages,
             temperature=0.0,
             max_tokens=6400,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}}
         )
 
         max_retries = 3  # max retry
@@ -1025,12 +1039,16 @@ def fetch_eval_result_openai_batch(batch_id, output_file):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-q", "--query_file", type=str, default=f"./datasets/{DATASET}/{DATASET}.jsonl")
-    parser.add_argument("-r1", "--result1_file", type=str, default=f"./datasets/{DATASET}/{DATASET}_kag_result_deepseek.jsonl")
-    parser.add_argument("-r2", "--result2_file", type=str, default=f"./datasets/{DATASET}/{DATASET}_hi_bridge_result_deepseek_pro.jsonl")
-    parser.add_argument("-o", "--output_file", type=str, default=f"./datasets/{DATASET}/{DATASET}_eval_hi_graphtrag.jsonl")
+    # parser.add_argument("-q", "--query_file", type=str, default=f"./datasets/{DATASET}/{DATASET}.jsonl")
+    # parser.add_argument("-r1", "--result1_file", type=str, default=f"./datasets/{DATASET}/{DATASET}_kag_result_deepseek.jsonl")
+    # parser.add_argument("-r2", "--result2_file", type=str, default=f"./datasets/{DATASET}/{DATASET}_hi_bridge_result_deepseek_pro.jsonl")
+    # parser.add_argument("-o", "--output_file", type=str, default=f"./datasets/{DATASET}/{DATASET}_eval_hi_graphtrag.jsonl")
+    parser.add_argument("-q", "--query_file", type=str, default=f"/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix/mix.jsonl")
+    parser.add_argument("-r1", "--result1_file", type=str, default=f"/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix/answer_file.jsonl")
+    parser.add_argument("-r2", "--result2_file", type=str, default=f"/cpfs04/user/zhangyaoze/workspace/entity_relation_extract/HiRAG/eval/datasets/mix/mix_hi_reproduce.jsonl")
+    parser.add_argument("-o", "--output_file", type=str, default=f"/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix/temp_result.jsonl")
     parser.add_argument("-m", "--mode", type=str, default="result", help="request or result")
-    parser.add_argument("-api", "--api", type=str, default="openai", help="openai or deepseek or glm")
+    parser.add_argument("-api", "--api", type=str, default="deepseek", help="openai or deepseek or glm")
     parser.add_argument("-b", "--batch_id", type=str, default="")
     args = parser.parse_args()
 

@@ -14,7 +14,8 @@ glm:
 deepseek:
   # model: "/cpfs04/user/zhangyaoze/vllm_weight/Qwen2.5-7B-Instruct"
   # model: "/cpfs04/user/zhangyaoze/vllm_weight/Qwen3-awq"
-  model: "Qwen3-14b"
+  model: "qwen2.5"
+  # model: "Qwen3-32b"
   # model: "/cpfs04/user/zhangyaoze/vllm_weight/qwen3-32b"
   api_key: "ollama"
   base_url: "http://localhost:8001/v1"
