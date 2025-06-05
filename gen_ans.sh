@@ -1,0 +1,1 @@
+nohup python generate_answer.py -d mix >logs/mix_ans.log 2>&1 &

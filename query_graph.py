@@ -41,6 +41,12 @@ def embedding(texts: list[str]) -> np.ndarray:
     return np.array(final_embedding)
 
 tokenizer = tiktoken.get_encoding("cl100k_base")
+def truncate_text(text, max_tokens=4096):
+    tokens = tokenizer.encode(text)
+    if len(tokens) > max_tokens:
+        tokens = tokens[:max_tokens]
+    truncated_text = tokenizer.decode(tokens)
+    return truncated_text
 def deepseepk_model_if_cache(
     prompt, system_prompt=None, history_messages=[], **kwargs
 ) -> str:
@@ -62,6 +68,9 @@ def deepseepk_model_if_cache(
     try:
         # logging token cost
         cur_token_cost = len(tokenizer.encode(messages[0]['content']))
+        if cur_token_cost>28672:
+            cur_token_cost = 28672
+            messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=28672)
         TOTAL_TOKEN_COST += cur_token_cost
         # logging api call cost
         TOTAL_API_CALL_COST += 1
@@ -99,7 +108,7 @@ def get_reasoning_chain(global_config,db,entities_set):
                 a_path.append(i)
                 b_path.append(j)
                 if (i,j) not in information_record and (j,i)not in information_record:
-                    information=search_nodes_link(i,j,db,db_name,index)
+                    information=search_nodes_link(i,j,db,db_name,index+1)
                     if information!=None:
                         reasoning_path_information.append(information)
                         information_record.append((i,j))
@@ -155,7 +164,7 @@ def query_graph(global_config,db,query,topk=10):
     e=time.time()
     
     # print(describe)
-    sys_prompt =PROMPTS["rag_response"].format(context_data=describe)
+    sys_prompt =PROMPTS["response"].format(context_data=describe)
     response=use_llm_func(query,system_prompt=sys_prompt)
     g=time.time()
     print(f"embedding time: {v-b:.2f}s")

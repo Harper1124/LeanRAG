@@ -512,6 +512,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
         threshold: float = 0.98, # 0.99
         thredshold_change_rate: float = 0.05,
         WORKING_DIR: str = None,
+        max_workers: int =8,
     ) -> List[dict]:
         use_llm_func: callable = global_config["use_llm_func"]
         embeddings_func: callable = global_config["embeddings_func"]

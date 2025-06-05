@@ -197,7 +197,8 @@ def hierarchical_clustering(global_config):
     entity_results,relation_results=get_common_rag_res(global_config['working_dir'])
     all_entities=embedding_data(entity_results)
     hierarchical_cluster = Hierarchical_Clustering()
-    all_entities,generate_relations,community =hierarchical_cluster.perform_clustering(global_config=global_config,entities=all_entities,relations=relation_results,WORKING_DIR=WORKING_DIR)
+    all_entities,generate_relations,community =hierarchical_cluster.perform_clustering(global_config=global_config,entities=all_entities,relations=relation_results,\
+        WORKING_DIR=WORKING_DIR,max_workers=global_config['max_workers'])
     try :
         build_vector_search(all_entities[0], f"{WORKING_DIR}")
     except Exception as e:
@@ -232,10 +233,11 @@ if __name__=="__main__":
         pass  # 已经设置过，忽略
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--path", type=str, default="mix")
+    parser.add_argument("-n", "--num", type=int, default=8)
     args = parser.parse_args()
 
     WORKING_DIR = args.path
-    num=2
+    num=args.num
     instanceManager=InstanceManager(
         ports=[8001+i for i in range(num)],
         gpus=[i for i in range(num)],
@@ -243,6 +245,7 @@ if __name__=="__main__":
         startup_delay=30
     )
     global_config={}
+    global_config['max_workers']=num*8
     global_config['working_dir']=WORKING_DIR
     global_config['use_llm_func']=instanceManager.generate_text
     global_config['embeddings_func']=embedding

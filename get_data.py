@@ -207,7 +207,7 @@ def process_triple(file_path,output_path):
 if __name__=="__main__":
     # deal_duplicate_entity()
     # truncate_data()
-    deal_duplicate_entity("/cpfs04/user/zhangyaoze/workspace/entity_relation_extract/HiRAG/eval/datasets/agriculture/test","/cpfs04/user/zhangyaoze/workspace/trag/datasets/agriculture")
+    deal_duplicate_entity("/cpfs04/user/zhangyaoze/workspace/entity_relation_extract/HiRAG/eval/datasets/legal/test","/cpfs04/user/zhangyaoze/workspace/trag/datasets/legal")
     # file_path="create_kg/data/processed_wtr_reports-kg-test/wtr03_e_by_page_block-head_20/new_triples_wtr03_e_by_page_block-head_20_descriptions.jsonl"
     # output_path="ttt"
     # process_triple(file_path,output_path)

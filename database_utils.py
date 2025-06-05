@@ -235,10 +235,33 @@ def search_community(entity_name,db,working_dir):
     return ret[0]
             # return ret[0]
 if __name__ == "__main__":
-    working_dir='/cpfs04/user/zhangyaoze/workspace/trag/datasets/cs'
+    working_dir='/cpfs04/user/zhangyaoze/workspace/trag/datasets/agriculture'
     # build_vector_search()
     # search_vector_search()
     create_db_table_mysql(working_dir)
     insert_data_to_mysql(working_dir)
     # print(find_tree_root(working_dir,'Policies'))
     # print(search_nodes_link('Innovation Policy Network','document',working_dir,0))
+    # from query_graph import embedding
+    # topk=10
+    # query=embedding("mary")
+    # milvus_client = MilvusClient(uri=f"/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix/milvus_demo.db")
+    # collection_name = "entity_collection"
+    # # query_embedding = emb_text(query)
+    # search_results = milvus_client.search(
+    #     collection_name=collection_name,
+    #     data=query,
+    #     limit=topk,
+    #     params={"metric_type": "L2", "params": {}},
+    #     output_fields=["entity_name", "description","vector"],
+    # )
+    # vec=search_results[0][0]['entity']['vector']
+    # search_results2 = milvus_client.search(
+    #     collection_name=collection_name,
+    #     data=[vec],
+    #     limit=topk,
+    #     params={"metric_type": "L2", "params": {}},
+    #     output_fields=["entity_name", "description","vector"],
+    # )
+    # recall=search_results2[0][0]['entity']['vector']
+    # print(recall==vec)
