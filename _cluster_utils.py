@@ -516,13 +516,11 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
     ) -> List[dict]:
         use_llm_func: callable = global_config["use_llm_func"]
         embeddings_func: callable = global_config["embeddings_func"]
-        llm_extra_kwargs= global_config["special_community_report_llm_kwargs"]
         # Get the embeddings from the nodes
         nodes = list(entities.values())
         embeddings = np.array([x["vector"] for x in nodes])
         generate_relations={}
         
-        pre_cluster_sparsity = 0.01
         community_report={}
         all_nodes=[]
         all_nodes.append(nodes)
@@ -621,19 +619,19 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
             
             embeddings = np.array([x["vector"] for x in unique_nodes]).squeeze() #为下一轮迭代做准备
             all_nodes.append(nodes) 
-            save_entities=copy.deepcopy(all_nodes)
-            for layer in save_entities:
-                if type(layer) != list :
-                    if "vector" in layer.keys():
-                        del layer["vector"]
-                    continue
-                for item in layer:
-                    if "vector" in item.keys():
-                        del item["vector"]
-                    if len(layer)==1:
-                        item['parent']='root'
-            # check_test(all_entities)
-            write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
+            # save_entities=copy.deepcopy(all_nodes)
+            # for layer in save_entities:
+            #     if type(layer) != list :
+            #         if "vector" in layer.keys():
+            #             del layer["vector"]
+            #         continue
+            #     for item in layer:
+            #         if "vector" in item.keys():
+            #             del item["vector"]
+            #         if len(layer)==1:
+            #             item['parent']='root'
+            # # check_test(all_entities)
+            # write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
             # check_test(all_nodes)            
             # stop if the number of deduplicated cluster is too small
             # if len(embeddings) <= 2:
@@ -663,17 +661,17 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
                 i['parent']=data['entity_name']
             
             all_nodes.append(temp_node)
-        save_entities=copy.deepcopy(all_nodes)
-        for layer in save_entities:
-            if type(layer) != list :
-                if "vector" in layer.keys():
-                    del layer["vector"]
-                continue
-            for item in layer:
-                if "vector" in item.keys():
-                    del item["vector"]
-                if len(layer)==1:
-                    item['parent']='root'
-        # check_test(all_entities)
-        write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
+        # save_entities=copy.deepcopy(all_nodes)
+        # for layer in save_entities:
+        #     if type(layer) != list :
+        #         if "vector" in layer.keys():
+        #             del layer["vector"]
+        #         continue
+        #     for item in layer:
+        #         if "vector" in item.keys():
+        #             del item["vector"]
+        #         if len(layer)==1:
+        #             item['parent']='root'
+        # # check_test(all_entities)
+        # write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
         return all_nodes,generate_relations,community_report

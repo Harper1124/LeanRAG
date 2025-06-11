@@ -9,6 +9,7 @@ import numpy as np
 from openai import OpenAI
 import requests
 import tiktoken
+import yaml
 tokenizer = tiktoken.get_encoding("cl100k_base")
 TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
@@ -154,9 +155,16 @@ class InstanceManager:
         for port, gpu in zip(self.ports, self.gpus):
             self.start_instance(gpu,port)
             self.instances.append({"port": port, "load": 0})
+    def reset_token_cost(self):
+        """重置总的token消耗和API调用次数"""
+        self.TOTAL_TOKEN_COST = 0
+        self.TOTAL_API_CALL_COST = 0
+    def get_tokens_cosumption(self):
+        
+        return self.TOTAL_TOKEN_COST, self.TOTAL_API_CALL_COST
         
         # time.sleep(startup_delay)  # 等待所有实例启动
-
+    
     def start_instance(self, port,num):
         """启动vllm实例在特定GPU和端口上"""
         # cmd = f"CUDA_VISIBLE_DEVICES={num} OLLAMA_HOST=http://localhost:{port} ollama serve"
@@ -188,10 +196,10 @@ class InstanceManager:
         messages.append({"role": "user", "content": prompt})
         
         try:
-            cur_token_cost = len(tokenizer.encode(messages[0-1]['content']))
-            if cur_token_cost>28672:
-                cur_token_cost = 28672
-                messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=28672)
+            cur_token_cost = len(tokenizer.encode(messages[0]['content']))
+            if cur_token_cost>31000:
+                cur_token_cost = 31000
+                messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=31000)
             self.TOTAL_TOKEN_COST += cur_token_cost
             # logging api call cost
             self.TOTAL_API_CALL_COST += 1
@@ -218,3 +226,47 @@ class InstanceManager:
         
         
         return response_message
+def response(
+    prompt, system_prompt=None, history_messages=[], port=8001,**kwargs
+) -> str:
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+    MODEL = config['deepseek']['model']
+    
+    global TOTAL_TOKEN_COST
+    global TOTAL_API_CALL_COST
+    URL=f"http://localhost:{port}/v1"
+    openai_async_client =OpenAI(
+        api_key='vllm', base_url=URL
+    )
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+
+    # Get the cached response if having-------------------
+    messages.extend(history_messages)
+    messages.append({"role": "user", "content": prompt})
+    # -----------------------------------------------------
+    retry_time = 3
+    try:
+        # logging token cost
+        cur_token_cost = len(tokenizer.encode(messages[0]['content']))
+        if cur_token_cost>28672:
+            cur_token_cost = 28672
+            messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=28672)
+        TOTAL_TOKEN_COST += cur_token_cost
+        # logging api call cost
+        TOTAL_API_CALL_COST += 1
+        # request
+        response =openai_async_client.chat.completions.create(
+            model=MODEL, messages=messages, **kwargs,
+            extra_body={"chat_template_kwargs": {"enable_thinking": False}}
+        )
+    except Exception as e:
+        print(f"Retry for Error: {e}")
+        retry_time -= 1
+        response = ""
+    
+    if response == "":
+        return response
+    return response.choices[0].message.content

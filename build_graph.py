@@ -200,7 +200,8 @@ def hierarchical_clustering(global_config):
     all_entities,generate_relations,community =hierarchical_cluster.perform_clustering(global_config=global_config,entities=all_entities,relations=relation_results,\
         WORKING_DIR=WORKING_DIR,max_workers=global_config['max_workers'])
     try :
-        build_vector_search(all_entities[0], f"{WORKING_DIR}")
+        all_entities[-1]['vector']=embedding(all_entities[-1]['description'])
+        build_vector_search(all_entities, f"{WORKING_DIR}")
     except Exception as e:
         print(f"Error in build_vector_search: {e}")
     for layer in all_entities:
@@ -232,8 +233,8 @@ if __name__=="__main__":
     except RuntimeError:
         pass  # 已经设置过，忽略
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--path", type=str, default="mix")
-    parser.add_argument("-n", "--num", type=int, default=8)
+    parser.add_argument("-p", "--path", type=str, default="ttt")
+    parser.add_argument("-n", "--num", type=int, default=2)
     args = parser.parse_args()
 
     WORKING_DIR = args.path
@@ -245,7 +246,7 @@ if __name__=="__main__":
         startup_delay=30
     )
     global_config={}
-    global_config['max_workers']=num*8
+    global_config['max_workers']=num*4
     global_config['working_dir']=WORKING_DIR
     global_config['use_llm_func']=instanceManager.generate_text
     global_config['embeddings_func']=embedding

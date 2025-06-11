@@ -85,7 +85,8 @@ class LLM_Processor:
                         {'role': 'system', 'content': 'You are a helpful assistant.'},
                         {'role': 'user', 'content': prompt}],
                     max_tokens = max_tokens,
-                    response_format={"type": "json_object"}
+                    response_format={"type": "json_object"},
+                    extra_body={"chat_template_kwargs": {"enable_thinking": False}}
                     )
             else:
                 completion = client.chat.completions.create(
@@ -93,7 +94,8 @@ class LLM_Processor:
                     messages=[
                         {'role': 'system', 'content': 'You are a helpful assistant.'},
                         {'role': 'user', 'content': prompt}],
-                    max_tokens = max_tokens
+                    max_tokens = max_tokens,
+                    extra_body={"chat_template_kwargs": {"enable_thinking": False}}
                     )
 
             return completion.model_dump()["choices"][0]["message"]["content"]

@@ -31,7 +31,7 @@ task_conf:
   num_processes_match: -1
 
   ## 推理多进程数量（-1表示使用所有CPU核心）
-  num_processes_infer: 128
+  num_processes_infer: 16
 
   ## 是否跳过三元组抽取
   skip_extract_triple: False
@@ -48,10 +48,10 @@ task_conf:
   ## 待检索语料路径（可以是单一文件或者处理后的文件夹）
   # corpus_path: /data/H-RAG/processed_wtr_reports_jsons_0318/wtr03_e_by_page_block.jsonl
   # 示例data：data/wtr03_e_by_page_block-head_20.jsonl or data/wtr03_e_by_page_block-head_100.jsonl
-  corpus_path: create_kg/data/wtr03_e_by_page_block-head_20.jsonl
+  corpus_path: /cpfs04/user/zhangyaoze/workspace/trag/create_kg/data/mix/mix_unique_contexts.json
 
   ## 输出结果目录
-  output_dir: create_kg/data/processed_wtr_reports-kg-test
+  output_dir: /cpfs04/user/zhangyaoze/workspace/trag/create_kg/data/mix/test
 
   ## 参考的开源三元组文件路径
   ref_kg_path: create_kg/data/triple_ref_test.txt

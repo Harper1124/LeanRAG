@@ -1,3 +1,4 @@
+from collections import Counter, defaultdict
 from dataclasses import field
 import json
 import os
@@ -9,9 +10,8 @@ import pymysql
 import tiktoken
 from tqdm import tqdm
 import yaml
-from openai import AsyncOpenAI, OpenAI
-from _cluster_utils import Hierarchical_Clustering
-from tools.utils import write_jsonl
+from openai import  OpenAI
+from tools.utils import response as use_llm_func
 from database_utils import build_vector_search,search_vector_search,find_tree_root,search_nodes_link,search_nodes,search_community
 from prompt import GRAPH_FIELD_SEP, PROMPTS
 from itertools import combinations
@@ -47,46 +47,7 @@ def truncate_text(text, max_tokens=4096):
         tokens = tokens[:max_tokens]
     truncated_text = tokenizer.decode(tokens)
     return truncated_text
-def deepseepk_model_if_cache(
-    prompt, system_prompt=None, history_messages=[], **kwargs
-) -> str:
-    global TOTAL_TOKEN_COST
-    global TOTAL_API_CALL_COST
 
-    openai_async_client =OpenAI(
-        api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_URL
-    )
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-
-    # Get the cached response if having-------------------
-    messages.extend(history_messages)
-    messages.append({"role": "user", "content": prompt})
-    # -----------------------------------------------------
-    retry_time = 3
-    try:
-        # logging token cost
-        cur_token_cost = len(tokenizer.encode(messages[0]['content']))
-        if cur_token_cost>28672:
-            cur_token_cost = 28672
-            messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=28672)
-        TOTAL_TOKEN_COST += cur_token_cost
-        # logging api call cost
-        TOTAL_API_CALL_COST += 1
-        # request
-        response =openai_async_client.chat.completions.create(
-            model=MODEL, messages=messages, **kwargs,
-            extra_body={"chat_template_kwargs": {"enable_thinking": False}}
-        )
-    except Exception as e:
-        print(f"Retry for Error: {e}")
-        retry_time -= 1
-        response = ""
-    
-    if response == "":
-        return response
-    return response.choices[0].message.content
 def get_reasoning_chain(global_config,db,entities_set):
     maybe_edges=list(combinations(entities_set,2))
     reasoning_path=[]
@@ -107,34 +68,58 @@ def get_reasoning_chain(global_config,db,entities_set):
             if i!=j :
                 a_path.append(i)
                 b_path.append(j)
-                if (i,j) not in information_record and (j,i)not in information_record:
-                    information=search_nodes_link(i,j,db,db_name,index+1)
-                    if information!=None:
-                        reasoning_path_information.append(information)
-                        information_record.append((i,j))
             if i==j:
                 a_path.append(i)
                 break
         reasoning_path.append(a_path+[b_path[len(b_path)-1-i] for  i in range(len(b_path))]) 
+        a_path=list(set(a_path))
+        b_path=list(set(b_path))
+        for maybe_edge in list(combinations(a_path+b_path,2)):
+            if maybe_edge[0]==maybe_edge[1]:
+                continue
+            information=search_nodes_link(maybe_edge[0],maybe_edge[1],db,global_config['working_dir'])
+            if information==None:
+                continue
+            information_record.append(information)
+            reasoning_path_information.append([maybe_edge[0],maybe_edge[1],information[2]])
     # columns=['src_tgt','tgt_src','path_description']
     # reasoning_path_information_description="\t\t".join(columns)+"\n"
-    reasoning_path_information_description="\n".join([information[2] for information in reasoning_path_information])  
+    temp_relations_information=list(set([information[2] for information in reasoning_path_information]))
+    reasoning_path_information_description="\n".join(temp_relations_information)  
     return  reasoning_path,reasoning_path_information_description
-def get_entity_description(global_config,db,entities_set):
-    entity_informations=search_nodes(entities_set,db,global_config['working_dir'])
+
+def get_entity_description(global_config,db,entities_set,mode=0):
+    
+    
+    
     columns=['entity_name','parent','description']
     entity_descriptions="\t\t".join(columns)+"\n"
-    entity_descriptions+="\n".join([information[0]+"\t\t"+information[4]+"\t\t"+information[1] for information in entity_informations])
+    entity_descriptions+="\n".join([information[0]+"\t\t"+information[1]+"\t\t"+information[2] for information in entities_set])
+    '''
+    两个节点在同一个实体下导致失去联系，这种情况只会在底层实体中出现
+    0609 记录 首先实体在底层中时，直接返回他们关系即可，而在聚合实体中则不会出现不返回关系的情况
+    其次,返回所有节点信息 或 所有节点信息加关系这个信息量太大，可能会导致噪声
+    目前采取方法将底层图加入到数据库中
+    '''
+    # if mode==0:
+    #     e_p=[[information[0],information[4]] for information in entity_informations]
+    #     parent_counter = Counter(parent for _, parent in e_p)
+    #     parent_to_entities = defaultdict(list)
+    #     for entity, parent in e_p:
+    #         if parent_counter[parent] > 2:
+    #             parent_to_entities[parent].append(entity)
     return entity_descriptions
         
 def get_aggregation_description(global_config,db,reasoning_path,if_findings=False):
-    communities=set()
+    
     aggregation_results=[]
-    for each_path in reasoning_path:
-        for community in each_path[1:-1]:
-            communities.add(community)
+    
+    communities=set([community for each_path in reasoning_path for community in each_path])
     for community in communities:
-        aggregation_results.append(search_community(community,db,global_config['working_dir']))
+        temp=search_community(community,db,global_config['working_dir'])
+        if temp=="":
+            continue
+        aggregation_results.append(temp)
     if if_findings:
         columns=['entity_name','entity_description','findings']
         aggregation_descriptions="\t\t".join(columns)+"\n"
@@ -144,13 +129,16 @@ def get_aggregation_description(global_config,db,reasoning_path,if_findings=Fals
         aggregation_descriptions="\t\t".join(columns)+"\n"
         aggregation_descriptions+="\n".join([information[0]+"\t\t"+str(information[1]) for information in aggregation_results])
     return aggregation_descriptions
-def query_graph(global_config,db,query,topk=10):
+def query_graph(global_config,db,query):
     use_llm_func: callable = global_config["use_llm_func"]
     b=time.time()
-    
-    res_entity=search_vector_search(global_config['working_dir'],embedding(query),topk=topk)
+    level_mode=global_config['level_mode']
+    topk=global_config['topk']
+    port=global_config['port']
+    entity_results=search_vector_search(global_config['working_dir'],embedding(query),topk=topk,level_mode=level_mode)
     v=time.time()
-    entity_descriptions=get_entity_description(global_config,db,res_entity)
+    res_entity=[i[0]for i in entity_results]
+    entity_descriptions=get_entity_description(global_config,db,entity_results)
     reasoning_path,reasoning_path_information_description=get_reasoning_chain(global_config,db,res_entity)
     aggregation_descriptions=get_aggregation_description(global_config,db,reasoning_path)
     describe=f"""
@@ -164,8 +152,8 @@ def query_graph(global_config,db,query,topk=10):
     e=time.time()
     
     # print(describe)
-    sys_prompt =PROMPTS["response"].format(context_data=describe)
-    response=use_llm_func(query,system_prompt=sys_prompt)
+    sys_prompt =PROMPTS["rag_response"].format(context_data=describe)
+    response=use_llm_func(query,system_prompt=sys_prompt,port=port)
     g=time.time()
     print(f"embedding time: {v-b:.2f}s")
     print(f"query time: {e-v:.2f}s")
@@ -176,14 +164,17 @@ if __name__=="__main__":
     db = pymysql.connect(host='localhost', user='root',
                       passwd='123',  charset='utf8mb4')
     global_config={}
-    WORKING_DIR = f"/cpfs04/user/zhangyaoze/workspace/trag/datasets/mix"
-    global_config['use_llm_func']=deepseepk_model_if_cache
+    WORKING_DIR = f"/cpfs04/user/zhangyaoze/workspace/trag/exp/mix_vector_search/legal"
+    global_config['use_llm_func']=use_llm_func
     global_config['embeddings_func']=embedding
     global_config['working_dir']=WORKING_DIR
+    global_config['port']=8001
+    global_config['topk']=10
+    global_config['level_mode']=1
     
-    query="What is the main objection Mary has to the poem \"The Witch of Atlas\"?"
+    query="What is the maturity date of the credit agreement?"
     topk=10
-    ref,response=query_graph(global_config,db,query,topk=topk)
+    ref,response=query_graph(global_config,db,query)
     print(ref)
     print("#"*20)
     print(response)
