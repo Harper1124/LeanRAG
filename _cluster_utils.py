@@ -520,7 +520,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
         nodes = list(entities.values())
         embeddings = np.array([x["vector"] for x in nodes])
         generate_relations={}
-        
+        max_workers=global_config['max_workers']
         community_report={}
         all_nodes=[]
         all_nodes.append(nodes)
@@ -557,7 +557,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
             if len(unique_clusters) <=4:
                 print(f"当前簇数小于5，停止聚类")
                 break
-            with ThreadPoolExecutor(max_workers=8) as executor:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [
                     executor.submit(
                         process_cluster, 
@@ -580,7 +580,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
 
             temp_cluster_relation=[i['entity_name'] for i in temp_clusters_nodes if i['entity_name'] in community_report.keys()] 
             temp_relations={}     
-            with ThreadPoolExecutor(max_workers=8) as executor:
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [
                     executor.submit(
                         process_relation, use_llm_func,community_report,maybe_edge,\
@@ -619,19 +619,19 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
             
             embeddings = np.array([x["vector"] for x in unique_nodes]).squeeze() #为下一轮迭代做准备
             all_nodes.append(nodes) 
-            # save_entities=copy.deepcopy(all_nodes)
-            # for layer in save_entities:
-            #     if type(layer) != list :
-            #         if "vector" in layer.keys():
-            #             del layer["vector"]
-            #         continue
-            #     for item in layer:
-            #         if "vector" in item.keys():
-            #             del item["vector"]
-            #         if len(layer)==1:
-            #             item['parent']='root'
-            # # check_test(all_entities)
-            # write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
+            save_entities=copy.deepcopy(all_nodes)
+            for layer in save_entities:
+                if type(layer) != list :
+                    if "vector" in layer.keys():
+                        del layer["vector"]
+                    continue
+                for item in layer:
+                    if "vector" in item.keys():
+                        del item["vector"]
+                    if len(layer)==1:
+                        item['parent']='root'
+            # check_test(all_entities)
+            write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
             # check_test(all_nodes)            
             # stop if the number of deduplicated cluster is too small
             # if len(embeddings) <= 2:
@@ -661,17 +661,17 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
                 i['parent']=data['entity_name']
             
             all_nodes.append(temp_node)
-        # save_entities=copy.deepcopy(all_nodes)
-        # for layer in save_entities:
-        #     if type(layer) != list :
-        #         if "vector" in layer.keys():
-        #             del layer["vector"]
-        #         continue
-        #     for item in layer:
-        #         if "vector" in item.keys():
-        #             del item["vector"]
-        #         if len(layer)==1:
-        #             item['parent']='root'
-        # # check_test(all_entities)
-        # write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
+        save_entities=copy.deepcopy(all_nodes)
+        for layer in save_entities:
+            if type(layer) != list :
+                if "vector" in layer.keys():
+                    del layer["vector"]
+                continue
+            for item in layer:
+                if "vector" in item.keys():
+                    del item["vector"]
+                if len(layer)==1:
+                    item['parent']='root'
+        # check_test(all_entities)
+        write_jsonl_force(save_entities, f"{WORKING_DIR}/all_entities.json")
         return all_nodes,generate_relations,community_report

@@ -77,7 +77,7 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
     if level_mode==0:
         filter_filed=" level == 0 "
     elif level_mode==1:
-        filter_filed=" level > 1 "
+        filter_filed=" level > 0 "
     else:
         filter_filed=""
     dataset=os.path.basename(working_dir)
@@ -86,7 +86,7 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
         milvus_client = MilvusClient(uri=f"{working_dir}/milvus_demo.db")
     else:
         print("milvus_demo.db not found, using default")
-        milvus_client = MilvusClient(uri=f"datasets/{dataset}/milvus_demo.db")
+        milvus_client = MilvusClient(uri=f"exp/mix_vector_search/{dataset}/milvus_demo.db")
     collection_name = "entity_collection"
     # query_embedding = emb_text(query)
     search_results = milvus_client.search(
@@ -94,7 +94,7 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
         data=query,
         limit=topk,
         params={"metric_type": "IP", "params": {}},
-        # filter=filter_filed,
+        filter=filter_filed,
         output_fields=["entity_name", "description","parent","level"],
     )
     # print(search_results)
@@ -227,13 +227,17 @@ def find_tree_root(db,working_dir,entity):
     i=0
     
     while i< depth:
-        sql=f"select parent from {db_name}.entities where entity_name=%s and level=%s "
-        cursor.execute(sql,(entity,i))
+        sql=f"select parent from {db_name}.entities where entity_name=%s "
+        
+        cursor.execute(sql,(entity))
         ret=cursor.fetchall()
         # print(ret)
         i+=1
+        if len(ret)==0:
+            break
         entity=ret[0][0]
         res.append(entity)
+    res=list(set(res))
     return res
 def search_nodes_link(entity1,entity2,db,working_dir,level=0):
     # cursor = db.cursor()
