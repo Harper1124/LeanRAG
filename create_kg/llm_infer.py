@@ -32,7 +32,7 @@ class InstanceManager:
         # cmd = f"CUDA_VISIBLE_DEVICES={num} OLLAMA_HOST={self.base_url}:{port} ollama serve"
         cmd = f"OLLAMA_HOST={self.base_url}:{port} ollama serve"
         print("Running command:", cmd)
-        subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        # subprocess.Popen(cmd, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
 
     def get_available_instance(self):
         """使用轮询策略获取一个可用的实例"""
@@ -62,12 +62,13 @@ class LLM_Processor:
         self.base_url = args["llm_url"]
         self.api_key = args["llm_api_key"]
         self.max_error = args["max_error"]
-        self.ports = [11434 + i for i in range(args["gpu_nums"])]  # 端口池
+        self.ports = [8001 + i for i in range(args["gpu_nums"])]  # 端口池
         self.gpus = [i for i in range(args["gpu_nums"])]  # GPU编号
         if args["use_ollama"]:
             self.manager = InstanceManager(self.ports, self.gpus, self.base_url)
             self.generate_text = self.manager.generate_text
         elif args["use_vllm"]:
+            self.manager = InstanceManager(self.ports, self.gpus, self.base_url)
             self.generate_text = self.vllm_generate_text
         else:
             self.generate_text = self.default_generate_text
@@ -75,30 +76,46 @@ class LLM_Processor:
 
     def vllm_generate_text(self, prompt, model="Qwen2.5-72B", max_tokens=4096, output_json=False):
         """使用vLLM生成文本"""
-        client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        
+        port = self.manager.get_available_instance()
+        base_url = f"http://localhost:{port}/v1"
+        
         try:
             if output_json:
                 # 调用 Chat Completion API 并设置参数
-                completion = client.chat.completions.create(
-                    model = model,
-                    messages=[
-                        {'role': 'system', 'content': 'You are a helpful assistant.'},
-                        {'role': 'user', 'content': prompt}],
-                    max_tokens = max_tokens,
-                    response_format={"type": "json_object"},
-                    extra_body={"chat_template_kwargs": {"enable_thinking": False}}
-                    )
+                 response = requests.post(
+            f"{base_url}/chat/completions",
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens" : max_tokens,
+                "response_format":{"type": "json_object"},
+                "chat_template_kwargs": {"enable_thinking": False}
+            },
+            timeout=120
+        )
+               
             else:
-                completion = client.chat.completions.create(
-                    model = model,
-                    messages=[
-                        {'role': 'system', 'content': 'You are a helpful assistant.'},
-                        {'role': 'user', 'content': prompt}],
-                    max_tokens = max_tokens,
-                    extra_body={"chat_template_kwargs": {"enable_thinking": False}}
-                    )
+                 response = requests.post(
+            f"{base_url}/chat/completions",
+            json={
+                "model": model,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens" : max_tokens,
+                "response_format":{"type": "json_object"},
+                "chat_template_kwargs": {"enable_thinking": False}
+            },
+            timeout=120
+        )
+            response.raise_for_status()
+            res=json.loads(response.content)
+            response_message = res["choices"][0]["message"]['content']
 
-            return completion.model_dump()["choices"][0]["message"]["content"]
+            return response_message
             
         except Exception as e:
             logger.info(f"Error: {e}")
