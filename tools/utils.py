@@ -200,23 +200,22 @@ class InstanceManager:
             if cur_token_cost>31000:
                 cur_token_cost = 31000
                 messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=31000)
-            self.TOTAL_TOKEN_COST += cur_token_cost
+            
             # logging api call cost
             self.TOTAL_API_CALL_COST += 1
             response = requests.post(
             f"{base_url}/chat/completions",
             json={
                 "model": self.generate_model,
-                "messages": [
-                    {"role": "user", "content": prompt}
-                ],
+                "messages": messages,
                 **kwargs,
                 "chat_template_kwargs": {"enable_thinking": False}
             },
-            timeout=60
+            timeout=120
         )
             response.raise_for_status()
             res=json.loads(response.content)
+            self.TOTAL_TOKEN_COST += res["usage"]["prompt_tokens"]
             response_message = res["choices"][0]["message"]['content']#对结果进行后处理
         except Exception as e:
             print(f"Retry for Error: {e}")
