@@ -16,7 +16,6 @@ def get_chunk(chunk_file):
     doc_name=os.path.basename(chunk_file).rsplit(".",1)[0]
     with open(chunk_file, "r") as f:
             corpus=json.load(f)
-    corpus=[corpus[0]]
     chunks = {item["hash_code"]: item["text"] for item in corpus}
     return chunks
 

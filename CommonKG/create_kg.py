@@ -183,7 +183,6 @@ def process_single_file(corpus_path, task_conf, llm_processer, output_dir="outpu
                 corpusfiles=json.load(f)
             # 读取语料文件
             # corpusfiles = read_jsonl(corpus_path)
-            corpusfiles=[corpusfiles[0]]
             logger.info(f"corpus paragraph num: {len(corpusfiles)}")
 
             for iter in range(task_conf["level_num"]):
