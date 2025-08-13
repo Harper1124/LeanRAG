@@ -28,14 +28,6 @@ TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
 
 def get_common_rag_res(WORKING_DIR):
-    # entity_path="processed_data/entity.jsonl"
-    # relation_path="processed_data/relation.jsonl"
-    # entity_path="data/entity.jsonl"
-    # relation_path="data/relation.jsonl"
-    # entity_path="test_data/entity.jsonl"
-    # relation_path="test_data/relation.jsonl"
-    # entity_path="datasets/mix/entity.jsonl"
-    # relation_path="datasets/mix/relation.jsonl"
     entity_path=f"{WORKING_DIR}/entity.jsonl"
     relation_path=f"{WORKING_DIR}/relation.jsonl"
     # i=0
@@ -124,48 +116,6 @@ def truncate_text(text, max_tokens=4096):
         tokens = tokens[:max_tokens]
     truncated_text = tokenizer.decode(tokens)
     return truncated_text
-def deepseepk_model_if_cache(
-    prompt, system_prompt=None, history_messages=[], **kwargs
-) -> str:
-    global TOTAL_TOKEN_COST
-    global TOTAL_API_CALL_COST
-
-    openai_async_client =OpenAI(
-        api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_URL
-    )
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-
-    # Get the cached response if having-------------------
-    messages.extend(history_messages)
-    messages.append({"role": "user", "content": prompt})
-    # -----------------------------------------------------
-    retry_time = 3
-    try:
-        # logging token cost
-        cur_token_cost = len(tokenizer.encode(messages[0]['content']))
-        if cur_token_cost>28672:
-            cur_token_cost = 28672
-            messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=28672)
-        TOTAL_TOKEN_COST += cur_token_cost
-        # logging api call cost
-        TOTAL_API_CALL_COST += 1
-        # request
-        response =openai_async_client.chat.completions.create(
-            model=MODEL, messages=messages, **kwargs,
-            extra_body={"chat_template_kwargs": {"enable_thinking": False}}
-        )
-    except Exception as e:
-        print(f"Retry for Error: {e}")
-        retry_time -= 1
-        response = ""
-    
-    if response == "":
-        return response
-    return response.choices[0].message.content
-
-
 def embedding_data(entity_results):
     entities = [v for k, v in entity_results.items()]
     entity_with_embeddings=[]
@@ -214,8 +164,6 @@ def hierarchical_clustering(global_config):
                 del item["vector"]
             if len(layer)==1:
                 item['parent']='root'
-    # # check_test(all_entities)
-    # write_jsonl(all_entities, f"{WORKING_DIR}/all_entities.json")
     save_relation=[
     v for k, v in generate_relations.items()
 ]
@@ -233,16 +181,17 @@ if __name__=="__main__":
     except RuntimeError:
         pass  # 已经设置过，忽略
     parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--path", type=str, default="ttt")
+    parser.add_argument("-p", "--path", type=str, default="/data/zyz/LeanRAG/ttt")
     parser.add_argument("-n", "--num", type=int, default=2)
     args = parser.parse_args()
 
     WORKING_DIR = args.path
     num=args.num
     instanceManager=InstanceManager(
-        ports=[8001+i for i in range(num)],
+        url="http://xxxx",
+        ports=[8001 for i in range(num)],
         gpus=[i for i in range(num)],
-        generate_model=MODEL,
+        generate_model="qwen3_32b",
         startup_delay=30
     )
     global_config={}

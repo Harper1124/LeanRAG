@@ -228,7 +228,6 @@ def get_optimal_clusters(embeddings, max_clusters=50, random_state=0, rel_tol=1e
 
 
 def GMM_cluster(embeddings: np.ndarray, threshold: float, random_state: int = 0,cluster_size: int = 20):
-    cluster_size=20
     n_clusters = max(len(embeddings) // cluster_size,get_optimal_clusters(embeddings))
     gm = GaussianMixture(
             n_components=n_clusters, 
@@ -247,7 +246,7 @@ def perform_clustering(
 ) -> List[np.ndarray]:
     reduced_embeddings_global = global_cluster_embeddings(embeddings, min(dim, len(embeddings) -2))
     global_clusters, n_global_clusters = GMM_cluster(     # (num, 2)
-        reduced_embeddings_global, threshold,cluster_size
+        reduced_embeddings_global, threshold,cluster_size=cluster_size
     )
     if len(global_clusters) != len(embeddings):
         print('debug')
@@ -471,6 +470,7 @@ def process_relation(
     tokens=len(tokenizer.encode("\n".join(relation_infromation)))
     gene_tokens=(layer+1)*40
     allowed_tokens=(max_depth-layer)*40*2
+    # allowed_tokens=100000
     # allowed_tokens=1
     if tokens>allowed_tokens:
         print(f"{tokens}大于{allowed_tokens}，进行llm生成\n{maybe_edge[0]}和{maybe_edge[1]} in processing")
@@ -503,7 +503,6 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
         global_config: dict,
         entities: dict,
         relations:dict,
-        layers: int = 50,
         max_length_in_cluster: int = 60000,
         tokenizer=tiktoken.get_encoding("cl100k_base"),
         reduction_dimension: int = 2,
@@ -513,6 +512,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
         thredshold_change_rate: float = 0.05,
         WORKING_DIR: str = None,
         max_workers: int =8,
+        cluster_size: int=20,
     ) -> List[dict]:
         use_llm_func: callable = global_config["use_llm_func"]
         embeddings_func: callable = global_config["embeddings_func"]
@@ -526,16 +526,15 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
         all_nodes.append(nodes)
         community_report_prompt = PROMPTS["aggregate_entities"]
         cluster_cluster_relation_prompt = PROMPTS["cluster_cluster_relation"]
-        cluster_size=20
         max_depth=round(math.log(len(nodes),cluster_size))+1
-        for layer in range(layers):
+        for layer in range(max_depth):
             logging.info(f"############ Layer[{layer}] Clustering ############")
             # Perform the clustering
             if  len(nodes) <= 2:
                 print("当前簇数小于2，停止聚类")
                 break
             clusters = perform_clustering(
-                embeddings, dim=reduction_dimension, threshold=cluster_threshold
+                embeddings, dim=reduction_dimension, threshold=cluster_threshold,cluster_size=cluster_size
             )
             temp_clusters_nodes = []
             # Initialize an empty list to store the clusters of nodes

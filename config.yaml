@@ -1,22 +1,15 @@
 
-# GLM Configuration
-# glm:
-#   model: "bge-m3:latest"
-#   api_key: "ollama"
-#   base_url: "http://localhost:11435/v1"
-#   embedding_model: "bge-m3:latest"
 glm:
-  model: "bge"
-  api_key: "ollama"
-  base_url: "http://localhost:8000/v1"
-  embedding_model: "bge-m3:latest"
+  model: "bge_m3"
+  base_url: "http://xxx:8000/v1"
+  embedding_model: "bge_m3"
 
 deepseek:
-  # model: "/cpfs04/user/zhangyaoze/vllm_weight/Qwen2.5-7B-Instruct"
-  # model: "/cpfs04/user/zhangyaoze/vllm_weight/Qwen3-awq"
-  model: "Qwen3-14b"
+
+  # model: "Qwen3-14b"
+  model: "qwen2.5"
   # model: "Qwen3-32b"
-  # model: "/cpfs04/user/zhangyaoze/vllm_weight/qwen3-32b"
+
   api_key: "ollama"
   base_url: "http://localhost:8001/v1"
 

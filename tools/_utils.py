@@ -13,7 +13,7 @@ from typing import Any, Union
 import numpy as np
 import tiktoken
 
-logger = logging.getLogger("HiRAG")
+logger = logging.getLogger("LeanRAG")
 ENCODER = None
 
 def always_get_an_event_loop() -> asyncio.AbstractEventLoop:

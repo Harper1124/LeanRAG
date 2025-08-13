@@ -4,6 +4,7 @@ import numpy as np
 from pymilvus  import MilvusClient
 import ollama
 import pymysql
+from collections import Counter
 def emb_text(text):
     response = ollama.embeddings(model="bge-m3:latest", prompt=text)
     return response["embedding"]
@@ -78,6 +79,8 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
         filter_filed=" level == 0 "
     elif level_mode==1:
         filter_filed=" level > 0 "
+    # elif level_mode==2:
+    #     filter_filed=" level < 58736"
     else:
         filter_filed=""
     dataset=os.path.basename(working_dir)
@@ -86,7 +89,7 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
         milvus_client = MilvusClient(uri=f"{working_dir}/milvus_demo.db")
     else:
         print("milvus_demo.db not found, using default")
-        milvus_client = MilvusClient(uri=f"exp/mix_vector_search/{dataset}/milvus_demo.db")
+        milvus_client = MilvusClient(uri=f"/data/zyz/trag_ds/exp/ds_hire_cs20_top20_chunk5/{dataset}/milvus_demo.db")
     collection_name = "entity_collection"
     # query_embedding = emb_text(query)
     search_results = milvus_client.search(
@@ -95,17 +98,18 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
         limit=topk,
         params={"metric_type": "IP", "params": {}},
         filter=filter_filed,
-        output_fields=["entity_name", "description","parent","level"],
+        output_fields=["entity_name", "description","parent","level","source_id"],
     )
     # print(search_results)
-    extract_results=[(i['entity']['entity_name'],i["entity"]["parent"],i["entity"]["description"])for i in search_results[0]]
+    extract_results=[(i['entity']['entity_name'],i["entity"]["parent"],i["entity"]["description"],i["entity"]["source_id"])for i in search_results[0]]
     # print(extract_results)
     return extract_results
 def create_db_table_mysql(working_dir):
-    con = pymysql.connect(host='localhost', user='root',
+    con = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',  charset='utf8mb4')
     cur=con.cursor()
     dbname=os.path.basename(working_dir)
+    
     cur.execute(f"drop database if exists {dbname};")
     cur.execute(f"create database {dbname} character set utf8mb4;")
     
@@ -122,6 +126,7 @@ def create_db_table_mysql(working_dir):
         (src_tgt varchar(190),tgt_src varchar(190), description varchar(10000),\
             weight int,level int ,INDEX link(src_tgt,tgt_src))character set utf8mb4 COLLATE utf8mb4_unicode_ci;")
     
+    
     cur.execute("drop table if exists communities;")
     cur.execute("create table communities\
         (entity_name varchar(500), entity_description varchar(10000),findings text,INDEX en(entity_name)\
@@ -131,7 +136,7 @@ def create_db_table_mysql(working_dir):
     
 def insert_data_to_mysql(working_dir):
     dbname=os.path.basename(working_dir)
-    db = pymysql.connect(host='localhost', user='root',
+    db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',database=dbname,  charset='utf8mb4')
     cursor = db.cursor()
     
@@ -217,13 +222,16 @@ def insert_data_to_mysql(working_dir):
             db.rollback()
             print(e)
             print("insert communities error")
-def find_tree_root(db,working_dir,entity):
+def find_tree_root(working_dir,entity):
+    db = pymysql.connect(host='localhost',port=4321, user='root',
+                      passwd='123',  charset='utf8mb4')
+    dbname=os.path.basename(working_dir)
     res=[entity]
     cursor = db.cursor()
     db_name=os.path.basename(working_dir)
     depth_sql=f"select max(level) from {db_name}.entities"
     cursor.execute(depth_sql)
-    depth=cursor.fetchall()[0][0]#树的深度为max(level)+1，因为level是从0开始的，但最后一层的parent为root，没什么意义，所以就这样算了，不进行+1
+    depth=cursor.fetchall()[0][0]
     i=0
     
     while i< depth:
@@ -237,9 +245,59 @@ def find_tree_root(db,working_dir,entity):
             break
         entity=ret[0][0]
         res.append(entity)
-    res=list(set(res))
+    # res=list(set(res))
+    # res = list(dict.fromkeys(res))
+
     return res
-def search_nodes_link(entity1,entity2,db,working_dir,level=0):
+
+def find_path(entity1,entity2,working_dir,level,depth=5):
+    db = pymysql.connect(host='localhost',port=4321, user='root',
+                      passwd='123',  charset='utf8mb4')
+    db_name=os.path.basename(working_dir)
+    cursor = db.cursor()
+
+    query = f"""
+        WITH RECURSIVE path_cte AS (
+            SELECT 
+                src_tgt,
+                tgt_src,
+                 CAST(CONCAT(src_tgt, '|', tgt_src) AS CHAR(5000)) AS path,
+                1 AS depth
+            FROM {db_name}.relations
+            WHERE src_tgt = %s
+              AND level = %s
+
+            UNION ALL
+
+            SELECT 
+                p.src_tgt,
+                t.tgt_src,
+                CONCAT(p.path, '|', t.tgt_src),
+                p.depth + 1
+            FROM path_cte p
+            JOIN {db_name}.relations t ON p.tgt_src = t.src_tgt
+            WHERE NOT FIND_IN_SET(
+                  CONVERT(t.tgt_src USING utf8mb4) COLLATE utf8mb4_unicode_ci,
+                  CONVERT(p.path USING utf8mb4) COLLATE utf8mb4_unicode_ci
+              )
+              AND level = %s
+              AND p.depth < %s
+        )
+        SELECT path
+        FROM path_cte
+        WHERE tgt_src = %s
+        ORDER BY depth ASC
+        LIMIT 1;
+    """
+    cursor.execute(query, (entity1,level,level,depth,entity2))
+    result = cursor.fetchone()
+
+    if result:
+            return result[0].split('|')  # 返回节点列表
+    else:
+        return None
+
+def search_nodes_link(entity1,entity2,working_dir,level=0):
     # cursor = db.cursor()
     # db_name=os.path.basename(working_dir)
     # sql=f"select * from {db_name}.relations where src_tgt=%s and tgt_src=%s and level=%s"
@@ -253,6 +311,8 @@ def search_nodes_link(entity1,entity2,db,working_dir,level=0):
     #     return None
     # else:
     #     return ret[0]
+    db = pymysql.connect(host='localhost',port=4321, user='root',
+                      passwd='123',  charset='utf8mb4')
     cursor = db.cursor()
     db_name=os.path.basename(working_dir)
     sql=f"select * from {db_name}.relations where src_tgt=%s and tgt_src=%s "
@@ -266,8 +326,23 @@ def search_nodes_link(entity1,entity2,db,working_dir,level=0):
         return None
     else:
         return ret[0]
-
-def search_nodes(entity_set,db,working_dir):
+def search_chunks(working_dir,entity_set):
+    db = pymysql.connect(host='localhost',port=4321, user='root',
+                      passwd='123',  charset='utf8mb4')
+    res=[]
+    db_name=os.path.basename(working_dir)
+    cursor = db.cursor()
+    for entity in entity_set:
+        if entity=='root':
+            continue
+        sql=f"select source_id from {db_name}.entities where entity_name=%s "
+        cursor.execute(sql,(entity,))
+        ret=cursor.fetchall()
+        res.append(ret[0])
+    return res
+def search_nodes(entity_set,working_dir):
+    db = pymysql.connect(host='localhost',port=4321, user='root',
+                      passwd='123',  charset='utf8mb4')
     res=[]
     db_name=os.path.basename(working_dir)
     cursor = db.cursor()
@@ -277,7 +352,46 @@ def search_nodes(entity_set,db,working_dir):
         ret=cursor.fetchall()
         res.append(ret[0])
     return res
-def search_community(entity_name,db,working_dir):
+def get_text_units(working_dir,chunks_set,chunks_file,k=5):
+    db_name=os.path.basename(working_dir)
+    chunks_list=[]
+    for chunks in chunks_set:
+        if "|" in chunks:
+            temp_chunks=chunks.split("|")
+        else:
+            temp_chunks=[chunks]
+        chunks_list+=temp_chunks
+    counter = Counter(chunks_list)
+
+    # 筛选出出现多次的元素
+    # duplicates = [item for item, count in counter.items() if count > 2]
+    duplicates = [item for item, _ in sorted(
+    [(item, count) for item, count in counter.items() if count > 1],
+    key=lambda x: x[1],
+    reverse=True
+        )[:k]]
+    if len(duplicates)< k:
+        used = set(duplicates)
+        for item, _ in counter.items():
+            if item not in used:
+                duplicates.append(item)
+                used.add(item)
+            if len(duplicates) == k:
+                break
+    
+    chunks_dict={}
+    text_units=""
+    with open (chunks_file,'r')as f:
+        chunks_dict= json.load(f)
+    chunks_dict={item["hash_code"]: item["text"] for item in chunks_dict}
+    
+    for chunks in duplicates:
+        text_units+=chunks_dict[chunks]+"\n"
+    return text_units
+    
+def search_community(entity_name,working_dir):
+    db = pymysql.connect(host='localhost',port=4321, user='root',
+                      passwd='123',  charset='utf8mb4')
     db_name=os.path.basename(working_dir)
     cursor = db.cursor()
     sql=f"select * from {db_name}.communities where entity_name=%s"
@@ -290,16 +404,22 @@ def search_community(entity_name,db,working_dir):
             # return ret[0]
 def insert_origin_relations(working_dir):
     dbname=os.path.basename(working_dir)
-    db = pymysql.connect(host='localhost', user='root',
+    db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',database=dbname,  charset='utf8mb4')
     cursor = db.cursor()
-    relation_path=os.path.join(working_dir,"relation.jsonl")
+    # relation_path=os.path.join(f"datasets/{dbname}","relation.jsonl")
+    # relation_path=os.path.join(f"/data/zyz/reproduce/HiRAG/eval/datasets/{dbname}/test")
+    relation_path=os.path.join(f"hi_ex/{dbname}","relation.jsonl")
+    # relation_path=os.path.join(f"32b/{dbname}","relation.jsonl")
     with open(relation_path,"r")as f:
         val=[]
         for relation_l in f:
             relation=json.loads(relation_l)
             src_tgt=relation['src_tgt']
             tgt_src=relation['tgt_src']
+            if len(src_tgt)>190 or len(tgt_src)>190:
+                print(f"src_tgt or tgt_src too long: {src_tgt} {tgt_src}")
+                continue
             description=relation['description']
             weight=relation['weight']
             level=0
@@ -316,11 +436,11 @@ def insert_origin_relations(working_dir):
             print(e)
             print("insert relations error")
 if __name__ == "__main__":
-    working_dir='/cpfs04/user/zhangyaoze/workspace/trag/datasets/legal'
+    working_dir='exp/compare_hirag_opt1_commonkg_32b/mix'
     # build_vector_search()
     # search_vector_search()
-    # create_db_table_mysql(working_dir)
-    # insert_data_to_mysql(working_dir)
+    create_db_table_mysql(working_dir)
+    insert_data_to_mysql(working_dir)
     insert_origin_relations(working_dir)
     # print(find_tree_root(working_dir,'Policies'))
     # print(search_nodes_link('Innovation Policy Network','document',working_dir,0))

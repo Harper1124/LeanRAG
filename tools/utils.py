@@ -143,9 +143,10 @@ def check_test(entities):## 初期用于检测是否有边界错误
                 print(item['entity_name'],item['parent'])
                 
 class InstanceManager:
-    def __init__(self, ports, gpus, generate_model,startup_delay=30):
+    def __init__(self, url,ports, gpus, generate_model,startup_delay=30):
         self.ports = ports
         self.gpus = gpus
+        self.base_url=url
         self.instances = []
         self.lock = threading.Lock()
         self.current_instance = 0  # 用于轮询策略
@@ -153,7 +154,6 @@ class InstanceManager:
         self.TOTAL_TOKEN_COST = 0
         self.TOTAL_API_CALL_COST = 0
         for port, gpu in zip(self.ports, self.gpus):
-            self.start_instance(gpu,port)
             self.instances.append({"port": port, "load": 0})
     def reset_token_cost(self):
         """重置总的token消耗和API调用次数"""
@@ -165,15 +165,7 @@ class InstanceManager:
         
         # time.sleep(startup_delay)  # 等待所有实例启动
     
-    def start_instance(self, port,num):
-        """启动vllm实例在特定GPU和端口上"""
-        # cmd = f"CUDA_VISIBLE_DEVICES={num} OLLAMA_HOST=http://localhost:{port} ollama serve"
-        # cmd_gen =f"CUDA_VISIBLE_DEVICES={num}  vllm serve /cpfs04/user/zhangyaoze/vllm_weight/Qwen3-14b  --port {port} --max-model-len 32768"
-        # # cmd_embed =f"CUDA_VISIBLE_DEVICES={num}  vllm serve /cpfs04/user/zhangyaoze/vllm_weight/bge-m3  --port {8001+num*2} --max-model-len 8192 "
-        # # print("Running command:", cmd)
-        print("continue")
-        # subprocess.Popen(cmd_gen, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
-        # subprocess.Popen(cmd_embed, shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+
         
 
     def get_available_instance(self):
@@ -186,15 +178,18 @@ class InstanceManager:
     def generate_text(self, prompt,system_prompt=None, history_messages=[], **kwargs):
         """发送请求到选择的实例"""
         port = self.get_available_instance()
-        base_url = f"http://localhost:{port}/v1"
+        base_url = f"{self.base_url}:{port}/v1"
         messages = []
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
 
         # Get the cached response if having-------------------
+       
+        if len(history_messages)>1:
+            history_messages[0]['content'] = truncate_text(history_messages[0]['content'], max_tokens=3000)
+            history_messages[1]['content'] = truncate_text(history_messages[1]['content'], max_tokens=25000)
         messages.extend(history_messages)
         messages.append({"role": "user", "content": prompt})
-        
         try:
             cur_token_cost = len(tokenizer.encode(messages[0]['content']))
             if cur_token_cost>31000:
@@ -211,7 +206,7 @@ class InstanceManager:
                 **kwargs,
                 "chat_template_kwargs": {"enable_thinking": False}
             },
-            timeout=120
+            timeout=240
         )
             response.raise_for_status()
             res=json.loads(response.content)
@@ -225,47 +220,49 @@ class InstanceManager:
         
         
         return response_message
-def response(
-    prompt, system_prompt=None, history_messages=[], port=8001,**kwargs
-) -> str:
-    with open('config.yaml', 'r') as file:
-        config = yaml.safe_load(file)
-    MODEL = config['deepseek']['model']
-    
-    global TOTAL_TOKEN_COST
-    global TOTAL_API_CALL_COST
-    URL=f"http://localhost:{port}/v1"
-    openai_async_client =OpenAI(
-        api_key='vllm', base_url=URL
-    )
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
+    async def generate_text_asy(self, prompt,system_prompt=None, history_messages=[], **kwargs):
+        """发送请求到选择的实例"""
+        port = self.get_available_instance()
+        base_url = f"{self.base_url}:{port}/v1"
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
 
-    # Get the cached response if having-------------------
-    messages.extend(history_messages)
-    messages.append({"role": "user", "content": prompt})
-    # -----------------------------------------------------
-    retry_time = 3
-    try:
-        # logging token cost
-        cur_token_cost = len(tokenizer.encode(messages[0]['content']))
-        if cur_token_cost>28672:
-            cur_token_cost = 28672
-            messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=28672)
-        TOTAL_TOKEN_COST += cur_token_cost
-        # logging api call cost
-        TOTAL_API_CALL_COST += 1
-        # request
-        response =openai_async_client.chat.completions.create(
-            model=MODEL, messages=messages, **kwargs,
-            extra_body={"chat_template_kwargs": {"enable_thinking": False}}
+        # Get the cached response if having-------------------
+       
+        if len(history_messages)>1:
+            history_messages[0]['content'] = truncate_text(history_messages[0]['content'], max_tokens=3000)
+            history_messages[1]['content'] = truncate_text(history_messages[1]['content'], max_tokens=25000)
+        messages.extend(history_messages)
+        messages.append({"role": "user", "content": prompt})
+        try:
+            cur_token_cost = len(tokenizer.encode(messages[0]['content']))
+            if cur_token_cost>31000:
+                cur_token_cost = 31000
+                messages[0]['content'] = truncate_text(messages[0]['content'], max_tokens=31000)
+            
+            # logging api call cost
+            self.TOTAL_API_CALL_COST += 1
+            response = requests.post(
+            f"{base_url}/chat/completions",
+            json={
+                "model": self.generate_model,
+                "messages": messages,
+                **kwargs,
+                "chat_template_kwargs": {"enable_thinking": False}
+            },
+            timeout=240
         )
-    except Exception as e:
-        print(f"Retry for Error: {e}")
-        retry_time -= 1
-        response = ""
-    
-    if response == "":
-        return response
-    return response.choices[0].message.content
+            response.raise_for_status()
+            res=json.loads(response.content)
+            self.TOTAL_TOKEN_COST += res["usage"]["prompt_tokens"]
+            response_message = res["choices"][0]["message"]['content']#对结果进行后处理
+        except Exception as e:
+            print(f"Retry for Error: {e}")
+            response = ""    
+            response_message=""
+        
+        
+        
+        return response_message
+

@@ -6,7 +6,7 @@ Reference:
 GRAPH_FIELD_SEP = "<SEP>"
 PROMPTS = {}
 PROMPTS[
-    "hi_entity_extraction"
+    "entity_extraction"
 ] = """
 Given a text document that is potentially relevant to a list of entity types, identify all entities of those types.
 
@@ -87,10 +87,18 @@ Text: {input_text}
 ######################
 Output:
 """
-
+PROMPTS[
+    "entiti_continue_extraction"
+] = """MANY entities were missed in the last extraction.  Add them below using the same format:
+"""
 
 PROMPTS[
-    "hi_relation_extraction"
+    "entiti_if_loop_extraction"
+] = """It appears some entities may have still been missed.  Answer YES | NO if there are still entities that need to be added.
+"""
+
+PROMPTS[
+    "relation_extraction"
 ] = """
 Given a text document that is potentially relevant to a list of entities, identify all relationships among the given identified entities.
 
