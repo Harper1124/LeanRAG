@@ -3,7 +3,6 @@
 [![Python Version](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/downloads/)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)  
 [![arXiv](https://img.shields.io/badge/arXiv-2508.10391-b31b1b.svg)](https://arxiv.org/abs/2508.10391)
-
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 LeanRAG is an efficient, open-source framework for Retrieval-Augmented Generation, leveraging knowledge graph structures with semantic aggregation and hierarchical retrieval to generate context-aware, concise, and high-fidelity responses.
