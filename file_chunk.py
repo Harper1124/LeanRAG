@@ -37,10 +37,16 @@ def chunk_documents(
 if __name__ == "__main__":
     max_token_size=1024
     overlap_token_size=128
-    original_text_file="datasets/mix/mix_unique_contexts.json"
+    original_text_file="datasets/mix/mix.jsonl"
     chunk_text_file="datasets/mix/mix_chunk.json"
+    dataset='mix'
+    data=[]
     with open(original_text_file, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+        for line in f:
+            if line.strip():  # Skip empty lines
+                data.append(json.loads(line))
+
+    data = [item['context'] for item in data if 'input' in item]
     results = chunk_documents(
         data,
         max_token_size=max_token_size,
