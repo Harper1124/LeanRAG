@@ -246,6 +246,12 @@ On four challenging QA benchmarks spanning diverse domains, LeanRAG consistently
 | Overall           | 28.1%       | **71.9%**     | 45.0%      | **55.0%**    | 21.5%         | **78.5%**       | 28.0%                | **72.0%**             |
 ### Tokens Consumption
 ![retrieval information tokens](pic/Retrieval_infromation_tokens.png)
+
+## Acknowledgement
+We gratefully acknowledge the use of the following open-source projects in our work:
+- [nano-graphrag](https://github.com/gusye1234/nano-graphrag): a simple, easy-to-hack GraphRAG implementation
+
+- [HiRAG](https://github.com/hhy-huang/HiRAG/tree/main): a novel hierarchy entity aggregation and optimized retrieval RAG method
 ## 📄 Citation
 
 If you find LeanRAG useful, please cite our paper:
@@ -260,3 +266,6 @@ If you find LeanRAG useful, please cite our paper:
       url={https://arxiv.org/abs/2508.10391}, 
 }
 ```
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=RaZzzyz/LeanRAG&type=Date)](https://www.star-history.com/#RaZzzyz/LeanRAG&Date)
