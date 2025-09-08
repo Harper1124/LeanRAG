@@ -151,7 +151,7 @@ On four challenging QA benchmarks spanning diverse domains, LeanRAG consistently
 ### Score
 #### Mix
 
-| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | Baseline6 |
+| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | KAG |
 |-------------------|-----------------|-----------|-----------|-----------|-----------|-----------|-----------|
 | Comprehensiveness | **8.89±0.01**   | 8.72±0.02 | 8.20±0.01 | 8.52±0.01 | 8.19±0.02 | 6.56±0.02 | 7.90±0.03 |
 | Empowerment       | **8.16±0.02**   | 7.86±0.03 | 7.52±0.03 | 7.73±0.02 | 7.56±0.03 | 5.82±0.03 | 7.41±0.04 |
@@ -162,7 +162,7 @@ On four challenging QA benchmarks spanning diverse domains, LeanRAG consistently
 
 #### CS
 
-| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | Baseline6 |
+| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | KAG |
 |-------------------|-----------------|-----------|-----------|-----------|-----------|-----------|-----------|
 | Comprehensiveness | 8.92±0.01       | 8.92±0.01 | **8.94±0.01** | 8.55±0.02 | 8.76±0.02 | 6.79±0.01 | 8.22±0.02 |
 | Empowerment       | 8.68±0.02       | 8.66±0.02 | **8.69±0.04** | 8.28±0.04 | 8.50±0.04 | 6.67±0.04 | 8.52±0.05 |
@@ -172,7 +172,7 @@ On four challenging QA benchmarks spanning diverse domains, LeanRAG consistently
 ---
 
 #### Legal
-| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | Baseline6 |
+| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | KAG |
 |-------------------|-----------------|-----------|-----------|-----------|-----------|-----------|-----------|
 | Comprehensiveness | 8.88±0.02       | 8.68±0.02 | 8.85±0.01 | **8.95±0.01** | 8.24±0.02 | 3.87±0.02 | 8.41±0.02 |
 | Empowerment       | **8.42±0.03**   | 8.18±0.06 | 8.28±0.03 | 8.33±0.02 | 7.83±0.05 | 3.53±0.03 | 8.20±0.03 |
@@ -183,7 +183,7 @@ On four challenging QA benchmarks spanning diverse domains, LeanRAG consistently
 
 #### Agriculture
 
-| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | Baseline6 |
+| Metric            | LeanRAG | HiRAG | Naive | GraphRAG | LightRAG | FastGraphRAG | KAG |
 |-------------------|-----------------|-----------|-----------|-----------|-----------|-----------|-----------|
 | Comprehensiveness | 8.94±0.06       | **8.99±0.00** | 8.85±0.01 | 8.97±0.01 | 8.71±0.01 | 3.28±0.01 | 8.22±0.01 |
 | Empowerment       | **8.66±0.02**   | 8.52±0.02 | 8.51±0.03 | 8.52±0.02 | 8.23±0.02 | 3.29±0.05 | 8.33±0.06 |
