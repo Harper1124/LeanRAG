@@ -48,23 +48,13 @@ LeanRAG’s processing pipeline follows these core stages:
 
 2. **Create a virtual environment:**
     ```bash
-    # Upgrade pip and install uv
-    pip install --upgrade pip
-    pip install uv
-
-    # Create and activate a virtual environment using uv
-    uv venv leanrag --python=3.10
-    source leanrag/bin/activate      # For Unix/macOS
-    leanrag\Scripts\activate         # For Windows
-
-    # Alternatively, you can use conda to create and activate the environment
-    conda create -n leanrag python=3.10
+    conda install -n leanrag python=3.11
     conda activate leanrag
     ```
 
 3. **Install the required dependencies:**
     ```bash
-    uv pip install -e .
+    pip install -r requirements.txt
     ```
 
 ## 💻 Usage Workflow
