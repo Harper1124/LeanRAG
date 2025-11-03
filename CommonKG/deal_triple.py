@@ -34,15 +34,18 @@ def process_triple(file_path,output_path):
             source_id=line['source_id']
             head_entity=triple[0][1:-1]
             head_description=triple[1][1:-1]
-            relation=triple[2][1:-1]
-            relation_description=triple[3][1:-1]
-            tail_entity=triple[4][1:-1]
-            tail_description=triple[5][1:-1]
+            head_type=triple[2][1:-1]
+            relation=triple[3][1:-1]
+            relation_description=triple[4][1:-1]
+            tail_entity=triple[5][1:-1]
+            tail_description=triple[6][1:-1]
+            tail_type=triple[7][1:-1]
             
             if head_entity not in entities.keys():
                 entities[head_entity]=dict(
                     entity_name=str(head_entity),
                     description=head_description,
+                    type=head_type,
                     source_id=source_id,
                     doc_name=doc_name,
                     degree=0,
@@ -55,6 +58,7 @@ def process_triple(file_path,output_path):
                 entities[tail_entity]=dict(
                     entity_name=str(tail_entity),
                     description=tail_description,
+                    type=tail_type,
                     source_id=source_id,
                     doc_name=doc_name,
                     degree=0,
@@ -100,7 +104,7 @@ if __name__=="__main__":
     MODEL = "qwen3_32b"
     num=4
     instanceManager=InstanceManager(
-        url="http://xxx",
+        url="http://10.140.37.22",
         ports=[8001 for i in range(num)],
         gpus=[i for i in range(num)],
         generate_model=MODEL,

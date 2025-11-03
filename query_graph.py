@@ -164,8 +164,8 @@ if __name__=="__main__":
     db = pymysql.connect(host='localhost', user='root',port=4321,
                       passwd='123',  charset='utf8mb4')
     global_config={}
-    WORKING_DIR = f"/data/zyz/LeanRAG/ttt"
-    global_config['chunks_file']="ckg_data/mix_chunk/mix_chunk.json"
+    WORKING_DIR = f"/data/zyz/trag_ds/exp/lean_full_cs10_top10_chunk5/mix"
+    global_config['chunks_file']="/data/zyz/trag_ds/hi_ex/mix/kv_store_text_chunks.json"
     global_config['embeddings_func']=embedding
     global_config['working_dir']=WORKING_DIR
     global_config['topk']=10

@@ -110,3 +110,31 @@ class Triple:
         except (json.JSONDecodeError, KeyError) as e:
             logger.error(f"Parse description response failed: {str(e)}, raw response: {response}")
             return triple_str
+    @classmethod
+    def parse_description_plustype_response(self, triple_str:str, response:str):
+        """解析描述响应，生成六元组字符串"""
+        # 处理制表符分隔的字符串并转换格式
+        parts = triple_str.split('\t')
+        cleaned_parts = [part.strip('<').strip('>').strip() for part in parts]  # 去除尖括号和空格
+
+        try:
+            data = json.loads(response.strip())
+            
+            # 提取描述信息
+            subject=data.get('subject', {}).get('name','')
+            subject_desc = data.get('subject', {}).get('description', '')
+            subject_type = data.get('subject', {}).get('type', '')
+            relation = data.get('relation', {}).get('name', '')
+            relation_desc = data.get('relation', {}).get('description', '')
+            object = data.get('object', {}).get('name', '')
+            object_desc = data.get('object', {}).get('description', '')
+            object_type = data.get('object', {}).get('type', '')
+            
+            head, relation, tail = cleaned_parts[0], cleaned_parts[1], cleaned_parts[2]
+            
+            # 组装八元组格式
+            return f"<{subject}>\t<{subject_desc}>\t<{subject_type}>\t<{relation}>\t<{relation_desc}>\t<{object}>\t<{object_desc}>\t<{object_type}>"
+            
+        except (json.JSONDecodeError, KeyError) as e:
+            logger.error(f"Parse description response failed: {str(e)}, raw response: {response}")
+            return triple_str

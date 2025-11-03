@@ -62,7 +62,7 @@ class LLM_Processor:
         self.base_url = args["llm_url"]
         self.api_key = args["llm_api_key"]
         self.max_error = args["max_error"]
-        self.ports = [8001 + i for i in range(args["gpu_nums"])]  # 端口池
+        self.ports = [8001  for i in range(args["gpu_nums"])]  # 端口池
         self.gpus = [i for i in range(args["gpu_nums"])]  # GPU编号
         if args["use_ollama"]:
             self.manager = InstanceManager(self.ports, self.gpus, self.base_url)
@@ -224,6 +224,7 @@ class LLM_Processor:
 
         - The subject and object entities with the following fields:
             - "name"
+            - "type": [person, technology, mission, organization, location]
             - "description": concise summary (≤ 50 English words) capturing key attributes mentioned in the text
 
         - The relation with:
@@ -238,6 +239,7 @@ class LLM_Processor:
         {{
         "subject": {{
             "name": "xxx",
+            "type": "xxx",
             "description": "xxx"
         }},
         "relation": {{
@@ -246,6 +248,7 @@ class LLM_Processor:
         }},
         "object": {{
             "name": "xxx",
+            "type": "xxx",
             "description": "xxx"
         }}
         }}

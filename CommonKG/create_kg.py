@@ -132,7 +132,7 @@ def process_single_description(triple, llm_processor) -> str:
         # 调用LLM
         response = llm_processor.infer(prompt, output_json=True)
 
-        result = Triple.parse_description_response(triple_str, response)
+        result = Triple.parse_description_plustype_response(triple_str, response)
 
         triple["triple"] = result
 
@@ -180,7 +180,7 @@ def process_single_file(corpus_path, task_conf, llm_processer, output_dir="outpu
             write_jsonl(data="", path=result_triple_path, mode="w")
             write_txt(data="", path=all_entities_path, mode="w")
             with open(corpus_path, "r") as f:
-                corpusfiles=json.load(f)
+                corpusfiles=json.load(f)[:2]
             # 读取语料文件
             # corpusfiles = read_jsonl(corpus_path)
             logger.info(f"corpus paragraph num: {len(corpusfiles)}")

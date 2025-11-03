@@ -1,7 +1,7 @@
 ## LLM参数
 llm_conf:
   ## LLM url
-  llm_url: "http://xxx"
+  llm_url: "http://10.140.37.22"
 
   ## LLM key
   llm_api_key: "EMPTY"
