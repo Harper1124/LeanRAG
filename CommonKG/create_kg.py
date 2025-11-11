@@ -180,7 +180,7 @@ def process_single_file(corpus_path, task_conf, llm_processer, output_dir="outpu
             write_jsonl(data="", path=result_triple_path, mode="w")
             write_txt(data="", path=all_entities_path, mode="w")
             with open(corpus_path, "r") as f:
-                corpusfiles=json.load(f)[:2]
+                corpusfiles=json.load(f)
             # 读取语料文件
             # corpusfiles = read_jsonl(corpus_path)
             logger.info(f"corpus paragraph num: {len(corpusfiles)}")

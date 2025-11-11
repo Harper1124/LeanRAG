@@ -5,3 +5,5 @@ CommonKG/data
 *.sh
 visualize.py
 *.log
+ckg_data
+ttt

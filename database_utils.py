@@ -2,12 +2,8 @@ import json
 import os
 import numpy as np
 from pymilvus  import MilvusClient
-import ollama
 import pymysql
 from collections import Counter
-def emb_text(text):
-    response = ollama.embeddings(model="bge-m3:latest", prompt=text)
-    return response["embedding"]
 def build_vector_search(data,working_dir):
    
     milvus_client = MilvusClient(uri=f"{working_dir}/milvus_demo.db")

@@ -1,7 +1,7 @@
 
 glm:
   model: "bge_m3"
-  base_url: "http://10.140.37.134:8000/v1"
+  base_url: "http://10.140.37.43:8000/v1"
   embedding_model: "bge_m3"
 
 deepseek:
