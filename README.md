@@ -248,14 +248,14 @@ We gratefully acknowledge the use of the following open-source projects in our w
 
 If you find LeanRAG useful, please cite our paper:
 ```bitex
-@misc{zhang2025leanragknowledgegraphbasedgenerationsemantic,
-      title={LeanRAG: Knowledge-Graph-Based Generation with Semantic Aggregation and Hierarchical Retrieval}, 
-      author={Yaoze Zhang and Rong Wu and Pinlong Cai and Xiaoman Wang and Guohang Yan and Song Mao and Ding Wang and Botian Shi},
-      year={2025},
-      eprint={2508.10391},
-      archivePrefix={arXiv},
-      primaryClass={cs.AI},
-      url={https://arxiv.org/abs/2508.10391}, 
+@inproceedings{zhang2026leanrag,
+  title={Leanrag: Knowledge-graph-based generation with semantic aggregation and hierarchical retrieval},
+  author={Zhang, Yaoze and Wu, Rong and Cai, Pinlong and Wang, Xiaoman and Yan, Guohang and Mao, Song and Wang, Ding and Shi, Botian},
+  booktitle={Proceedings of the AAAI Conference on Artificial Intelligence},
+  volume={40},
+  number={41},
+  pages={34862--34869},
+  year={2026}
 }
 ```
 ## Star History
