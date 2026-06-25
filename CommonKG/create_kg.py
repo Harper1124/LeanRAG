@@ -17,6 +17,17 @@ from triple import Triple
 
 logger = setup_logger("create_KG")
 
+"""
+CommonKG 风格的知识图谱抽取入口。
+
+与 GraphExtraction/chunk.py 直接让 LLM 从文本中自由抽实体不同，这条路线先准备一个
+外部实体词表（pedia_entity_path），再用实体匹配找到每个 chunk 中可能相关的头实体，
+然后让 LLM 围绕这些实体抽取三元组，并迭代扩展下一层实体。
+
+后续通常还需要运行 CommonKG/deal_triple.py，把结果整理成 build_graph.py 需要的
+entity.jsonl 和 relation.jsonl。
+"""
+
 
 def write_txt(path: str, data, mode="a"):
     with open(path, mode=mode, encoding="utf-8") as f:

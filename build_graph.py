@@ -17,6 +17,21 @@ import requests
 import multiprocessing
 logger=logging.getLogger(__name__)
 
+"""
+构建 LeanRAG 层级知识图谱的主入口。
+
+这个文件接在实体/关系抽取之后运行，输入是 working_dir 下的：
+- entity.jsonl：实体名称、描述、来源 chunk。
+- relation.jsonl：实体之间的关系描述。
+
+核心输出：
+- all_entities.json：按层保存的实体/聚合实体树结构。
+- generate_relations.json：聚合实体之间新生成或汇总的关系。
+- community.json：每个聚合实体的摘要、发现点等 LLM 生成内容。
+- milvus_demo.db：Milvus Lite 向量索引，用于查询时按问题召回实体。
+- MySQL 数据库表：entities / relations / communities，供 query_graph.py 结构化检索。
+"""
+
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 MODEL = config['deepseek']['model']
@@ -28,6 +43,12 @@ TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
 
 def get_common_rag_res(WORKING_DIR):
+    """
+    读取实体和关系抽取结果，并整理成后续聚类需要的字典结构。
+
+    entity.jsonl 中同名实体可能出现多次；这里会把同名实体合并，并把描述和 source_id
+    拼接起来。relation.jsonl 则按 (src_tgt, tgt_src) 作为边的唯一 key。
+    """
     entity_path=f"{WORKING_DIR}/entity.jsonl"
     relation_path=f"{WORKING_DIR}/relation.jsonl"
     # i=0
@@ -83,6 +104,12 @@ def get_common_rag_res(WORKING_DIR):
 
 
 def embedding(texts: list[str]) -> np.ndarray: #vllm serve
+    """
+    调用配置中的 embedding 服务，把文本列表转换成向量。
+
+    建图时用于给实体/聚合实体建索引；查询时要使用同一 embedding 模型，才能把用户问题
+    和实体描述放到同一个向量空间里比较相似度。
+    """
     model_name = EMBEDDING_MODEL
     client = OpenAI(
         api_key=EMBEDDING_MODEL,
@@ -95,6 +122,7 @@ def embedding(texts: list[str]) -> np.ndarray: #vllm serve
     final_embedding = [d.embedding for d in embedding.data]
     return np.array(final_embedding)
 def embedding_init(entities:list[dict])-> list[dict]: 
+    """给一个实体 batch 计算 description embedding，并写回 entity['vector']。"""
     texts=[truncate_text(i['description']) for i in entities]
     model_name = EMBEDDING_MODEL
     client = OpenAI(
@@ -111,12 +139,19 @@ def embedding_init(entities:list[dict])-> list[dict]:
     return entities
 tokenizer = tiktoken.get_encoding("cl100k_base")
 def truncate_text(text, max_tokens=4096):
+    """防止过长描述超过 embedding 服务限制，按 token 截断到 max_tokens。"""
     tokens = tokenizer.encode(text)
     if len(tokens) > max_tokens:
         tokens = tokens[:max_tokens]
     truncated_text = tokenizer.decode(tokens)
     return truncated_text
 def embedding_data(entity_results):
+    """
+    为所有原始实体批量生成向量。
+
+    这里把实体切成多个 batch，并用 ProcessPoolExecutor 并行调用 embedding_init。
+    返回的 entity_results 会带上 vector 字段，供层级聚类使用。
+    """
     entities = [v for k, v in entity_results.items()]
     entity_with_embeddings=[]
     embeddings_batch_size = 64
@@ -144,6 +179,16 @@ def embedding_data(entity_results):
     
             
 def hierarchical_clustering(global_config):
+    """
+    建图主流程。
+
+    1. 读取 entity.jsonl / relation.jsonl。
+    2. 为原始实体描述计算 embedding。
+    3. 调用 Hierarchical_Clustering 逐层聚类并生成聚合实体。
+    4. 为多层实体构建向量检索索引。
+    5. 去掉无法 JSON 序列化的 numpy vector，保存 JSON 文件。
+    6. 创建并写入 MySQL 表，供 query_graph.py 按 parent/path/relation 检索。
+    """
     entity_results,relation_results=get_common_rag_res(global_config['working_dir'])
     all_entities=embedding_data(entity_results)
     hierarchical_cluster = Hierarchical_Clustering()

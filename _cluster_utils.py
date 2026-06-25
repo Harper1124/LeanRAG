@@ -25,6 +25,21 @@ logging.basicConfig(format="%(asctime)s - %(message)s", level=logging.INFO)
 logger= logging.getLogger("cluster")
 ENCODER = None
 
+"""
+层级聚类与聚合实体生成模块。
+
+这是 LeanRAG 建图阶段最核心的文件：它把原始实体按 embedding 相似度聚成簇，
+再让 LLM 为每个簇生成“聚合实体”和摘要，形成一棵从细粒度实体到高层语义概念的树。
+
+主要数据流：
+1. build_graph.py 读取 entity.jsonl/relation.jsonl，并为实体生成 vector。
+2. Hierarchical_Clustering.perform_clustering 接收实体和关系。
+3. 每一层用 UMAP 降维 + GMM 聚类。
+4. process_cluster 将一个簇总结成聚合实体，并写 parent 指针。
+5. process_relation 汇总两个聚合实体之间的底层关系，必要时用 LLM 压缩。
+6. 迭代多层，直到簇数量较少或到达估计深度。
+"""
+
 def check_test(entities):
     e_l=[]
     max_len=len(entities)
@@ -182,6 +197,7 @@ def global_cluster_embeddings(
     n_neighbors: int = 15,
     metric: str = "cosine",
 ) -> np.ndarray:
+    """先做全局 UMAP 降维，让高维 embedding 更适合 GMM 聚类。"""
     if n_neighbors is None:
         n_neighbors = int((len(embeddings) - 1) ** 0.5)
     reduced_embeddings = umap.UMAP(
@@ -193,6 +209,7 @@ def global_cluster_embeddings(
 def local_cluster_embeddings(
     embeddings: np.ndarray, dim: int, num_neighbors: int = 10, metric: str = "cosine"
 ) -> np.ndarray:
+    """局部 UMAP 降维的备用函数；当前主流程主要使用 global_cluster_embeddings。"""
     reduced_embeddings = umap.UMAP(
         n_neighbors=num_neighbors, n_components=dim, metric=metric
     ).fit_transform(embeddings)
@@ -211,6 +228,12 @@ def fit_gaussian_mixture(n_components, embeddings, random_state):
 
 
 def get_optimal_clusters(embeddings, max_clusters=50, random_state=0, rel_tol=1e-3):
+    """
+    通过 BIC 估计 GMM 的较优聚类数。
+
+    BIC 越小通常表示模型在复杂度和拟合程度之间更平衡；这里还加了 early stop，
+    当 BIC 改善很小时提前停止，避免反复拟合过多 cluster 数。
+    """
     max_clusters = min(len(embeddings), max_clusters)
     n_clusters = np.arange(1, max_clusters)
     bics = []
@@ -228,6 +251,12 @@ def get_optimal_clusters(embeddings, max_clusters=50, random_state=0, rel_tol=1e
 
 
 def GMM_cluster(embeddings: np.ndarray, threshold: float, random_state: int = 0,cluster_size: int = 20):
+    """
+    对降维后的 embedding 做高斯混合聚类。
+
+    原始 GraphRAG/RAPTOR 风格可能允许一个点属于多个簇；这里最终使用 argmax，
+    即每个实体只归到概率最高的一个簇，便于形成清晰的树状 parent 关系。
+    """
     n_clusters = max(len(embeddings) // cluster_size,get_optimal_clusters(embeddings))
     gm = GaussianMixture(
             n_components=n_clusters, 
@@ -244,6 +273,11 @@ def GMM_cluster(embeddings: np.ndarray, threshold: float, random_state: int = 0,
 def perform_clustering(
     embeddings: np.ndarray, dim: int, threshold: float, verbose: bool = False,cluster_size: int = 20
 ) -> List[np.ndarray]:
+    """
+    单层聚类封装：UMAP 降维后调用 GMM_cluster，返回每个节点所属的 cluster label。
+
+    返回值形如 [[0], [1], [0], ...]，长度与输入实体数一致。
+    """
     reduced_embeddings_global = global_cluster_embeddings(embeddings, min(dim, len(embeddings) -2))
     global_clusters, n_global_clusters = GMM_cluster(     # (num, 2)
         reduced_embeddings_global, threshold,cluster_size=cluster_size
@@ -297,6 +331,7 @@ def list_of_list_to_csv(data: list[list]):
         ]
     )
 def get_direct_relations(set1,set2,relations):
+    """从关系字典中筛出连接 set1 和 set2 的边；同一簇内部关系和跨簇关系都会用到。"""
     results={k:v for k,v in relations.items() if (k[0]in set1 and k[1] in set2) or (k[0] in set2 and k[1] in set1)}
     return results
     
@@ -354,6 +389,12 @@ def _pack_single_community_describe(
     max_token_size: int = 12000,
     global_config: dict = {},
 ) -> str:
+    """
+    将一个簇内的实体和关系打包成 LLM 可读的 CSV 文本。
+
+    后续 aggregate_entities prompt 会基于这段文本生成聚合实体名称、聚合描述和 findings。
+    为了控制 prompt 长度，实体描述和边描述会按 token 上限截断。
+    """
    
     node_fields = ["id", "entity", "type", "description", "degree"]
     edge_fields = ["id", "source", "target", "description", "rank"]
@@ -406,6 +447,16 @@ def process_cluster(
     clusters,label,nodes,community_report_prompt,\
         relations,generate_relations,layer,temp_clusters_nodes
 ):
+    """
+    处理单个聚类簇：把一组底层节点总结成一个上层聚合节点。
+
+    步骤：
+    1. 根据 label 找出属于该簇的 nodes。
+    2. 如果簇里只有一个节点，就让它的 parent 指向自己，表示不需要再总结。
+    3. 收集簇内已有关系，打包成 prompt。
+    4. 调用 LLM 生成聚合实体名称、描述和 findings。
+    5. 再给聚合实体描述计算 embedding，供下一层继续聚类。
+    """
     indices = [i for i, cluster in enumerate(clusters) if label in cluster]
                 # Add the corresponding nodes to the node_clusters list
     cluster_nodes = [nodes[i] for i in indices]
@@ -450,6 +501,12 @@ def process_relation(
      cluster_cluster_relation_prompt,layer,tokenizer,max_depth
     
 ):
+    """
+    处理两个聚合实体之间的关系。
+
+    如果两个簇之间存在底层实体关系，就把这些关系提升为聚合实体之间的关系。
+    当底层关系文本太长时，调用 LLM 压缩成更短的关系描述；否则直接拼接保留原信息。
+    """
     cluster1_nodes=community_report[maybe_edge[0]]['children']
     cluster2_nodes=community_report[maybe_edge[1]]['children']
     
@@ -514,6 +571,17 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
         max_workers: int =8,
         cluster_size: int=20,
     ) -> List[dict]:
+        """
+        执行完整的多层语义聚合。
+
+        输入 entities 是原始实体字典，每个实体已经带有 vector；relations 是原始实体关系。
+        输出：
+        - all_nodes：按层组织的节点列表，包含原始实体和逐层生成的聚合实体。
+        - generate_relations：聚合实体之间生成的关系。
+        - community_report：聚合实体的摘要报告，最终会写入 community.json。
+
+        这个函数会在每一轮完成后临时写 all_entities.json，便于长任务中断后检查进度。
+        """
         use_llm_func: callable = global_config["use_llm_func"]
         embeddings_func: callable = global_config["embeddings_func"]
         # Get the embeddings from the nodes
@@ -528,6 +596,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
         cluster_cluster_relation_prompt = PROMPTS["cluster_cluster_relation"]
         max_depth=round(math.log(len(nodes),cluster_size))+1
         for layer in range(max_depth):
+            # 每一轮把上一层 nodes 聚成更少的簇；簇会被 LLM 总结成下一层的聚合实体。
             logging.info(f"############ Layer[{layer}] Clustering ############")
             # Perform the clustering
             if  len(nodes) <= 2:
@@ -557,6 +626,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
                 print(f"当前簇数小于5，停止聚类")
                 break
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # 并行总结每个簇。每个 result 都会返回一个 temp_node，作为下一层聚类输入。
                 futures = [
                     executor.submit(
                         process_cluster, 
@@ -580,6 +650,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
             temp_cluster_relation=[i['entity_name'] for i in temp_clusters_nodes if i['entity_name'] in community_report.keys()] 
             temp_relations={}     
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # 对本层生成的聚合实体两两检查是否有底层关系支撑；有则提升为聚合关系。
                 futures = [
                     executor.submit(
                         process_relation, use_llm_func,community_report,maybe_edge,\
@@ -601,7 +672,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
                
             # update nodes to be clustered in the next layer
             nodes = copy.deepcopy([x for x in temp_clusters_nodes if "entity_name" in x.keys()])
-            # filter the duplicate entities
+            # 过滤重名聚合实体，避免下一层重复参与聚类。
             seen = set()        
             unique_nodes = []
             for item in nodes:
@@ -637,6 +708,7 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
             #     logging.info(f"[Stop Clustering at Layer{layer} with entity num {len(embeddings)}]")
             #     break
         if len(all_nodes[-1])!=1:
+            # 如果循环结束时还没有唯一根节点，就再让 LLM 把最后一层整体总结成一个根级聚合实体。
             temp_node={}
             cluster_nodes=all_nodes[-1]
             cluster_intern_relation=get_direct_relations(cluster_nodes,cluster_nodes,generate_relations)#默认为顶层，从下层找关系就是在generate_relations中
