@@ -11,8 +11,21 @@ import asyncio
 import re
 import copy
 
+"""
+GraphRAG 风格的实体/关系抽取入口。
+
+这个文件读取 file_chunk.py 生成的 chunk JSON，然后分两步调用 LLM：
+1. entity_extraction：从每个 chunk 中抽取实体和实体描述。
+2. relation_extraction：基于第一步抽出的实体列表，再抽取实体之间的关系。
+
+最终输出：
+- entity.jsonl：给 build_graph.py 作为原始实体输入。
+- relation.jsonl：给 build_graph.py 作为原始关系输入。
+"""
+
 
 def get_chunk(chunk_file):
+    """读取 chunk 文件，并转换成 {hash_code: text}，hash_code 会作为 source_id。"""
     doc_name=os.path.basename(chunk_file).rsplit(".",1)[0]
     with open(chunk_file, "r") as f:
             corpus=json.load(f)
@@ -20,6 +33,12 @@ def get_chunk(chunk_file):
     return chunks
 
 async def triple_extraction(chunks,use_llm_func,output_dir):
+    """
+    对所有 chunk 异步执行实体和关系抽取。
+
+    use_llm_func 通常来自 InstanceManager.generate_text_asy，内部会管理并发请求。
+    这里先抽实体，再把同一 chunk 内的实体列表放入关系抽取 prompt，从而减少无关关系。
+    """
     
     # extract entities
     # use_llm_func is wrapped in ascynio.Semaphore, limiting max_async callings
@@ -30,6 +49,7 @@ async def triple_extraction(chunks,use_llm_func,output_dir):
     already_relations = 0
     ordered_chunks = list(chunks.items())
     async def _process_single_content_entity(chunk_key_dp,use_llm_func):           # for each chunk, run the func
+        """处理单个 chunk 的实体抽取，并把 LLM 输出解析成 maybe_nodes。"""
         nonlocal already_processed, already_entities, already_relations
         chunk_key = chunk_key_dp[0]
         content = chunk_key_dp[1]
@@ -119,6 +139,7 @@ async def triple_extraction(chunks,use_llm_func,output_dir):
     context_entities = {key[0]: list(x[0].keys()) for key, x in zip(ordered_chunks, entity_results)}
     already_processed = 0
     async def _process_single_content_relation(chunk_key_dp,use_llm_func):           # for each chunk, run the func
+        """处理单个 chunk 的关系抽取；只在该 chunk 已抽到的实体集合内找关系。"""
         nonlocal already_processed, already_entities, already_relations
         chunk_key = chunk_key_dp[0]
         content = chunk_key_dp[1]

@@ -18,6 +18,18 @@ from prompt import GRAPH_FIELD_SEP, PROMPTS
 from itertools import combinations
 
 logger=logging.getLogger(__name__)
+
+"""
+LeanRAG 查询阶段主入口。
+
+这个文件负责把一个用户问题转成最终答案，核心步骤是：
+1. 对 query 做 embedding。
+2. 在 Milvus Lite 向量索引中召回 top-k 相关实体或聚合实体。
+3. 通过 MySQL 中的 parent 字段向上寻找实体所在的层级路径。
+4. 收集路径上的聚合实体摘要、相关边关系、原文 chunk。
+5. 将这些结构化证据拼成 prompt 上下文，调用 LLM 生成回答。
+"""
+
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 MODEL = config['deepseek']['model']
@@ -29,6 +41,7 @@ TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
 
 def embedding(texts: list[str]) -> np.ndarray:
+    """使用和建图阶段一致的 embedding 服务，把查询文本转换成向量。"""
     model_name = EMBEDDING_MODEL
     client = OpenAI(
         api_key=EMBEDDING_MODEL,
@@ -43,6 +56,7 @@ def embedding(texts: list[str]) -> np.ndarray:
 
 tokenizer = tiktoken.get_encoding("cl100k_base")
 def truncate_text(text, max_tokens=4096):
+    """按 token 截断文本，避免超过模型或 embedding 服务的输入长度限制。"""
     tokens = tokenizer.encode(text)
     if len(tokens) > max_tokens:
         tokens = tokens[:max_tokens]
@@ -50,6 +64,18 @@ def truncate_text(text, max_tokens=4096):
     return truncated_text
 
 def get_reasoning_chain(global_config,entities_set):
+    """
+    根据召回实体构造推理路径。
+
+    对 top-k 召回实体两两组合：
+    - 先用 find_tree_root 找到每个实体从自身到根节点的 parent 链。
+    - 找到两条链的交汇位置，拼成一条从实体 A 到实体 B 的层级路径。
+    - 再查询路径节点之间是否存在 relations，收集这些关系描述作为推理证据。
+
+    返回值：
+    - reasoning_path：实体/聚合实体名称组成的路径列表。
+    - reasoning_path_information_description：路径上关系的文本描述。
+    """
     maybe_edges=list(combinations(entities_set,2))
     reasoning_path=[]
     reasoning_path_information=[]
@@ -94,6 +120,13 @@ def get_reasoning_chain(global_config,entities_set):
     return  reasoning_path,reasoning_path_information_description
 
 def get_entity_description(global_config,entities_set,mode=0):
+    """
+    将向量召回得到的实体结果格式化成表格文本。
+
+    entities_set 中每个元素通常是：
+    (entity_name, parent, description, source_id)
+    这部分信息会直接进入最终 RAG prompt。
+    """
     
     
     
@@ -104,6 +137,12 @@ def get_entity_description(global_config,entities_set,mode=0):
     return entity_descriptions
         
 def get_aggregation_description(global_config,reasoning_path,if_findings=False):
+    """
+    根据推理路径收集聚合实体的社区摘要。
+
+    reasoning_path 中既可能包含原始实体，也可能包含上层聚合实体；这里取出所有路径节点，
+    到 communities 表中查询 LLM 在建图阶段生成的聚合描述。
+    """
     
     aggregation_results=[]
     
@@ -122,23 +161,60 @@ def get_aggregation_description(global_config,reasoning_path,if_findings=False):
         aggregation_descriptions="\t\t".join(columns)+"\n"
         aggregation_descriptions+="\n".join([information[0]+"\t\t"+str(information[1]) for information in aggregation_results])
     return aggregation_descriptions,communities
+
+def format_text_units(text_units):
+    """
+    Format retrieved source chunks as structured evidence blocks.
+
+    Each evidence block keeps multimodal metadata so the answer prompt can
+    distinguish text, table, and image-derived descriptions.
+    """
+    evidence_blocks = []
+    for index, item in enumerate(text_units, start=1):
+        evidence_blocks.append({
+            "id": index,
+            "modality": item.get("modality", "text"),
+            "page": item.get("page"),
+            "asset_path": item.get("asset_path"),
+            "summary": item.get("summary", ""),
+            "text": item.get("text", ""),
+        })
+    return json.dumps(evidence_blocks, ensure_ascii=False, indent=2)
+
 def query_graph(global_config,db,query):
+    """
+    单次问答主流程。
+
+    输入：
+    - global_config：包含 working_dir、chunks_file、topk、level_mode、LLM 函数等配置。
+    - db：MySQL 连接对象；当前函数主要通过 database_utils 内部函数重新连接查询。
+    - query：用户问题。
+
+    输出：
+    - describe：本次喂给 LLM 的结构化证据上下文，便于调试。
+    - response：LLM 基于证据生成的最终回答。
+    """
     use_llm_func: callable = global_config["use_llm_func"]
     embedding: callable=global_config["embeddings_func"]
     b=time.time()
     level_mode=global_config['level_mode']
     topk=global_config['topk']
     chunks_file=global_config["chunks_file"]
+    # 第一步：向量召回。level_mode 控制只搜原始实体、只搜聚合实体，还是全层级都搜。
     entity_results=search_vector_search(global_config['working_dir'],embedding(query),topk=topk,level_mode=level_mode)
     v=time.time()
     res_entity=[i[0]for i in entity_results]
     chunks=[i[-1]for i in entity_results]
     entity_descriptions=get_entity_description(global_config,entity_results)
+    # 第二步：在层级树上寻找召回实体之间的连接路径，并取出路径相关关系。
     reasoning_path,reasoning_path_information_description=get_reasoning_chain(global_config,res_entity)
     # reasoning_path,reasoning_path_information_description=get_path_chain(global_config,res_entity)
+    # 第三步：获取路径上聚合实体的摘要，这些摘要相当于“上层语义证据”。
     aggregation_descriptions,aggregation=get_aggregation_description(global_config,reasoning_path)
     # chunks=search_chunks(global_config['working_dir'],aggregation)
+    # 第四步：根据召回实体的 source_id 回查原文 chunk，补充最细粒度证据。
     text_units=get_text_units(global_config['working_dir'],chunks,chunks_file,k=5)
+    structured_text_units=format_text_units(text_units)
     describe=f"""
     entity_information:
     {entity_descriptions}
@@ -147,11 +223,12 @@ def query_graph(global_config,db,query):
     reasoning_path_information:
     {reasoning_path_information_description}
     text_units:
-    {text_units}
+    {structured_text_units}
     """
     e=time.time()
     
     # print(describe)
+    # 第五步：把结构化证据填入回答模板，交给生成模型输出最终答案。
     sys_prompt =PROMPTS["rag_response"].format(context_data=describe)
     response=use_llm_func(query,system_prompt=sys_prompt)
     g=time.time()
@@ -161,8 +238,9 @@ def query_graph(global_config,db,query):
     print(f"response time: {g-e:.2f}s")
     return describe,response
 if __name__=="__main__":
+    # 示例入口：连接 MySQL，配置图谱目录和 chunk 文件，然后对单个 query 做检索生成。
     db = pymysql.connect(host='localhost', user='root',port=4321,
-                      passwd='123',  charset='utf8mb4')
+                    passwd='123',  charset='utf8mb4')
     global_config={}
     WORKING_DIR = f"/data/zyz/trag_ds/exp/lean_full_cs10_top10_chunk5/mix"
     global_config['chunks_file']="/data/zyz/trag_ds/hi_ex/mix/kv_store_text_chunks.json"

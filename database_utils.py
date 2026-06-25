@@ -4,7 +4,30 @@ import numpy as np
 from pymilvus  import MilvusClient
 import pymysql
 from collections import Counter
+
+"""
+建图和查询共用的数据访问层。
+
+这里同时管理两类存储：
+1. Milvus Lite：保存实体/聚合实体的向量，用于 query -> top-k 实体召回。
+2. MySQL：保存实体层级树、关系边、聚合社区摘要，用于沿 parent 找路径和取证据。
+
+build_graph.py 会调用 build_vector_search / create_db_table_mysql / insert_data_to_mysql。
+query_graph.py 会调用 search_vector_search / find_tree_root / search_nodes_link /
+search_community / get_text_units 等函数。
+"""
+
 def build_vector_search(data,working_dir):
+    """
+    将多层实体写入 Milvus Lite 向量索引。
+
+    data 的结构来自 Hierarchical_Clustering.perform_clustering：
+    - 前几层通常是 list[entity_dict]。
+    - 最顶层有时是单个 dict。
+
+    每个实体会被拍平成一条 Milvus 记录，并额外写入 id 和 level。
+    level=0 表示原始实体，level 越大表示越高层的聚合实体。
+    """
    
     milvus_client = MilvusClient(uri=f"{working_dir}/milvus_demo.db")
     index_params = milvus_client.prepare_index_params()
@@ -66,6 +89,11 @@ def build_vector_search(data,working_dir):
     #     )
 
 def search_vector_search(working_dir,query,topk=10,level_mode=2):
+    # 按 query embedding 在 Milvus 中召回 top-k 实体。
+    # level_mode:
+    #   0 -> 只搜索原始实体节点，也就是 level == 0。
+    #   1 -> 只搜索聚合实体节点，也就是 level > 0。
+    #   2 -> 搜索所有层级节点。
     '''
     level_mode: 0: 原始节点
                 1: 聚合节点
@@ -101,6 +129,12 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
     # print(extract_results)
     return extract_results
 def create_db_table_mysql(working_dir):
+    """
+    为当前数据集重建 MySQL 数据库和三张表。
+
+    数据库名取 working_dir 的最后一级目录名，例如 /path/to/mix -> mix。
+    注意：这里会 drop database，因此是“重建”语义，适合建图阶段重新生成索引时使用。
+    """
     con = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',  charset='utf8mb4')
     cur=con.cursor()
@@ -131,6 +165,14 @@ def create_db_table_mysql(working_dir):
     con.close()
     
 def insert_data_to_mysql(working_dir):
+    """
+    将建图阶段生成的 JSON 文件导入 MySQL。
+
+    读取文件：
+    - all_entities.json -> entities 表。
+    - generate_relations.json -> relations 表。
+    - community.json -> communities 表。
+    """
     dbname=os.path.basename(working_dir)
     db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',database=dbname,  charset='utf8mb4')
@@ -219,6 +261,11 @@ def insert_data_to_mysql(working_dir):
             print(e)
             print("insert communities error")
 def find_tree_root(working_dir,entity):
+    """
+    从某个实体开始不断查 parent，返回该实体到根节点的路径。
+
+    query_graph.py 会用两条 parent 链寻找召回实体之间的共同祖先。
+    """
     db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',  charset='utf8mb4')
     dbname=os.path.basename(working_dir)
@@ -247,6 +294,11 @@ def find_tree_root(working_dir,entity):
     return res
 
 def find_path(entity1,entity2,working_dir,level,depth=5):
+    """
+    在同一 level 的 relations 表中用递归 SQL 寻找 entity1 到 entity2 的最短路径。
+
+    当前 query_graph.py 默认使用 parent 链方式；这个函数保留给需要同层多跳检索的策略。
+    """
     db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',  charset='utf8mb4')
     db_name=os.path.basename(working_dir)
@@ -294,6 +346,11 @@ def find_path(entity1,entity2,working_dir,level,depth=5):
         return None
 
 def search_nodes_link(entity1,entity2,working_dir,level=0):
+    """
+    查询两个节点之间是否存在直接关系。
+
+    关系可能以 entity1 -> entity2 或 entity2 -> entity1 保存，所以这里会双向查询。
+    """
     # cursor = db.cursor()
     # db_name=os.path.basename(working_dir)
     # sql=f"select * from {db_name}.relations where src_tgt=%s and tgt_src=%s and level=%s"
@@ -323,6 +380,7 @@ def search_nodes_link(entity1,entity2,working_dir,level=0):
     else:
         return ret[0]
 def search_chunks(working_dir,entity_set):
+    """根据实体名查询 source_id；source_id 对应 chunk 文件里的 hash_code。"""
     db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',  charset='utf8mb4')
     res=[]
@@ -337,6 +395,7 @@ def search_chunks(working_dir,entity_set):
         res.append(ret[0])
     return res
 def search_nodes(entity_set,working_dir):
+    """查询一批原始实体节点的完整表记录，目前主要用于调试或备用检索流程。"""
     db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',  charset='utf8mb4')
     res=[]
@@ -348,15 +407,45 @@ def search_nodes(entity_set,working_dir):
         ret=cursor.fetchall()
         res.append(ret[0])
     return res
-def get_text_units(working_dir,chunks_set,chunks_file,k=5):
-    db_name=os.path.basename(working_dir)
-    chunks_list=[]
+def _flatten_chunk_ids(chunks_set):
+    chunk_ids = []
     for chunks in chunks_set:
+        if chunks is None:
+            continue
+        if isinstance(chunks, (list, tuple)):
+            chunks = chunks[0] if chunks else ""
+        chunks = str(chunks)
         if "|" in chunks:
-            temp_chunks=chunks.split("|")
+            temp_chunks = chunks.split("|")
         else:
-            temp_chunks=[chunks]
-        chunks_list+=temp_chunks
+            temp_chunks = [chunks]
+        chunk_ids += [chunk.strip() for chunk in temp_chunks if chunk.strip()]
+    return chunk_ids
+
+
+def _normalize_evidence_chunk(item):
+    text = item.get("text", "")
+    modality = item.get("modality") or item.get("type") or "text"
+    summary = item.get("summary") or text[:240]
+    return {
+        "hash_code": item.get("hash_code"),
+        "modality": modality,
+        "page": item.get("page"),
+        "asset_path": item.get("asset_path"),
+        "summary": summary,
+        "text": text,
+    }
+
+
+def get_text_units(working_dir,chunks_set,chunks_file,k=5):
+    """
+    根据召回实体携带的 source_id 回查原文 chunk。
+
+    一个实体可能来自多个 chunk，source_id 之间用 | 拼接。这里会统计 chunk hash 出现频次，
+    优先选择被多个召回实体共同指向的 chunk，因为它们更可能是高价值证据。
+    """
+    db_name=os.path.basename(working_dir)
+    chunks_list=_flatten_chunk_ids(chunks_set)
     counter = Counter(chunks_list)
 
     # 筛选出出现多次的元素
@@ -375,17 +464,21 @@ def get_text_units(working_dir,chunks_set,chunks_file,k=5):
             if len(duplicates) == k:
                 break
     
-    chunks_dict={}
-    text_units=""
-    with open (chunks_file,'r')as f:
-        chunks_dict= json.load(f)
-    chunks_dict={item["hash_code"]: item["text"] for item in chunks_dict}
-    
+    with open (chunks_file,'r',encoding='utf-8')as f:
+        chunks_data= json.load(f)
+    chunks_dict={item["hash_code"]: _normalize_evidence_chunk(item) for item in chunks_data}
+
+    text_units=[]
     for chunks in duplicates:
-        text_units+=chunks_dict[chunks]+"\n"
+        evidence = chunks_dict.get(chunks)
+        if evidence is None:
+            continue
+        evidence["score"] = counter.get(chunks, 0)
+        text_units.append(evidence)
     return text_units
     
 def search_community(entity_name,working_dir):
+    """按聚合实体名称查询 communities 表，返回建图阶段生成的聚合摘要和 findings。"""
     db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',  charset='utf8mb4')
     db_name=os.path.basename(working_dir)
@@ -399,6 +492,12 @@ def search_community(entity_name,working_dir):
         return ""
             # return ret[0]
 def insert_origin_relations(working_dir):
+    """
+    额外导入原始关系到 relations 表的辅助函数。
+
+    主流程 insert_data_to_mysql 主要导入聚合关系 generate_relations.json；这个函数用于把
+    原始 relation.jsonl 也补充进 MySQL，方便对比实验或调试底层边。
+    """
     dbname=os.path.basename(working_dir)
     db = pymysql.connect(host='localhost',port=4321, user='root',
                       passwd='123',database=dbname,  charset='utf8mb4')
