@@ -19,3 +19,27 @@ model_params:
   glm_embedding_dim: 1024
   max_token_size: 8192
 
+multimodal:
+  enabled: true
+  parser: mineru
+  mineru_backend: pipeline
+
+  max_token_size: 1024
+  overlap_token_size: 128
+
+  use_media_caption: true
+  use_table_summary: true
+  use_media_vector_store: true
+
+  media_attach_topk: 3
+  evidence_topk: 5
+  max_images_per_query: 4
+  max_tables_per_query: 4
+
+  answer_with_vlm_when_media: true
+  vlm_model: qwen2.5-vl
+  vlm_base_url: ""
+  vlm_api_key: ""
+
+  embedding_dim: 1024
+
