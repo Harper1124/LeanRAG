@@ -5,7 +5,7 @@ from pathlib import Path
 
 from .docbench_loader import load_docbench
 from .io_utils import write_jsonl
-from .mm_query import query_mm_graph
+from .mm_query import _install_default_model_funcs, _load_config, query_mm_graph
 
 
 def run_docbench_eval(
@@ -13,17 +13,22 @@ def run_docbench_eval(
     working_root: str,
     output_file: str,
     limit: int | None = None,
+    config_file: str = "config.yaml",
 ) -> None:
     samples = [sample for sample in load_docbench(dataset_dir) if sample.get("question")]
     if limit is not None:
         samples = samples[:limit]
+    full_config = _load_config(config_file)
+    mm_defaults = full_config.get("multimodal", {})
     rows = []
     for sample in samples:
         working_dir = Path(working_root) / sample["doc_id"]
         if not working_dir.exists():
             rows.append(_missing_workspace_row(sample, working_dir))
             continue
-        config = {
+        config = dict(mm_defaults)
+        _install_default_model_funcs(config, full_config)
+        config.update({
             "working_dir": str(working_dir),
             "chunks_file": str(working_dir / "leanrag_chunk.json"),
             "topk": 10,
@@ -32,7 +37,7 @@ def run_docbench_eval(
             "max_images_per_query": 4,
             "max_tables_per_query": 4,
             "answer_with_vlm_when_media": True,
-        }
+        })
         prediction, trace = query_mm_graph(config, None, sample["question"], doc_id=sample["doc_id"])
         rows.append(
             {
@@ -70,8 +75,9 @@ def main() -> None:
     parser.add_argument("--working_root", required=True)
     parser.add_argument("--output_file", required=True)
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--config", default="config.yaml")
     args = parser.parse_args()
-    run_docbench_eval(args.dataset_dir, args.working_root, args.output_file, args.limit)
+    run_docbench_eval(args.dataset_dir, args.working_root, args.output_file, args.limit, args.config)
     print(f"Wrote predictions and evidence trace to {args.output_file}")
 
 
