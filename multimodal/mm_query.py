@@ -178,6 +178,26 @@ def _load_config(path: str | None) -> dict[str, Any]:
         return {}
 
 
+def _install_default_model_funcs(config: dict[str, Any], full_config: dict[str, Any]) -> None:
+    try:
+        from .openai_clients import make_chat_func, make_vlm_func
+    except Exception:
+        return
+    if "use_llm_func" not in config and full_config.get("deepseek", {}).get("base_url"):
+        llm_conf = dict(full_config["deepseek"])
+        llm_conf.setdefault("api_key_env", "DASHSCOPE_API_KEY")
+        config["use_llm_func"] = make_chat_func(llm_conf)
+    if "use_vlm_func" not in config:
+        vlm_conf = {
+            "model": config.get("vlm_model"),
+            "base_url": config.get("vlm_base_url"),
+            "api_key": config.get("vlm_api_key", ""),
+            "api_key_env": config.get("vlm_api_key_env", "DASHSCOPE_API_KEY"),
+        }
+        if vlm_conf["model"] and vlm_conf["base_url"]:
+            config["use_vlm_func"] = make_vlm_func(vlm_conf)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Query a multimodal LeanRAG working directory.")
     parser.add_argument("--working_dir", required=True)
@@ -185,7 +205,9 @@ def main() -> None:
     parser.add_argument("--query", required=True)
     parser.add_argument("--config", default="config.yaml")
     args = parser.parse_args()
-    config = _load_config(args.config).get("multimodal", {})
+    full_config = _load_config(args.config)
+    config = full_config.get("multimodal", {})
+    _install_default_model_funcs(config, full_config)
     config.update(
         {
             "working_dir": args.working_dir,

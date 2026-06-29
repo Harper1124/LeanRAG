@@ -33,10 +33,11 @@ LeanRAG 查询阶段主入口。
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 MODEL = config['deepseek']['model']
-DEEPSEEK_API_KEY = config['deepseek']['api_key']
+DEEPSEEK_API_KEY = os.getenv(config['deepseek'].get('api_key_env', ''), config['deepseek'].get('api_key', ''))
 DEEPSEEK_URL = config['deepseek']['base_url']
 EMBEDDING_MODEL = config['glm']['model']
 EMBEDDING_URL = config['glm']['base_url']
+EMBEDDING_API_KEY = os.getenv(config['glm'].get('api_key_env', ''), config['glm'].get('api_key', EMBEDDING_MODEL))
 TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
 
@@ -44,7 +45,7 @@ def embedding(texts: list[str]) -> np.ndarray:
     """使用和建图阶段一致的 embedding 服务，把查询文本转换成向量。"""
     model_name = EMBEDDING_MODEL
     client = OpenAI(
-        api_key=EMBEDDING_MODEL,
+        api_key=EMBEDDING_API_KEY,
         base_url=EMBEDDING_URL
     ) 
     embedding = client.embeddings.create(

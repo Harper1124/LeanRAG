@@ -1,17 +1,18 @@
 
 glm:
-  model: "bge_m3"
-  base_url: "http://10.140.37.43:8000/v1"
-  embedding_model: "bge_m3"
+  model: "bge-m3"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  api_key_env: "DASHSCOPE_API_KEY"
+  embedding_model: "bge-m3"
 
 deepseek:
 
   # model: "Qwen3-14b"
-  model: "qwen2.5"
+  model: "qwen2.5:7b"
   # model: "Qwen3-32b"
 
-  api_key: "ollama"
-  base_url: "http://localhost:8001/v1"
+  api_key_env: "DASHSCOPE_API_KEY"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
 # Model Parameters
 model_params:
@@ -37,8 +38,9 @@ multimodal:
   max_tables_per_query: 4
 
   answer_with_vlm_when_media: true
-  vlm_model: qwen2.5-vl
-  vlm_base_url: ""
+  vlm_model: qwen2.5vl:7b
+  vlm_base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  vlm_api_key_env: "DASHSCOPE_API_KEY"
   vlm_api_key: ""
 
   embedding_dim: 1024
