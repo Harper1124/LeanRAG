@@ -45,6 +45,7 @@ def parse_pdf_with_mineru(
 def _run_mineru_cli(pdf: Path, out: Path, mineru_backend: str) -> None:
     commands = [
         ["magic-pdf", "-p", str(pdf), "-o", str(out), "-m", mineru_backend],
+        ["mineru", "-p", str(pdf), "-o", str(out), "-b", mineru_backend],
         ["mineru", "-p", str(pdf), "-o", str(out), "-m", mineru_backend],
     ]
     errors = []
