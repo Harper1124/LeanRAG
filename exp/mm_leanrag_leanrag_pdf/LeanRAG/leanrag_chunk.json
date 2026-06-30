@@ -1,0 +1,670 @@
+[
+  {
+    "hash_code": "f062a0cc83f332c0911b6fa3100fbf05",
+    "text": "LeanRAG: Knowledge-Graph-Based Generation with Semantic Aggregation and Hierarchical Retrieval"
+  },
+  {
+    "hash_code": "6458720695fbc9853b09538065281e22",
+    "text": "Yaoze Zhang<sup>1,2</sup>\\*, Rong Wu<sup>1,3</sup>\\*, Pinlong Cai<sup>1†</sup>, Xiaoman Wang<sup>4</sup>, Guohang Yan<sup>1</sup> Song Mao<sup>1</sup>, Ding Wang<sup>1</sup>, Botian Shi<sup>1</sup>"
+  },
+  {
+    "hash_code": "99f2ef21fadeb1a88af03fe608f3b97a",
+    "text": "<sup>1</sup>Shanghai Artificial Intelligence Laboratory <sup>2</sup>University of Shanghai for Science and Technology <sup>3</sup>Zhejiang University <sup>4</sup>East China Normal University"
+  },
+  {
+    "hash_code": "6299012abb44fe2b395d0b73d2e371fb",
+    "text": "Abstract"
+  },
+  {
+    "hash_code": "f0bb245d19146916ef32d122fd1d7434",
+    "text": "Retrieval-Augmented Generation (RAG) plays a crucial role in grounding Large Language Models by leveraging external knowledge, whereas the effectiveness is often compromised by the retrieval of contextually flawed or incomplete information. To address this, knowledge graph-based RAG methods have evolved towards hierarchical structures, organizing knowledge into multi-level summaries. However, these approaches still suffer from two critical, unaddressed challenges: high-level conceptual summaries exist as disconnected “semantic islands”, lacking the explicit relations needed for cross-community reasoning; and the retrieval process itself remains structurally unaware, often degenerating into an inefficient flat search that fails to exploit the graph’s rich topology. To overcome these limitations, we introduce LeanRAG, a framework that features a deeply collaborative design combining knowledge aggregation and retrieval strategies. LeanRAG first employs a novel semantic aggregation algorithm that forms entity clusters and constructs new explicit relations among aggregation-level summaries, creating a fully navigable semantic network. Then, a bottomup, structure-guided retrieval strategy anchors queries to the most relevant fine-grained entities and then systematically traverses the graph’s semantic pathways to gather concise yet contextually comprehensive evidence sets. The LeanRAG can mitigate the substantial overhead associated with path retrieval on graphs and minimize redundant information retrieval. Extensive experiments on four challenging QA benchmarks with different domains demonstrate that LeanRAG sig nificantly outperforms existing methods in response quality while reducing 46% retrieval redundancy. Our code is available at: https://github.com/RaZzzyz/LeanRAG."
+  },
+  {
+    "hash_code": "9433be5f4c7ad61a06bfb53c93e373e2",
+    "text": "Introduction"
+  },
+  {
+    "hash_code": "ffb719d8b549bd52ee1bb390044fd238",
+    "text": "Large Language Models (LLMs) have demonstrated remarkable capabilities in natural language understanding and generation. Yet their effectiveness is often undermined by their static internal knowledge, leading to factual inaccuracies and hallucinations (Huang et al. 2025b; Li et al. 2024). Retrieval-Augmented Generation (RAG) was introduced as a potential solution, dynamically grounding LLMs in external, up-to-date information (Gao et al. 2023). However, the effectiveness of naive RAG approaches is frequently compromised. The retrieved text chunks often lack precise alignment with the user’s true intent, and the reliance on embedding-based similarity alone is often insufficient to capture the deep semantic relevance required for complex reasoning, resulting in responses that are either incomplete or contextually flawed (Zhao et al. 2024; Wang et al. 2025)."
+  },
+  {
+    "hash_code": "5f78619e1fd705155d35a11968e1a0ca",
+    "text": "To overcome the limitations of unstructured retrieval, researchers have increasingly explored knowledge graphbased RAG methods. Initial efforts, such as GraphRAG (Edge et al. 2024), successfully organized documents into community-based knowledge graphs, which helped preserve local context better than disconnected text chunks. However, these methods often generated large, coarse-grained communities, leading to significant information redundancy during retrieval. Subsequently, more advanced works like Hi-RAG (Huang et al. 2025a) refined this paradigm by introducing hierarchical structures, clustering entities into multilevel summaries. This represented a significant step forward in organizing knowledge. Despite this progress, our analysis reveals that two critical challenges remain unaddressed currently (as Figure 1 shows). First, the high-level summary nodes in these hierarchies exist as “semantic islands”. They lack explicit relational connections between each other, making it hard to reason across different conceptual communities within the knowledge base. Second, the retrieval process itself remains structurally unaware, often degenerating into a simple semantic search over a flattened list of nodes, failing to exploit the rich topological information encoded in the graph. This leads to a retrieval process that is both inefficient and imprecise."
+  },
+  {
+    "hash_code": "9b9b63e06008fbd3201aa53c2eb3c2f5",
+    "text": "To address these challenges, we propose LeanRAG, a novel retrieval-augmented generation framework that synergistically integrates deeply collaborative knowledge structuring with a lean, structure-guided retrieval strategy. At its core, LeanRAG introduces a semantic aggregation algorithm that constructs a hierarchical knowledge graph by organizing retrieved entities into semantically coherent clusters. Its key innovation lies not only in clustering entities based on semantic similarity but also in automatically inferring explicit inter-cluster summary relations, leveraging the underlying knowledge’s contextual and relational semantics to establish higher-order abstractions. This process transforms fragmented, isolated hierarchies into a unified, fully navigable semantic network, where both fine-grained details and abstracted knowledge are seamlessly interconnected."
+  },
+  {
+    "hash_code": "c3e13944da9c1a239adebd444919f122",
+    "text": "arXiv:2508.10391v4 [cs.AI] 12 Nov 2025"
+  },
+  {
+    "hash_code": "1cab3dafdd05e1a16585efe2cd7658ed",
+    "text": "<sup>\\*</sup>These authors contributed equally."
+  },
+  {
+    "hash_code": "0850c75ba7daa998dc91a1798e986afb",
+    "text": "<sup>†</sup>Corresponding author"
+  },
+  {
+    "hash_code": "9af0319d72343d4393e71bb3ca7331a0",
+    "text": "Building upon this enriched structure, LeanRAG employs a bottom-up, structure-aware retrieval mechanism that strategically navigates the graph to maximize relevance while minimizing redundancy. The retrieval process begins by anchoring the query to the most contextually pertinent fine-grained entities at the leaf level. It then systematically traverses relational pathways across both the original entity layer and the derived summary layer, propagating evidence upward through the hierarchy. This dual-level traversal ensures that the retrieved evidence set is not only concise and focused but also contextually comprehensive, capturing both specific details and broader conceptual relations essential for accurate and coherent generation."
+  },
+  {
+    "hash_code": "a75edc990f03e6a2e1b99334bd5efd55",
+    "text": "Our primary contributions can be summarized as follows:"
+  },
+  {
+    "hash_code": "da32d880db7b9b7dad67032aecd11830",
+    "text": "• A novel semantic aggregation algorithm designed for superior knowledge condensation. This method constructs a multi-resolution knowledge map by modeling and building new relational edges between summarylevel conceptual nodes, effectively preserving both finegrained facts and high-level thematic connections within a single, coherent structure."
+  },
+  {
+    "hash_code": "3b86630cf5057f49f66b182ba8da44cc",
+    "text": "• The introduction of a bottom-up entity retrieval strategy to mitigate information redundancy. By initiating retrieval from high-relevance “anchor” nodes and expanding context strictly along relevant semantic pathways, this strategy yields a precise and compact evidence subgraph for LLMs."
+  },
+  {
+    "hash_code": "bbbbc7d40656211b3746bc0416644327",
+    "text": "• We demonstrate through extensive experiments that LeanRAG achieves a new state-of-the-art on multiple challenging QA tasks, significantly outperforming existing methods in both response performance and efficiency."
+  },
+  {
+    "hash_code": "7e940a925be15512aa27998fbe594274",
+    "text": "Related Work"
+  },
+  {
+    "hash_code": "4468478878f96d778a7168024ff7c29a",
+    "text": "Retrieval-Augmented Generation"
+  },
+  {
+    "hash_code": "a0522964a61e7fa201c674f04511daa6",
+    "text": "Retrieval-Augmented Generation was introduced as a powerful paradigm to mitigate the intrinsic knowledge limitations of LLMs by grounding them in external information (Lewis et al. 2020). The standard RAG framework operates by retrieving relevant text chunks from a corpus and providing them as context to an LLM for answer generation (Wang et al. 2024). While effective, this approach is fundamentally constrained by the “chunking dilemma”: small, fine-grained chunks risk losing critical context, whereas larger chunks often introduce significant noise and dilute the LLM’s focus (Tonellotto et al. 2024)."
+  },
+  {
+    "hash_code": "60192fa1ca70f2c7f41be2ef7faf935a",
+    "text": "Substantial research has been dedicated to overcoming this limitation. One line of work improves the retriever itself, evolving from sparse methods like BM25 (Robertson, Zaragoza et al. 2009) to dense models such as DPR (Karpukhin et al. 2020) and Contriever (Izacard et al. 2021), which better capture semantic relevance. Another focuses on indexing and organizing source documents (Jiang et al. 2023), with recent methods creating hierarchical summaries of text chunks to enable multi-level retrieval. For example, RAPTOR builds a tree of recursively summarized clusters, allowing retrieval of fine-grained details and high-level summaries (Sarthi et al. 2024). However, these approaches still treat knowledge as linear or simple hierarchical structures and do not explicitly model complex, non-hierarchical relations between entities and concepts, limiting their ability to answer queries requiring reasoning over such connections—motivating KG-based RAG methods."
+  },
+  {
+    "hash_code": "718f847130aee4a8c09dd309bac7adfb",
+    "text": "Knowledge Graph Based Retrieval-Augmented Generation"
+  },
+  {
+    "hash_code": "f88bfe687672bfda5fa1fc2353b9f4d1",
+    "text": "To better capture the relational nature of information, KGbased RAG has emerged as a prominent research direction. By representing knowledge as a graph of entities and relations, these methods aim to provide a more structured and semantically rich context for the LLM (Peng et al. 2024). Early approaches in this domain focused on leveraging graph structures for improved retrieval. For instance, GraphRAG (Edge et al. 2024) organizes documents into community-based KGs to preserve local context, while other methods like FastGraphRAG utilize graph-centrality metrics such as PageRank (Page et al. 1999) to prioritize more important nodes during retrieval. This subgraph retrieval approach has also proven effective in industrial applications like customer service, where KGs are constructed from historical support tickets to provide structured context (Xu et al. 2024). These methods marked a significant step forward by imposing a macro-structure onto the knowledge base, moving beyond disconnected text chunks."
+  },
+  {
+    "hash_code": "48a5ecb00a7a3b130006301a67c9e473",
+    "text": "Recognizing the need for more fine-grained control and abstraction, subsequent works have explored more sophisticated hierarchical structures. HiRAG, the current stateof-the-art, clusters entities to form multi-level summaries (Huang et al. 2025a), while LightRAG (Guo et al. 2024) proposes a dual-level framework to balance global and local information retrieval. While these hierarchical methods have progressively improved retrieval quality, a critical gap persists in how the constructed graph structures are leveraged at query time. The retrieval process is often decoupled from the indexing structure; for instance, an initial search may be performed over a “flattened” list of all nodes, rather than being directly guided by the indexed community or hierarchical relations. This decoupling means the rich structural information is primarily used for post-retrieval context expansion, rather than for guiding the initial, crucial step of identifying relevant information. This can limit performance on complex queries where the relations between entities are paramount, highlighting the need for a new paradigm where the retrieval process is natively co-designed with the knowledge structure."
+  },
+  {
+    "hash_code": "11d04c747589e0a3b53761b58e0467f2",
+    "text": "Preliminary"
+  },
+  {
+    "hash_code": "c8064883edb6e1fc5feddb8cb8fd9963",
+    "text": "In this section, we will introduce and give a formal definition of a RAG system with a specific knowledge graph."
+  },
+  {
+    "hash_code": "804a7543e282e442965a005c3603b621",
+    "text": "Given a rich knowledge graph with the description of vertexes and relations $\\mathcal { G } \\ = \\ \\mathsf { \\bar { ( } } V , R , D _ { ( v e r ) } , D _ { ( r e l ) } \\mathsf { \\bar { ) } }$ , where V and R denote the set of entities and relations, $D _ { ( v e r ) }$ represents the collection of entity descriptions and $D _ { ( r e l ) }$ represents the collection of relationship descriptions. The goal of KG-based RAG is to leverage existing information to build a query-relevant sub-graph that helps LLMs generate highquality responses. Given a query $q ,$ the searching process can be formulated as:"
+  },
+  {
+    "hash_code": "88d50b48b239bc0954d85ca1c18e9494",
+    "text": "$$\n\\tilde { V } = \\mathrm { T o p } { \\cdot } \\mathrm { n } _ { v \\in V } ( \\mathrm { S i m } ( q , d _ { v } ) )\\tag{1}\n$$"
+  },
+  {
+    "hash_code": "07569c0efc4a60374c1aec35e0aa7fb1",
+    "text": "where $S i m ( \\cdot , \\cdot )$ is the embedding similarity metric function, and n is the choice number of similarity entities. Based on"
+  },
+  {
+    "hash_code": "fe1d77c8eb062158a11f4958592d2b35",
+    "text": "the metric, $\\tilde { V }$ contains the top n entities. Then we can search the relational paths L between nodes $v \\in \\tilde { V }$ . All relations r that constitute the path L belong to the relation set $R .$"
+  },
+  {
+    "hash_code": "f6fb0f1188ce7c4bce5dd6f975dd6d6c",
+    "text": "$$\nL = \\bigcup _ { x , y \\in \\tilde { \\mathcal { V } } } P a t h ( x , y ) = ( r _ { 1 } , r _ { 2 } , . . . )\\tag{2}\n$$"
+  },
+  {
+    "hash_code": "ce12fc778254d52da086ad8a6b18cd46",
+    "text": "By leveraging $\\tilde { V }$ and $L ,$ , the sub-graph $\\tilde { \\mathcal { G } }$ is constructed to support RAG systems with focused, query-relevant, and semantically enriched knowledge retrieval."
+  },
+  {
+    "hash_code": "dce8d3c96b8795c1b2ce10c7e017d553",
+    "text": "Method"
+  },
+  {
+    "hash_code": "8e60d335e37ba1135ef19ace1ed17f4a",
+    "text": "The performance of a generic KG-augmented retrieval framework is fundamentally determined by the structural and semantic quality of the underlying knowledge graph ${ \\mathcal { G } } ,$ as well as the precision and efficiency of the retrieval strategy. To address the limitations of a flat graph structure and naive path search strategy, we introduce LeanRAG, a framework built on the principle of tightly co-designing its aggregation and retrieval processes. As illustrated in Figure 2, LeanRAG consists of two core innovations: (1) a Hierarchical Graph Aggregation method that recursively builds a multi-level, navigable semantic network from the base KG; and (2) a Structured Retrieval strategy that leverages this hierarchy via Lowest Common Ancestor (LCA) path search approach to construct a compact and coherent context."
+  },
+  {
+    "hash_code": "12c15ae6c09885fc46778fd0a37ed25d",
+    "text": "Hierarchical Knowledge Graph Aggregation"
+  },
+  {
+    "hash_code": "0069f618a8a90fe59151367f3b6c1310",
+    "text": "The foundation of LeanRAG is the transformation of a flat knowledge graph $\\mathcal { G } _ { 0 }$ into a multi-level, semantically rich hierarchy H. This hierarchy allows for retrieval at varying levels of abstraction. We construct this hierarchy, denoted as ${ \\mathcal { H } } = \\{ { \\mathcal { G } } _ { 0 } , { \\mathcal { G } } _ { 1 } , \\ldots , { \\mathcal { G } } _ { k } \\}$ , in a bottom-up, layer-by-layer fashion. Each layer $\\mathcal { G } _ { i } = \\dot { ( V _ { i } , R _ { i } , D _ { ( v e r ) _ { i } } , D _ { ( r e l ) _ { i } } ) }$ represents a more abstract view of the layer below it, $\\mathcal { G } _ { i - 1 }$ . The core of this construction lies in a recursive aggregation process that clusters nodes based on semantic similarity and then intelligently generates new, more abstract entities and relations to form the next layer."
+  },
+  {
+    "hash_code": "e3897c355818a9ca83d42291d4c8c7af",
+    "text": "Recursive Semantic Clustering. Given a knowledge graph layer $\\mathcal { G } _ { i - 1 }$ , the first step is to identify groups of semantically related entities that can be abstracted into a single, higher-level concept. We leverage the rich descriptive text $d _ { v } \\in D _ { ( v e r ) }$ associated with each entity $v \\in V _ { i - 1 }$ for i−1 this purpose. Following recent works in clustering text representation (Sarthi et al. 2024), we employ a two-step process:"
+  },
+  {
+    "hash_code": "c8cb3ae72f3c2f7cce496b2f97904fd2",
+    "text": "1. Semantic Embedding: We first encode the textual description of each entity into a dense vector representation using a pre-trained embedding model $\\Phi ( \\cdot )$ . This yields a set of embeddings for the entire KG layer:"
+  },
+  {
+    "hash_code": "6e431e9efce799989ef8178c661cc879",
+    "text": "$$\n\\mathbf { E } _ { i - 1 } = \\{ \\Phi ( d _ { v } ) \\mid v \\in V _ { i - 1 } \\}\\tag{3}\n$$"
+  },
+  {
+    "hash_code": "beb7051903b1cfd214f314227aeccb95",
+    "text": "2. Gaussian Mixture Clustering: We then apply a Gaussian Mixture Model (GMM) (Reynolds 2015) to the set of embeddings $\\mathbf E _ { i - 1 }$ . The GMM partitions the entities $V _ { i - 1 }$ into m disjoint clusters $\\mathcal { C } _ { i - 1 } \\stackrel { \\cdot } { = } \\{ C _ { 1 } , C _ { 2 } , \\ldots , C _ { m } \\}$ where each cluster $C _ { j } ~ ( j \\in [ 1 , m ] )$ contains entities that are semantically similar in the embedding space."
+  },
+  {
+    "hash_code": "3629763aa68182c6e100a0a9bbbfae71",
+    "text": "This clustering provides a principled grouping of finegrained entities, setting the stage for conceptual abstraction."
+  },
+  {
+    "hash_code": "16720f35f8b55fd77f754b6376319a65",
+    "text": "Generation of Aggregated Entities and Relations. A key limitation of prior hierarchical methods is that they often only cluster entities, losing the rich relational information in the process. LeanRAG overcomes this by using LLMs to intelligently generate both new entities and new relations for the subsequent layer $\\mathcal { G } _ { i }$"
+  },
+  {
+    "hash_code": "555e433dc64fad47e6a8399555613bfa",
+    "text": "Aggregated Entity Generation. For each cluster $C _ { j } ~ \\in$ $\\mathcal { C } _ { i - 1 }$ , we generate a single, more abstract aggregated entity $\\alpha _ { j }$ that represents the cluster’s collective semantics. This abstraction is achieved via a generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ , which synthesizes a new concept by considering both the entities within the cluster and the relations that exist among them. Let $R _ { C _ { i } }$ be the set of relations in $\\mathcal { G } _ { i - 1 }$ among entities within cluster $\\mathbf { \\bar { \\mathit { C } } } _ { j }$"
+  },
+  {
+    "hash_code": "5bcc69958989b2f041689a296ac792c5",
+    "text": "$$\n( \\alpha _ { j } , d _ { \\alpha _ { j } } ) = \\mathcal { F } _ { \\mathrm { e n t i t y } } ( C _ { j } , R _ { C _ { j } } )\\tag{4}\n$$"
+  },
+  {
+    "hash_code": "845d467ba44a496671ed632c46b2508d",
+    "text": "The new entity set $V _ { i } = \\{ \\alpha _ { j } \\} _ { j = 1 } ^ { m }$ and their associated descriptions $D _ { V _ { i } } \\{ d _ { \\alpha _ { j } } \\} _ { j = 1 } ^ { m }$ are defined as the parent nodes of $\\{ C _ { 1 } , C _ { 2 } , \\ldots , C _ { m } \\}$ in the hierarchy, i.e., the nodes located at the immediate higher level in the hierarchical structure."
+  },
+  {
+    "hash_code": "fe8cf398fd9dee42d058c8605fdaec0e",
+    "text": "In practice, the generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ is implemented by LLMs guided by a carefully designed prompt $\\mathcal { P } _ { \\mathrm { e n t i t y } }$ . We prompt LLMs to produce a concise name for the new entity $\\alpha _ { j }$ and a comprehensive description $d _ { \\alpha _ { i } }$ that summarizes its components. Each entity $v \\in C _ { j }$ is then linked to its new parent entity $\\alpha _ { j }$ , forming the parent-child connections in the hierarchy."
+  },
+  {
+    "hash_code": "f6970ad303891b20300fa2d845578817",
+    "text": "Aggregated Relation Generation. To prevent the formation of “semantic islands” at higher layers, we explicitly create new relations between the aggregated entities in $V _ { i } .$ . This ensures that the graph remains connected and navigable at all levels of abstraction. For any pair of aggregated entities $( \\alpha _ { j } , \\alpha _ { k } )$ , we confirm the inter-cluster relations $R _ { < C _ { j } , C _ { k } > }$ that contains the relations between nodes that belong to the"
+  },
+  {
+    "hash_code": "f98ed050a6cba1435cb7076ab0c24eac",
+    "text": "$C _ { j }$ and $C _ { k }$ , respectively. Then, we constitute the inter-cluster aggregated relation $r _ { < C _ { i } , C _ { k } > }$ by $R _ { < C _ { j } , C _ { k } > }$ . This paper defines the number of $R _ { < \\dot { C } _ { j } , C _ { k } > }$ as the connectivity strength, $\\lambda _ { j , k }$ . If $\\lambda _ { j , k }$ exceeds a dynamically defined threshold τ , we infer that a meaningful high-level relationship exists, which is summarized by the LLM-driven function $\\mathcal { F } _ { \\mathrm { r e l } }$ . Otherwise, the inter-cluster aggregated relation is simply regarded as the text concatenation of $R _ { < C _ { j } , C _ { k } > }$"
+  },
+  {
+    "hash_code": "30b9f18b2cb1fb5caadfb402eaa8a4e2",
+    "text": "$$\nr _ { < \\alpha _ { j } , \\alpha _ { k } > } = \\left\\{ \\begin{array} { l l } { \\mathcal { F } _ { ( \\mathrm { r e l } ) } ( \\alpha _ { j } , \\alpha _ { k } , R _ { < C _ { j } , C _ { k } > } ) , } & { \\mathrm { i f ~ } \\lambda _ { j , k } > \\tau } \\\\ { C o n c a t e ( R _ { < C _ { j } , C _ { k } > } ) , } & { \\mathrm { o t h e r w i s e } } \\end{array} \\right.\\tag{5}\n$$"
+  },
+  {
+    "hash_code": "189da9e1517538145d1130e874dc04f6",
+    "text": "In practice, the generation function $\\mathcal { F } _ { \\mathrm { r e l } }$ is implemented by LLMs guided by a specific prompt $\\mathcal { P } _ { \\mathrm { r e l } }$"
+  },
+  {
+    "hash_code": "5ec9a97dbd680a10685503cb12cde29b",
+    "text": "The threshold τ is a data-dependent hyper-parameter that may vary with the layer index to reflect the knowledge graph’s density at different abstraction levels, ensuring only salient, well-supported relations are propagated."
+  },
+  {
+    "hash_code": "27f8b12f9488ca95e3ef2eb2e6f4009e",
+    "text": "By recursively applying this process of clustering and generation, we construct a rich, multi-layered KG where each layer provides a progressively more abstract, yet semantically coherent, view of the original information."
+  },
+  {
+    "hash_code": "bceab8fd6c3d4cde9fdb4443fde5337d",
+    "text": "Structured Retrieval via Lowest Common Ancestor"
+  },
+  {
+    "hash_code": "9858f33d55b3e04652a99fa26fc288dd",
+    "text": "The hierarchical knowledge graph H enables a retrieval strategy that is fundamentally more structured and efficient than searching over a flat graph. Our approach moves beyond simple similarity-based retrieval by leveraging the graph’s topology to construct a compact and contextually coherent subgraph. This process consists of two main phases: initial entity anchoring at the base layer, followed by a structured traversal of the hierarchy to gather context."
+  },
+  {
+    "hash_code": "0477d9595a62f3f7ac1feaedb9c6a679",
+    "text": "Initial Entity Anchoring. Given a user query $q ,$ the first step is to ground the query in the most specific, fine-grained facts available. We achieve this by performing a dense retrieval search exclusively over the entities of the original graph, including the initial entities, that ${ \\mathrm { i s } } ,$ the base-layer graph $\\mathcal { G } _ { 0 }$ . We identify the top n entities whose textual descriptions are most semantically similar to the query:"
+  },
+  {
+    "hash_code": "2844c9b58538318956797662915411c0",
+    "text": "$$\nV _ { \\mathrm { s e e d } } = \\mathrm { T o p } { \\cdot } \\mathsf { n } _ { v \\in V _ { 0 } } ( \\sin ( q , d _ { v } ) )\\tag{6}\n$$"
+  },
+  {
+    "hash_code": "e716ad0831a318662f52e3f12380e080",
+    "text": "This set of “seed entities”, $V _ { \\mathrm { s e e d } }$ , serves as the starting point for structured traversal, ensuring our retrieval process is anchored in the most relevant parts of the knowledge base."
+  },
+  {
+    "hash_code": "1723ca49fba8789af3641f084bb210a7",
+    "text": "Contextualization via LCA Path Traversal. Graph retrieval methods in the prior KG-based RAG would typically find all paths between entities in $V _ { \\mathrm { s e e d } }$ on the flat graph $\\mathcal { G } _ { 0 }$ This approach often retrieves a large number of intermediate nodes that add noise and redundancy. In contrast, LeanRAG utilizes the entire hierarchy H to define a much more focused and meaningful context. Our core idea is to construct a minimal subgraph that connects the seed entities through their most immediate shared concepts in the hierarchy. We achieve this using the principle of the LCA. For two seed entities in $V _ { \\mathrm { s e e d } }$ , their lowest common ancestor $\\left( \\mathrm { L C A } \\right) v _ { \\mathrm { l c a } }$ is defined as the common ancestor with the minimum depth in the hierarchy H among all their ancestors. This ensures that the combined path length from the two seed entities to $v _ { \\mathrm { l c a } }$ is minimized to avoid information redundancy."
+  },
+  {
+    "hash_code": "fff95bf80b921726f3554355212a7f77",
+    "text": "The retrieval path $\\mathcal { P } _ { \\mathrm { l c a } }$ is then defined as the union of all shortest paths in the hierarchy from each seed entity $v \\in$ $V _ { \\mathrm { s e e d } }$ to the common ancestor $v _ { \\mathrm { l c a } } \\mathrm { . }$"
+  },
+  {
+    "hash_code": "e94469d48e0c7da3284e44403fe97403",
+    "text": "$$\n\\mathcal { P } _ { \\mathrm { l c a } } ( V _ { \\mathrm { s e e d } } , \\mathcal { H } ) = \\bigcup _ { v \\in V _ { \\mathrm { s e e d } } } \\mathrm { S h o r t e s t P a t h } _ { \\mathcal { H } } ( v , v _ { \\mathrm { l c a } } )\\tag{7}\n$$"
+  },
+  {
+    "hash_code": "8331fcad0f4001128383a05555eac998",
+    "text": "where ShortestPath $ _ { \\cdot \\mathcal { H } } ( \\cdot , \\cdot )$ denotes the shortest path between two nodes within the hierarchical graph H. Since our hierarchy is tree-like, this path consists of the direct chain of from child nodes to parent nodes. Finally, the retrieved subgraph for RAG context $\\mathcal { G } _ { \\mathrm { r e t } }$ is composed of all entities and relations that lie on these LCA paths:"
+  },
+  {
+    "hash_code": "65bfc088822e901547e4f9d5d5dea582",
+    "text": "$$\n\\mathcal { G } _ { \\mathrm { r e t } } = ( V _ { \\mathrm { r e t } } , R _ { \\mathrm { r e t } } )\\tag{8}\n$$"
+  },
+  {
+    "hash_code": "ef3567cf5c0ca0cd18e1bd930f297abd",
+    "text": "$$\nV _ { \\mathrm { r e t } } = \\{ v \\mid v \\in \\mathcal { P } _ { \\mathrm { l c a } } \\}\\tag{9}\n$$"
+  },
+  {
+    "hash_code": "96e9f79e93873eec4327d16ae5baf35d",
+    "text": "$$\nR _ { \\mathrm { { r e t } } } = R _ { \\mathrm { { l c a } } } \\cup R _ { \\mathrm { { i n t e r - c l u s t e r } } }\\tag{10}\n$$"
+  },
+  {
+    "hash_code": "32e757f9d56e2271ba49c637377314d3",
+    "text": "where $R _ { \\mathrm { l c a } }$ contains the relations within the retrieval path $\\mathcal { P } _ { \\mathrm { l c a } }$ and $R _ { \\mathrm { i n t e r - c l u s t e r } }$ contains the inter-cluster relations between aggregation entities that are in the same level in the hierarchical knowledge graph. For example, $r _ { < \\alpha _ { j } , \\alpha _ { k } > } ~ \\in$ $R _ { \\mathrm { i n t e r - c l u s t e r } } ,$ where $\\alpha _ { j } \\in { \\mathcal G } _ { i }$ and $\\alpha _ { k } \\in \\mathcal G _ { i }$"
+  },
+  {
+    "hash_code": "583563da5b12c9ab7fbb8648b766d25b",
+    "text": "This LCA-based traversal strategy ensures that the retrieved context is not just a collection of relevant entities, but a connected, coherent narrative structure, spanning from specific facts to their shared abstract concepts. This significantly reduces information redundancy and provides a much richer, more structured context to the final LLM generator. Furthermore, we return the original chunks from which the entities were sourced as supporting evidence. The illustration of this process is provided in Figure 2."
+  },
+  {
+    "hash_code": "2289bd46825efa1b71da66acd3b08ea4",
+    "text": "Experiments"
+  },
+  {
+    "hash_code": "142d797786f779464e7229ee3b43b48f",
+    "text": "In our experiments, we aim to answer the following research questions:"
+  },
+  {
+    "hash_code": "44fa758873a75dac47e55e40b70b84de",
+    "text": "• RQ1: How does LeanRAG’s QA performance compare against state-of-the-art baselines across diverse domains?"
+  },
+  {
+    "hash_code": "fbcf4e6ea9f8edfa439c2a78124df2a4",
+    "text": "• RQ2: Does LeanRAG’s retrieval strategy reduce information redundancy while improving generation quality?"
+  },
+  {
+    "hash_code": "e12e502dddc3c6d8db2fa23f91c7108a",
+    "text": "• RQ3: To what extent does the explicit generation of relations between aggregated entities contribute to the quality of the response?"
+  },
+  {
+    "hash_code": "502b2fc677bb535bba147a30ba7099cf",
+    "text": "• RQ4: Is the structured knowledge retrieved from the graph sufficient for high-quality generation, or is the inclusion of the entities original textual context essential?"
+  },
+  {
+    "hash_code": "0c8827d3d9b97d07be56113059b3d725",
+    "text": "Baselines. To evaluate the performance of LeanRAG, we compare it against a comprehensive suite of representative and state-of-the-art KG-based RAG methods. The selected baselines include:"
+  },
+  {
+    "hash_code": "a6e90a28507a3c340043202072c4b909",
+    "text": "• NaiveRAG (Lewis et al. 2020): The foundational RAG approach, which retrieves semantically similar text chunks from a document corpus."
+  },
+  {
+    "hash_code": "fad5711df51717cb19a3c9ea08326ded",
+    "text": "• GraphRAG (Edge et al. 2024): A prominent KG-based method that organizes knowledge into communities. We utilize its local search mode, as the global mode has significant computational overhead and does not leverage local entity context."
+  },
+  {
+    "hash_code": "dd200c596ff13b6ee57fd2f5b9dc3e22",
+    "text": "• LightRAG (Guo et al. 2024): Uses a dual-level retrieval framework based on a KG-based text indexing paradigm."
+  },
+  {
+    "hash_code": "5b3a4a1f466eb61a975061a31527194e",
+    "text": "• KAG (Liang et al. 2025): A pipeline that aligns LLM generation with structured KG reasoning through mutual knowledge-text indexing and logic-form guidance."
+  },
+  {
+    "hash_code": "1afc4a6939bc64f97a7b60544ee694cf",
+    "text": "• FastGraphRAG: An enhancement of graph retrieval that uses the PageRank algorithm (Page et al. 1999) to prioritize nodes of higher importance."
+  },
+  {
+    "hash_code": "ebdf1af80f8f8747476ead38c2cbfc44",
+    "text": "• HiRAG (Huang et al. 2025a): The current state-of-theart, which introduces hierarchical structures by clustering entities into multi-level summaries."
+  },
+  {
+    "hash_code": "e4d223c7d2dd5b45c49bc78197a586ec",
+    "text": "Datasets and Evaluation Metrics. We used four datasets from the UltraDomain benchmark (Qian et al. 2024), which is designed to evaluate RAG systems across diverse applications, focusing on long context tasks and high-level queries in specialized domains. We used Mix, CS, Legal, and Agriculture datasets following the prior work (Guo et al. 2024)."
+  },
+  {
+    "hash_code": "97cdba4a365362a7b07bb125c5f937fd",
+    "text": "Evaluation Metrics. To provide a multi-faceted and indepth analysis of system performance, we evaluate the generated answers along four crucial dimensions, following the prior work (Huang et al. 2025a):"
+  },
+  {
+    "hash_code": "9505e93d0e6188321b6b396c0851bcaf",
+    "text": "• Comprehensiveness: Measures how thoroughly the answer addresses the user’s query."
+  },
+  {
+    "hash_code": "042ca205e950866d37e2ce694072a676",
+    "text": "• Empowerment: Evaluates the answer’s practical utility and its ability to provide actionable information."
+  },
+  {
+    "hash_code": "91492afce04ed07b45eb40411050eb05",
+    "text": "• Diversity: Assesses the breadth of information and perspectives presented in the answer."
+  },
+  {
+    "hash_code": "5c0be86f479775ae187216c6d865c6af",
+    "text": "• Overall: Provides a single, holistic quality score to measure how the answer performs overall, considering comprehensiveness, empowerment, diversity, and any other relevant factors."
+  },
+  {
+    "hash_code": "549a256e8d6b01779c2471e815afd9b4",
+    "text": "Following recent best practices in automated evaluation, we employ powerful LLMs as judges to score the outputs of all methods on the 1 to 10 scale defined by our metrics. In order to directly reflect the quality of the answers, we will also use LLM to directly evaluate the two answers to obtain their win rates. Specifically, we use DeepSeek-V3 (Liu et al. 2024) as our evaluators, providing them with carefully designed prompts to ensure consistent and unbiased scoring, and each query and answer is scored 5 times."
+  },
+  {
+    "hash_code": "1350e843269320150d39cb90a1ba4b04",
+    "text": "Implementation Details. Across all experiments, we use DeepSeek-V3 as an LLM generator for all models to ensure a fair comparison. The text embedding for retrieval is computed using BGE-M3 (Chen et al. 2024). The number of clusters for the GMM and other key hyperparameters are tuned on a held-out validation set. All main experiments were conducted by leveraging commercial API services. For our main experiments, we utilized the Deepseek-V3 mode as the backbone for all models, following the prior work (Huang et al. 2025a), ensuring a fair comparison. In addition, in order to evaluate RQ2 efficiently, we reproduced the baseline methods on the Qwen3-14b (Yang et al. 2025) model to evaluate the redundancy between LeanRAG and other methods. All implementation details are provided in the extended version (?)."
+  },
+  {
+    "hash_code": "595760bbcb7173a45c954cfef8ebe623",
+    "text": "Overall Performance Comparison (RQ1)"
+  },
+  {
+    "hash_code": "802f4b23c04cee237dde387427271d6f",
+    "text": "To address RQ1 , we compare LeanRAG against all baseline models across four benchmarks, as presented in Table 1. The experimental results demonstrate that LeanRAG almost outperforms all baselines across the evaluated datasets."
+  },
+  {
+    "hash_code": "140e903096259129d71ad363dd445f8b",
+    "text": "From a Comprehensiveness perspective, even after removing the information-intensive community structure of traditional KG-based RAG, the aggregation used by Lean-RAG still provides sufficient query-related information. Furthermore, Empowerment and Diversity effectively measure the relevance of the provided information. These indicate that LeanRAG effectively enhances the breadth of information by establishing inter-cluster relations, resulting in optimal performance. In summary, LeanRAG demonstrates state-of-the-art performance on the majority of metrics across four evaluated datasets and achieves highly competitive results on the remaining ones."
+  },
+  {
+    "hash_code": "792b1ecca86dbcd2d2a2c2feea52b581",
+    "text": "Analysis of Information Redundancy (RQ2)"
+  },
+  {
+    "hash_code": "1caa43abc45a08a2a9172ad7985d6c2a",
+    "text": "Experimental Setup. To answer RQ2, we evaluate the information redundancy of different methods. We use the token count of the retrieved context as a metric for redundancy, where a lower token count at a comparable performance level signifies a less redundant context. We re-implemented all baselines with Qwen3-14B-Instruct."
+  },
+  {
+    "hash_code": "9a777db8c931a5adb9195209967125aa",
+    "text": "Retrieved Context Size. Figure 3 shows the number of tokens in the context retrieved by each method. The results indicate that LeanRAG retrieves a substantially more compact context compared to all baselines. On average, its retrieved context is 46% smaller than baselines. This result can be attributed to our LCA-based traversal strategy, which constructs a focused subgraph by navigating the hierarchy, in contrast to methods that retrieve larger communities."
+  },
+  {
+    "hash_code": "79a80d37759223bb44fec2df2628ce94",
+    "text": "Cluster Relation Effectiveness Analysis (RQ3)"
+  },
+  {
+    "hash_code": "ec008e60defee0f594feabb4df70d1ec",
+    "text": "The core innovation of LeanRAG is not only its use of finegrained, controllable aggregate entities but also its establishment of paths between them, which creates a fully navigable semantic network for retrieval. This design directly addresses RQ3: whether the inter-cluster relationships, which break the traditional “semantic islands” problem, can truly improve retrieval quality. To test this, we conducted experiments on four datasets, comparing the retrieval results of LeanRAG with and without the inclusion of path information. The win rates across four different metrics were then analyzed, with the results summarized in Table 2."
+  },
+  {
+    "hash_code": "819c18b09ffeb058cd425f02cd19c84b",
+    "text": "The data in Table 3 clearly shows that when relational paths are removed, LeanRAG’s retrieval diversity, or the breadth of its information, decreases significantly. This result confirms that establishing relationships between clusters effectively connects isolated entities, thereby enriching the information available for retrieval. Furthermore, by explicitly returning these relationships, the retrieval process is enhanced, leading to a demonstrable improvement in the overall quality of the retrieved answers."
+  },
+  {
+    "hash_code": "f723a681e4777728f773b0d238050844",
+    "text": "Necessity Analysis of Textual Context (RQ4)"
+  },
+  {
+    "hash_code": "0644547994eb20ed75bfa5b2542e585f",
+    "text": "Motivation and Setup. To answer RQ4, we investigate the role of the original unstructured text chunks in our framework. While the graph structure serves as an effective retrieval guide, it is crucial to assess whether structured information alone suffices for the generator or if the source text remains essential. To this end, we conduct an ablation study using a variant of our model, denoted as LeanRAG w/o Context. This variant follows the same hierarchical retrieval process, but the final context provided to the LLM generator includes only the names and descriptions of the retrieved graph entities, excluding the original text chunks linked to the base-level entities. We then compare its performance with that of the full LeanRAG model."
+  },
+  {
+    "hash_code": "0796767cd3492bbc4b2764d6645bea89",
+    "text": "Results and Analysis. The results of this comparison are presented in Table 3. Across all four datasets and nearly every evaluation metric, the performance of LeanRAG drops significantly when the original textual context is removed. On average, the overall quality score decreases from 8.59 to 7.93 on the Mix dataset, and similar degradations are observed on the CS, Legal, and Agriculture datasets."
+  },
+  {
+    "hash_code": "543f8e9adbbb9e679633c57297631115",
+    "text": "The most pronounced drops are consistently seen in the Comprehensiveness and Empowerment metrics. This is expected, as raw text chunks contain the detailed explanations, evidence, and nuanced language necessary for generating thorough and actionable answers. In contrast, a context composed solely of structured entity information, while semantically focused, lacks the narrative richness required by the LLM. These findings confirm our hypothesis: the hierarchical graph in LeanRAG acts as an effective semantic index and navigation system whose primary function is to precisely locate critical segments of unstructured text. The collaboration between structured graph traversal for guidance and the rich content of unstructured text for generation is essential to achieving state-of-the-art performance."
+  },
+  {
+    "hash_code": "c291bb698cb52f25155395b80075e0a6",
+    "text": "Conclusions"
+  },
+  {
+    "hash_code": "47741fd0e06d7c109d8770dcc24abe3e",
+    "text": "To address the critical challenges of “semantic islands” and the structure-retrieval mismatch prevalent in the KG-based RAG systems, we introduced LeanRAG, a novel framework that resolves these issues through a tight co-design of its knowledge aggregation and retrieval mechanisms. Our approach features a hierarchical aggregation algorithm that constructs a fully navigable semantic network by generating explicit relations between abstract summary concepts, and a complementary bottom-up, LCA-based retrieval strategy that efficiently traverses this structure. Extensive experiments validated our design, demonstrating that LeanRAG achieves state-of-the-art performance while significantly reducing information redundancy. Furthermore, our ablation studies confirmed that both the generation of summary information and the original textual context are essential for producing comprehensive and diverse answers."
+  },
+  {
+    "hash_code": "4da2df140b97ccc6d0ac6194e4a566af",
+    "text": "Acknowledgments"
+  },
+  {
+    "hash_code": "8c4a8fcfdf6985746aaa764102e3b97f",
+    "text": "The research was supported by Shanghai Artificial Intelligence Laboratory, the National Key R&D Program of China"
+  },
+  {
+    "hash_code": "5cf5ccbb1574677274ff937b7428a70c",
+    "text": "(Grant No. 2022ZD0160201) and the Science and Technology Commission of Shanghai Municipality (Grant Nos. 22DZ1100102)."
+  },
+  {
+    "hash_code": "d9f96eb150bcd613ea441e16a55d19d7",
+    "text": "References"
+  },
+  {
+    "hash_code": "759a521b26f33e0ef5b40b58db0fdb4b",
+    "text": "Appendix"
+  },
+  {
+    "hash_code": "43db3f344fb7d0a2be7e3bd03f175a23",
+    "text": "The appendix provides supplementary materials and detailed information to support the main findings of this paper. It includes a comprehensive breakdown of our methodology, covering the following key sections: More Results of Model Performance Across Four Datasets, Experimental Implementation Details, QA Cases of LeanRAG, Prompt Templates used in LeanRAG."
+  },
+  {
+    "hash_code": "6fab0a5fad1fd695831281362001e653",
+    "text": "This section is designed to ensure the reproducibility of our work by offering an in-depth look at the implementation specifics, including a detailed description of the datasets, the graph construction process, and the retrieval strategies employed. The provided prompt examples and templates further illustrate the mechanisms used to guide the Large Language Model (LLM) in generating high-quality responses."
+  },
+  {
+    "hash_code": "0ea26c3b83032c99cbe1d828160f3996",
+    "text": "A. More Results of Model Performance Across Four Datasets"
+  },
+  {
+    "hash_code": "885e93e50d7170e6aa867dad2bb65c7b",
+    "text": "The results consistently demonstrate that LeanRAG outperforms all baseline methods across all four datasets and evaluation metrics, achieving notably higher win rates. This suggests that the proposed approach offers a more efficient and reliable framework for retrieval and generation compared to existing methods."
+  },
+  {
+    "hash_code": "21346b27d80f9679e2e171a47d21571e",
+    "text": "LeanRAG significantly outperforms NaiveRAG, Fast-GraphRAG, and KAG: Across these baselines, LeanRAG exhibits overwhelming superiority, with win rates often exceeding 95%, and reaching 100% in some cases. This advantage is particularly pronounced in the Empowerment and Diversity metrics, underscoring LeanRAG’s ability to leverage structured knowledge graphs to provide more relevant and diverse information. These findings validate the fundamental advantage of graph-based methods over simple text retrieval approaches."
+  },
+  {
+    "hash_code": "5f00751693ac9fc4ad7b0d4291ef5abc",
+    "text": "LeanRAG demonstrates strong performance against more advanced baselines such as GraphRAG, LightRAG, and HiRAG: Although the win rates are comparatively lower than against simpler baselines, LeanRAG still maintains a substantial performance margin. When compared to other graph-based methods like GraphRAG and HiRAG, Lean-RAG achieves win rates consistently between 50% and 80%. This highlights the competitive advantage of LeanRAG’s strategy in aggregating entities and constructing multi-level semantic networks, surpassing conventional graph-based or hierarchy-based RAG techniques. On the Comprehensiveness metric within the Legal domain, LeanRAG’s win rate against GraphRAG is the lowest (51.0% vs. 49.0%), indicating that the dense and domain-specific nature of legal texts poses similar challenges for both models. In comparison with LightRAG, LeanRAG consistently outperforms it across the Mix and Legal datasets, with win rates frequently exceeding 80%, particularly in the Empowerment and Diversity categories. This indicates that LeanRAG’s enhanced graph construction and retrieval mechanisms are more effective than those employed by LightRAG."
+  },
+  {
+    "hash_code": "ee42e401a199fcd6d58eca97b65fbe98",
+    "text": "Consistency across datasets and metrics: LeanRAG’s superior performance is not limited to any single dataset or metric. It consistently outperforms baselines across diverse domains, including Mix, Computer Science, Legal, and Agriculture, demonstrating both robustness and generalizability. Notably, its highest win rates are often observed in the Empowerment and Diversity metrics, which are critical for generating high-quality, non-redundant, and actionable responses. This underscores the effectiveness of LeanRAG’s core design in producing meaningful outputs."
+  },
+  {
+    "hash_code": "ee1bdb38e2a14b8272e82bffc3f45be0",
+    "text": "B. Experimental Implementation Details"
+  },
+  {
+    "hash_code": "41b5e5a16eaa58b5470fcba104782765",
+    "text": "B.1 Dataset Details"
+  },
+  {
+    "hash_code": "11437dd46bb05ecf494cde76931e956f",
+    "text": "This subsection provides a comprehensive description of the dataset(s) utilized in this study. It includes details regarding the source of the data and its overall size (e.g., number of documents, total tokens)."
+  },
+  {
+    "hash_code": "9c59ca30dc4f0871c4f95d11c52cc5b9",
+    "text": "As presented in Table 5, the datasets vary significantly in size and content. The Legal dataset is the largest, containing 94 documents and a substantial 5,279,400 tokens, reflecting the detailed and extensive nature of legal texts. In contrast, the CS (Computer Science) dataset, while having fewer documents (10), still comprises a significant 2,210,894 tokens, indicating potentially longer and more technical documents within that domain. The Agriculture dataset contributes 12 documents and 2,028,496 tokens, while the Mix dataset, serving as a general collection, includes 61 documents and 625,948 tokens. These diverse characteristics allow for a thorough assessment of our model’s performance across varied information landscapes."
+  },
+  {
+    "hash_code": "a942bcebc6b66129290f264c040906d8",
+    "text": "B.2 Graph Construction Implementation Details"
+  },
+  {
+    "hash_code": "54d916e574dedfc9e530fca80b6d8f1d",
+    "text": "To effectively manage the scale of LeanRAG, we introduced a hyperparameter, clustersize, which allows us to control the number of clusters generated during the Gaussian Mixture Model (GMM) clustering process by manually limiting the number of nodes within each cluster. This design choice provides a significant degree of controllability, enabling us to adjust the size of LeanRAG according to specific application requirements."
+  },
+  {
+    "hash_code": "14756869bde4b1d76146ccfdae7814ea",
+    "text": "In our experiments, we performed a unified entity and relationship extraction for all documents within each dataset to build a single knowledge graph. This approach ensures a consistent graph structure for each dataset, rather than generating a separate graph for each question-answer pair."
+  },
+  {
+    "hash_code": "44bfe06a36d667a4c6630170a320aeed",
+    "text": "Despite the four datasets varying considerably in both size and domain, we consistently used a clustersize of 20 for graph construction. It’s important to note that clustersize is a pivotal factor that not only dictates the overall size of the LeanRAG graph but also profoundly impacts its retrieval efficiency and quality. Beyond this, the threshold τ , which governs the generation of inter-cluster relationships, also profoundly impacts LeanRAG’s performance. For our experiments, we set this threshold to 3.To further assess the efficacy of our method and cater to diverse use cases, future work will involve a comprehensive exploration of how different clustersize values and τ values influence Lean-RAG’s performance."
+  },
+  {
+    "hash_code": "563889a147bed072b1fc9eaffa0a656e",
+    "text": "B.3 Graph Retrieval Details"
+  },
+  {
+    "hash_code": "1e04a5a1f84e9cdbde45948dda678831",
+    "text": "B.3.1 Chunk Selection Strategy Based on our observations of traditional GraphRAG methods, we found that even after extracting structured entities, relationships, and community information, the original text chunks remain crucial for answering questions. This is because these chunks often contain incoherent semantic information that cannot be structurally extracted, yet still plays a vital role. Consequently, in LeanRAG, we also return the top-C retrieved chunks during the process."
+  },
+  {
+    "hash_code": "98692539635b0295bcc5a1b324612669",
+    "text": "Our specific approach is as follows: After identifying the initial seed nodes $V _ { \\mathrm { s e e d } } .$ , we trace back to their original text chunks. We then rank these chunks in descending order based on the number of entities from $V _ { \\mathrm { s e e d } }$ that appear within each chunk. Finally, we return the top-C chunks from this ranked list. This method allows us to pinpoint the top-C chunks most relevant to the query by aligning with the user’s intent through entity-based searching, which we find to be more effective than the similarity-based chunk retrieval employed by Naive RAG."
+  },
+  {
+    "hash_code": "025d6e30e5abae5164c3b7aad9fda21a",
+    "text": "B.4 Experiment Settings"
+  },
+  {
+    "hash_code": "ae24600a05ba0e946aa8927fb3c01982",
+    "text": "To ensure our method achieves optimal performance across all four datasets, we fine-tuned the hyperparameter clustersize, $T o p - N$ , and $T o p - C$ . The specific parameter settings used for these adjustments are detailed below:"
+  },
+  {
+    "hash_code": "1f2d1192e3ae95d5064bdc884263a6ec",
+    "text": "Our observations during the retrieval phase revealed distinct characteristics across the datasets, influencing the optimal parameter settings for effective information retrieval."
+  },
+  {
+    "hash_code": "a6938223d3abb86a16278c33cf6f93ed",
+    "text": "Specifically, for the Mix and Agriculture datasets, a relatively smaller number of seed nodes $V _ { \\mathrm { s e e d } }$ was sufficient for robust query resolution. This can be attributed to the limited scope of content within a subset of documents and the overall stronger internal connectedness within their respective knowledge bases."
+  },
+  {
+    "hash_code": "a8e7598e0a8a0dd7e7eee02cc85f7e57",
+    "text": "Conversely, the Computer Science (CS) dataset presented unique challenges. Its weaker intrinsic associativity and the less structured nature of its specialized terminology necessitated the retrieval of a larger number of supporting chunks. This suggests that relevant information for a given query in the CS domain might be more distributed and less directly interlinked within the graph structure."
+  },
+  {
+    "hash_code": "8624fcb62779ca72ce310d5cbf757a49",
+    "text": "Finally, the Legal dataset, characterized by its highly specialized and extensive terminology and greater documentlevel separability, required the retrieval of a larger volume of information. This indicated a need for a higher count of $V _ { \\mathrm { s e e d } } \\mathrm { t o }$ achieve a comprehensive understanding of the query, as pertinent details tended to be more dispersed across a broader range of documents."
+  },
+  {
+    "hash_code": "cbf1c7352276facce1e95ed26fe056db",
+    "text": "C. QA Cases of LeanRAG"
+  },
+  {
+    "hash_code": "71b68728c0262c37b2d0baa46de86206",
+    "text": "To illustrate the effectiveness of our approach, this section presents a few straightforward examples comparing the performance of LeanRAG with the HiRAG method. These cases are designed to highlight how LeanRAG’s optimized graph structure and retrieval strategy lead to more precise and coherent answers. By directly contrasting their outputs, we aim to demonstrate the practical benefits of our method in various query scenarios,the case can be found in Table 7."
+  },
+  {
+    "hash_code": "8c46610c73fa3b747df0baec65733e49",
+    "text": "D. Prompt Templates used in LeanRAG"
+  },
+  {
+    "hash_code": "96ea53972a898c737ffeb78c84a611ce",
+    "text": "This section details the specific prompt templates employed within the LeanRAG framework. While our knowledge graph (KG) generation code aligns with that of LightRAG and will not be reiterated here, this chapter focuses on the four distinct prompt templates critical to LeanRAG’s operation: the Entity Aggregation Prompt, the Inter-Cluster Relation Generation Prompt, the Score Scoring Prompt, and the Win Rate Evaluation Prompt. Each prompt plays a vital role in guiding the Large Language Model (LLM) through various stages of information processing, from consolidating entities to evaluating retrieval outcomes."
+  },
+  {
+    "hash_code": "e8164856ee8381a5670cb711fb1e3676",
+    "text": "D.1 Prompt Templates for Entity Aggregation"
+  },
+  {
+    "hash_code": "ea7a01134f5e63c6aa807c8c8244136d",
+    "text": "As depicted in Figure 8, we leverage the clusters generated by the Gaussian Mixture Model (GMM) to derive descriptions of all entities within a cluster, along with the relationships between these intra-cluster entities. This information is then used to generate an aggregated entity. To circumvent the limitations of traditional community concepts, which can forcibly aggregate all entities and inadvertently assign irrelevant attributes, we explicitly constrain the Large Language Model (LLM) to generate information solely based on the current set of entity descriptions. Furthermore, we emphasize the connecting role of the generated aggregated entity for its constituent sub-entities, ensuring its relevance and coherence within the broader knowledge graph."
+  },
+  {
+    "hash_code": "5f7915529d3fae6d4e91e5566e240ff8",
+    "text": "D.2 Prompt Templates for Relation Aggregation"
+  },
+  {
+    "hash_code": "64153e87db53518bf2765f5234cf84a4",
+    "text": "As illustrated in Figure 9, we employ a specialized relation prompt to generate relationships between the aggregated entities. This prompt leverages the names and descriptions of two aggregated entities, alongside the existing relationships between their constituent sub-entities, to infer and generate all relevant connections between the two aggregated entities. Given that the descriptions of the aggregated entities already encapsulate the broad information of their sub-entities, we did not incorporate additional sub-entity descriptions to enrich the input. Through this generation of relationships between sets of aggregated entities, LeanRAG effectively mitigates the problem of “semantic islands”, thereby constructing a multi-level navigable semantic network."
+  },
+  {
+    "hash_code": "e8e517cbdedce3c16e7c4510593d2d33",
+    "text": "D.3 Prompt Template for Absolute Quality Scoring"
+  },
+  {
+    "hash_code": "64fa25638b6979a6ec24f5880e09604c",
+    "text": "To obtain a quantitative measure of performance for each model, we designed a prompt for absolute quality scoring. This prompt instructs an evaluating LLM to assess a single generated answer based on our predefined metrics (Comprehensiveness, Empowerment, etc.) and assign a numerical score from 1 to 10 for each. To ensure transparency and facilitate analysis, the LLM is also required to provide a concise rationale for each score. All assessments are structured in a JSON format to ensure consistency and ease of parsing. The detailed template used for this scoring task is presented in Table 10."
+  },
+  {
+    "hash_code": "0c227fb007ac389439bbf5cfb7fd6bad",
+    "text": "D.4 Prompt Template for Pairwise Comparison"
+  },
+  {
+    "hash_code": "c130555f53651fa290b9075dbc8102fe",
+    "text": "In addition to absolute scoring, we conducted pairwise comparisons to determine the relative performance between different models, resulting in win-rate statistics. For this purpose, we developed a separate prompt that presents the answers from two different models (e.g., LeanRAG vs. Hi-RAG) to an evaluating LLM. The prompt then instructs the evaluator to act as an impartial judge and determine which of the two answers is superior, considering the overall quality. The LLM must declare a “winner” and provide a detailed justification for its decision, again in a structured JSON format. The template used for these head-to-head comparisons is shown in Table 11."
+  },
+  {
+    "hash_code": "f175b8fb80a75892a364a5d5c3562c61",
+    "text": "Table 9: The prompt template of generate relation between aggregation entities."
+  },
+  {
+    "hash_code": "3f6a3fc68c2ddeeef24ea96e3eb3cb06",
+    "text": "Table 10: The prompt template of scoring model response."
+  },
+  {
+    "hash_code": "601af114412de17ef912b974b8a5180e",
+    "text": "QA scoring prompt"
+  },
+  {
+    "hash_code": "61c637f15c5923e574689cc1d5822134",
+    "text": "Your task is to evaluate the following answer based on four criteria. For each criterion, assign a score from 1 to 10 , following the detailed scoring rubric."
+  },
+  {
+    "hash_code": "7850c31d20a2ef126e96164119dbcc45",
+    "text": "When explaining your score, you must refer directly to specific parts of the answer to justify your reasoning. Avoid general statements — your explanation must be grounded in the content provided."
+  },
+  {
+    "hash_code": "97a577e99795b1d1ae84cae1bd7209f7",
+    "text": "- Comprehensiveness:"
+  },
+  {
+    "hash_code": "e4eeff41e3bd8a8841c32953dba06f2b",
+    "text": "How much detail does the answer provide to cover all aspects and details of the question?"
+  },
+  {
+    "hash_code": "717db9a9c1fc39c54bc5597f8c4e244a",
+    "text": "- Diversity:"
+  },
+  {
+    "hash_code": "8e6351f7e25bb565ac10a6e6221b5057",
+    "text": "How varied and rich is the answer in providing different perspectives and insights on the question?"
+  },
+  {
+    "hash_code": "ec261f50b0b9e43fee8bdb1d9a4be065",
+    "text": "- Empowerment:"
+  },
+  {
+    "hash_code": "3b6b8bc0b887677aa1a134fab6678196",
+    "text": "How well does the answer help the reader understand and make informed judgments about the topic?"
+  },
+  {
+    "hash_code": "703863839ac2046747da0c7faae2e3eb",
+    "text": "- Overall Quality:"
+  },
+  {
+    "hash_code": "9d20d713325cc8727cd84fa305a2c630",
+    "text": "Provide an overall evaluation based on the combined performance across all four dimensions. Consider both content quality and answer usefulness to the question."
+  },
+  {
+    "hash_code": "ffba0900d53a9ecc2c7d44fd4e3e74d3",
+    "text": "Scoring Guidelines:"
+  },
+  {
+    "hash_code": "5bc59e697ee4811d929fa1279c4688be",
+    "text": "“1-2”: “Low score description: Clearly deficient in this aspect, with significant issues.”,"
+  },
+  {
+    "hash_code": "488509ffd4090f9e10b1734d58ff7c8b",
+    "text": "“3-4”: “Below average score description: Lacking in several important areas, with noticeable problems.”,"
+  },
+  {
+    "hash_code": "146a69326345358cb622814d4ce6d6aa",
+    "text": "“5-6”: “Average score description: Adequate but not exemplary, meets basic expectations with some minor issues.”,"
+  },
+  {
+    "hash_code": "244f568375c7915e5b9b9856e93e0cd3",
+    "text": "“7-8”: “Above average score description: Generally strong but with minor shortcomings.”,"
+  },
+  {
+    "hash_code": "d61b7b534d5231221058ceff89d0d2a5",
+    "text": "“9-10”: “High score description: Outstanding in this aspect, with no noticeable issues.”"
+  },
+  {
+    "hash_code": "9e537820cc33e5154a6b389b882597b7",
+    "text": "Here is the question:"
+  },
+  {
+    "hash_code": "8e01cad25aa402b4c3372902f756bb01",
+    "text": "{query}"
+  },
+  {
+    "hash_code": "4e7af066ac04b39f506b54c2d1112478",
+    "text": "Here are the answer:"
+  },
+  {
+    "hash_code": "0f36cae62aa97d13b92524fecad6335a",
+    "text": "{answer}"
+  },
+  {
+    "hash_code": "f39e8fe6339bba7754345fa16160a255",
+    "text": "Evaluate the answer using the criteria listed above and provide detailed explanations for each criterion with reference to the text. Output your evaluation in the following JSON format:"
+  }
+]

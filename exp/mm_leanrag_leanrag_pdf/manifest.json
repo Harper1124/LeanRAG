@@ -1,0 +1,15 @@
+[
+  {
+    "doc_id": "LeanRAG",
+    "source_pdf": "datasets/test/pdfs/LeanRAG.pdf",
+    "mineru_output_dir": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output",
+    "mm_chunk_file": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mm_chunk.json",
+    "mm_media_file": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mm_media.json",
+    "leanrag_chunk_file": "exp/mm_leanrag_leanrag_pdf/LeanRAG/leanrag_chunk.json",
+    "working_dir": "exp/mm_leanrag_leanrag_pdf/LeanRAG",
+    "entity_vector_db": "exp/mm_leanrag_leanrag_pdf/LeanRAG/milvus_demo.db",
+    "evidence_vector_db": "exp/mm_leanrag_leanrag_pdf/LeanRAG/evidence_milvus.db",
+    "graph_status": "lightweight",
+    "qa_count": 0
+  }
+]

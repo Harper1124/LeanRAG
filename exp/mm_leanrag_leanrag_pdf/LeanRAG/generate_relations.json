@@ -1,0 +1,430 @@
+{"src_tgt": "LeanRAG", "tgt_src": "Knowledge-Graph-Based Generation", "description": "LeanRAG and Knowledge-Graph-Based Generation co-occur in the same text chunk.", "weight": 1, "source_id": "f062a0cc83f332c0911b6fa3100fbf05", "level": 0}
+{"src_tgt": "Knowledge-Graph-Based Generation", "tgt_src": "Semantic Aggregation", "description": "Knowledge-Graph-Based Generation and Semantic Aggregation co-occur in the same text chunk.", "weight": 1, "source_id": "f062a0cc83f332c0911b6fa3100fbf05", "level": 0}
+{"src_tgt": "Semantic Aggregation", "tgt_src": "Hierarchical Retrieval", "description": "Semantic Aggregation and Hierarchical Retrieval co-occur in the same text chunk.", "weight": 1, "source_id": "f062a0cc83f332c0911b6fa3100fbf05", "level": 0}
+{"src_tgt": "Yaoze Zhang", "tgt_src": "Rong Wu", "description": "Yaoze Zhang and Rong Wu co-occur in the same text chunk.", "weight": 1, "source_id": "6458720695fbc9853b09538065281e22", "level": 0}
+{"src_tgt": "Rong Wu", "tgt_src": "Pinlong Cai", "description": "Rong Wu and Pinlong Cai co-occur in the same text chunk.", "weight": 1, "source_id": "6458720695fbc9853b09538065281e22", "level": 0}
+{"src_tgt": "Pinlong Cai", "tgt_src": "Xiaoman Wang", "description": "Pinlong Cai and Xiaoman Wang co-occur in the same text chunk.", "weight": 1, "source_id": "6458720695fbc9853b09538065281e22", "level": 0}
+{"src_tgt": "Xiaoman Wang", "tgt_src": "Guohang Yan", "description": "Xiaoman Wang and Guohang Yan co-occur in the same text chunk.", "weight": 1, "source_id": "6458720695fbc9853b09538065281e22", "level": 0}
+{"src_tgt": "Guohang Yan", "tgt_src": "Song Mao", "description": "Guohang Yan and Song Mao co-occur in the same text chunk.", "weight": 1, "source_id": "6458720695fbc9853b09538065281e22", "level": 0}
+{"src_tgt": "Song Mao", "tgt_src": "Ding Wang", "description": "Song Mao and Ding Wang co-occur in the same text chunk.", "weight": 1, "source_id": "6458720695fbc9853b09538065281e22", "level": 0}
+{"src_tgt": "Ding Wang", "tgt_src": "Botian Shi", "description": "Ding Wang and Botian Shi co-occur in the same text chunk.", "weight": 1, "source_id": "6458720695fbc9853b09538065281e22", "level": 0}
+{"src_tgt": "Shanghai Artificial Intelligence Laboratory", "tgt_src": "University", "description": "Shanghai Artificial Intelligence Laboratory and University co-occur in the same text chunk.", "weight": 1, "source_id": "99f2ef21fadeb1a88af03fe608f3b97a", "level": 0}
+{"src_tgt": "University", "tgt_src": "Shanghai", "description": "University and Shanghai co-occur in the same text chunk.", "weight": 1, "source_id": "99f2ef21fadeb1a88af03fe608f3b97a", "level": 0}
+{"src_tgt": "Shanghai", "tgt_src": "Science", "description": "Shanghai and Science co-occur in the same text chunk.", "weight": 1, "source_id": "99f2ef21fadeb1a88af03fe608f3b97a", "level": 0}
+{"src_tgt": "Science", "tgt_src": "Technology", "description": "Science and Technology co-occur in the same text chunk.", "weight": 1, "source_id": "99f2ef21fadeb1a88af03fe608f3b97a", "level": 0}
+{"src_tgt": "Technology", "tgt_src": "Zhejiang University", "description": "Technology and Zhejiang University co-occur in the same text chunk.", "weight": 1, "source_id": "99f2ef21fadeb1a88af03fe608f3b97a", "level": 0}
+{"src_tgt": "Zhejiang University", "tgt_src": "East China Normal University", "description": "Zhejiang University and East China Normal University co-occur in the same text chunk.", "weight": 1, "source_id": "99f2ef21fadeb1a88af03fe608f3b97a", "level": 0}
+{"src_tgt": "Retrieval-Augmented Generation", "tgt_src": "RAG", "description": "Retrieval-Augmented Generation and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "f0bb245d19146916ef32d122fd1d7434", "level": 0}
+{"src_tgt": "RAG", "tgt_src": "Large Language Models", "description": "RAG and Large Language Models co-occur in the same text chunk.", "weight": 1, "source_id": "f0bb245d19146916ef32d122fd1d7434", "level": 0}
+{"src_tgt": "Large Language Models", "tgt_src": "To", "description": "Large Language Models and To co-occur in the same text chunk.", "weight": 1, "source_id": "f0bb245d19146916ef32d122fd1d7434", "level": 0}
+{"src_tgt": "To", "tgt_src": "However", "description": "To and However co-occur in the same text chunk.", "weight": 1, "source_id": "f0bb245d19146916ef32d122fd1d7434", "level": 0}
+{"src_tgt": "However", "tgt_src": "LeanRAG", "description": "However and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "f0bb245d19146916ef32d122fd1d7434", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Then", "description": "LeanRAG and Then co-occur in the same text chunk.", "weight": 1, "source_id": "f0bb245d19146916ef32d122fd1d7434", "level": 0}
+{"src_tgt": "Then", "tgt_src": "The LeanRAG", "description": "Then and The LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "f0bb245d19146916ef32d122fd1d7434", "level": 0}
+{"src_tgt": "Large Language Models", "tgt_src": "LLMs", "description": "Large Language Models and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "ffb719d8b549bd52ee1bb390044fd238", "level": 0}
+{"src_tgt": "LLMs", "tgt_src": "Yet", "description": "LLMs and Yet co-occur in the same text chunk.", "weight": 1, "source_id": "ffb719d8b549bd52ee1bb390044fd238", "level": 0}
+{"src_tgt": "Yet", "tgt_src": "Huang", "description": "Yet and Huang co-occur in the same text chunk.", "weight": 1, "source_id": "ffb719d8b549bd52ee1bb390044fd238", "level": 0}
+{"src_tgt": "Huang", "tgt_src": "Li", "description": "Huang and Li co-occur in the same text chunk.", "weight": 1, "source_id": "ffb719d8b549bd52ee1bb390044fd238", "level": 0}
+{"src_tgt": "Li", "tgt_src": "Retrieval-Augmented Generation", "description": "Li and Retrieval-Augmented Generation co-occur in the same text chunk.", "weight": 1, "source_id": "ffb719d8b549bd52ee1bb390044fd238", "level": 0}
+{"src_tgt": "Retrieval-Augmented Generation", "tgt_src": "RAG", "description": "Retrieval-Augmented Generation and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "ffb719d8b549bd52ee1bb390044fd238", "level": 0}
+{"src_tgt": "RAG", "tgt_src": "Gao", "description": "RAG and Gao co-occur in the same text chunk.", "weight": 1, "source_id": "ffb719d8b549bd52ee1bb390044fd238", "level": 0}
+{"src_tgt": "To", "tgt_src": "RAG", "description": "To and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f78619e1fd705155d35a11968e1a0ca", "level": 0}
+{"src_tgt": "RAG", "tgt_src": "Initial", "description": "RAG and Initial co-occur in the same text chunk.", "weight": 1, "source_id": "5f78619e1fd705155d35a11968e1a0ca", "level": 0}
+{"src_tgt": "Initial", "tgt_src": "GraphRAG", "description": "Initial and GraphRAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f78619e1fd705155d35a11968e1a0ca", "level": 0}
+{"src_tgt": "GraphRAG", "tgt_src": "Edge", "description": "GraphRAG and Edge co-occur in the same text chunk.", "weight": 1, "source_id": "5f78619e1fd705155d35a11968e1a0ca", "level": 0}
+{"src_tgt": "Edge", "tgt_src": "However", "description": "Edge and However co-occur in the same text chunk.", "weight": 1, "source_id": "5f78619e1fd705155d35a11968e1a0ca", "level": 0}
+{"src_tgt": "However", "tgt_src": "Subsequently", "description": "However and Subsequently co-occur in the same text chunk.", "weight": 1, "source_id": "5f78619e1fd705155d35a11968e1a0ca", "level": 0}
+{"src_tgt": "Subsequently", "tgt_src": "Hi-RAG", "description": "Subsequently and Hi-RAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f78619e1fd705155d35a11968e1a0ca", "level": 0}
+{"src_tgt": "To", "tgt_src": "LeanRAG", "description": "To and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "9b9b63e06008fbd3201aa53c2eb3c2f5", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "At", "description": "LeanRAG and At co-occur in the same text chunk.", "weight": 1, "source_id": "9b9b63e06008fbd3201aa53c2eb3c2f5", "level": 0}
+{"src_tgt": "At", "tgt_src": "Its", "description": "At and Its co-occur in the same text chunk.", "weight": 1, "source_id": "9b9b63e06008fbd3201aa53c2eb3c2f5", "level": 0}
+{"src_tgt": "AI", "tgt_src": "Nov", "description": "AI and Nov co-occur in the same text chunk.", "weight": 1, "source_id": "c3e13944da9c1a239adebd444919f122", "level": 0}
+{"src_tgt": "Building", "tgt_src": "LeanRAG", "description": "Building and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "9af0319d72343d4393e71bb3ca7331a0", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "It", "description": "LeanRAG and It co-occur in the same text chunk.", "weight": 1, "source_id": "9af0319d72343d4393e71bb3ca7331a0", "level": 0}
+{"src_tgt": "By", "tgt_src": "LLMs", "description": "By and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "3b86630cf5057f49f66b182ba8da44cc", "level": 0}
+{"src_tgt": "We", "tgt_src": "LeanRAG", "description": "We and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "bbbbc7d40656211b3746bc0416644327", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "QA", "description": "LeanRAG and QA co-occur in the same text chunk.", "weight": 1, "source_id": "bbbbc7d40656211b3746bc0416644327", "level": 0}
+{"src_tgt": "Retrieval-Augmented Generation", "tgt_src": "LLMs", "description": "Retrieval-Augmented Generation and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "a0522964a61e7fa201c674f04511daa6", "level": 0}
+{"src_tgt": "LLMs", "tgt_src": "Lewis", "description": "LLMs and Lewis co-occur in the same text chunk.", "weight": 1, "source_id": "a0522964a61e7fa201c674f04511daa6", "level": 0}
+{"src_tgt": "Lewis", "tgt_src": "RAG", "description": "Lewis and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "a0522964a61e7fa201c674f04511daa6", "level": 0}
+{"src_tgt": "RAG", "tgt_src": "LLM", "description": "RAG and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "a0522964a61e7fa201c674f04511daa6", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "Wang", "description": "LLM and Wang co-occur in the same text chunk.", "weight": 1, "source_id": "a0522964a61e7fa201c674f04511daa6", "level": 0}
+{"src_tgt": "Wang", "tgt_src": "While", "description": "Wang and While co-occur in the same text chunk.", "weight": 1, "source_id": "a0522964a61e7fa201c674f04511daa6", "level": 0}
+{"src_tgt": "While", "tgt_src": "Tonellotto", "description": "While and Tonellotto co-occur in the same text chunk.", "weight": 1, "source_id": "a0522964a61e7fa201c674f04511daa6", "level": 0}
+{"src_tgt": "Substantial", "tgt_src": "One", "description": "Substantial and One co-occur in the same text chunk.", "weight": 1, "source_id": "60192fa1ca70f2c7f41be2ef7faf935a", "level": 0}
+{"src_tgt": "One", "tgt_src": "BM25", "description": "One and BM25 co-occur in the same text chunk.", "weight": 1, "source_id": "60192fa1ca70f2c7f41be2ef7faf935a", "level": 0}
+{"src_tgt": "BM25", "tgt_src": "Robertson", "description": "BM25 and Robertson co-occur in the same text chunk.", "weight": 1, "source_id": "60192fa1ca70f2c7f41be2ef7faf935a", "level": 0}
+{"src_tgt": "Robertson", "tgt_src": "Zaragoza", "description": "Robertson and Zaragoza co-occur in the same text chunk.", "weight": 1, "source_id": "60192fa1ca70f2c7f41be2ef7faf935a", "level": 0}
+{"src_tgt": "Zaragoza", "tgt_src": "DPR", "description": "Zaragoza and DPR co-occur in the same text chunk.", "weight": 1, "source_id": "60192fa1ca70f2c7f41be2ef7faf935a", "level": 0}
+{"src_tgt": "DPR", "tgt_src": "Karpukhin", "description": "DPR and Karpukhin co-occur in the same text chunk.", "weight": 1, "source_id": "60192fa1ca70f2c7f41be2ef7faf935a", "level": 0}
+{"src_tgt": "Karpukhin", "tgt_src": "Contriever", "description": "Karpukhin and Contriever co-occur in the same text chunk.", "weight": 1, "source_id": "60192fa1ca70f2c7f41be2ef7faf935a", "level": 0}
+{"src_tgt": "To", "tgt_src": "KGbased RAG", "description": "To and KGbased RAG co-occur in the same text chunk.", "weight": 1, "source_id": "f88bfe687672bfda5fa1fc2353b9f4d1", "level": 0}
+{"src_tgt": "KGbased RAG", "tgt_src": "By", "description": "KGbased RAG and By co-occur in the same text chunk.", "weight": 1, "source_id": "f88bfe687672bfda5fa1fc2353b9f4d1", "level": 0}
+{"src_tgt": "By", "tgt_src": "LLM", "description": "By and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "f88bfe687672bfda5fa1fc2353b9f4d1", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "Peng", "description": "LLM and Peng co-occur in the same text chunk.", "weight": 1, "source_id": "f88bfe687672bfda5fa1fc2353b9f4d1", "level": 0}
+{"src_tgt": "Peng", "tgt_src": "Early", "description": "Peng and Early co-occur in the same text chunk.", "weight": 1, "source_id": "f88bfe687672bfda5fa1fc2353b9f4d1", "level": 0}
+{"src_tgt": "Early", "tgt_src": "For", "description": "Early and For co-occur in the same text chunk.", "weight": 1, "source_id": "f88bfe687672bfda5fa1fc2353b9f4d1", "level": 0}
+{"src_tgt": "For", "tgt_src": "GraphRAG", "description": "For and GraphRAG co-occur in the same text chunk.", "weight": 1, "source_id": "f88bfe687672bfda5fa1fc2353b9f4d1", "level": 0}
+{"src_tgt": "Recognizing", "tgt_src": "HiRAG", "description": "Recognizing and HiRAG co-occur in the same text chunk.", "weight": 1, "source_id": "48a5ecb00a7a3b130006301a67c9e473", "level": 0}
+{"src_tgt": "HiRAG", "tgt_src": "Huang", "description": "HiRAG and Huang co-occur in the same text chunk.", "weight": 1, "source_id": "48a5ecb00a7a3b130006301a67c9e473", "level": 0}
+{"src_tgt": "Huang", "tgt_src": "LightRAG", "description": "Huang and LightRAG co-occur in the same text chunk.", "weight": 1, "source_id": "48a5ecb00a7a3b130006301a67c9e473", "level": 0}
+{"src_tgt": "LightRAG", "tgt_src": "Guo", "description": "LightRAG and Guo co-occur in the same text chunk.", "weight": 1, "source_id": "48a5ecb00a7a3b130006301a67c9e473", "level": 0}
+{"src_tgt": "Guo", "tgt_src": "While", "description": "Guo and While co-occur in the same text chunk.", "weight": 1, "source_id": "48a5ecb00a7a3b130006301a67c9e473", "level": 0}
+{"src_tgt": "In", "tgt_src": "RAG", "description": "In and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "c8064883edb6e1fc5feddb8cb8fd9963", "level": 0}
+{"src_tgt": "Given", "tgt_src": "G", "description": "Given and G co-occur in the same text chunk.", "weight": 1, "source_id": "804a7543e282e442965a005c3603b621", "level": 0}
+{"src_tgt": "G", "tgt_src": "V", "description": "G and V co-occur in the same text chunk.", "weight": 1, "source_id": "804a7543e282e442965a005c3603b621", "level": 0}
+{"src_tgt": "V", "tgt_src": "R", "description": "V and R co-occur in the same text chunk.", "weight": 1, "source_id": "804a7543e282e442965a005c3603b621", "level": 0}
+{"src_tgt": "R", "tgt_src": "D", "description": "R and D co-occur in the same text chunk.", "weight": 1, "source_id": "804a7543e282e442965a005c3603b621", "level": 0}
+{"src_tgt": "D", "tgt_src": "KG-based RAG", "description": "D and KG-based RAG co-occur in the same text chunk.", "weight": 1, "source_id": "804a7543e282e442965a005c3603b621", "level": 0}
+{"src_tgt": "KG-based RAG", "tgt_src": "LLMs", "description": "KG-based RAG and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "804a7543e282e442965a005c3603b621", "level": 0}
+{"src_tgt": "V", "tgt_src": "T", "description": "V and T co-occur in the same text chunk.", "weight": 1, "source_id": "88d50b48b239bc0954d85ca1c18e9494", "level": 0}
+{"src_tgt": "T", "tgt_src": "S", "description": "T and S co-occur in the same text chunk.", "weight": 1, "source_id": "88d50b48b239bc0954d85ca1c18e9494", "level": 0}
+{"src_tgt": "S", "tgt_src": "Based", "description": "S and Based co-occur in the same text chunk.", "weight": 1, "source_id": "07569c0efc4a60374c1aec35e0aa7fb1", "level": 0}
+{"src_tgt": "V", "tgt_src": "Then", "description": "V and Then co-occur in the same text chunk.", "weight": 1, "source_id": "fe1d77c8eb062158a11f4958592d2b35", "level": 0}
+{"src_tgt": "Then", "tgt_src": "L", "description": "Then and L co-occur in the same text chunk.", "weight": 1, "source_id": "fe1d77c8eb062158a11f4958592d2b35", "level": 0}
+{"src_tgt": "L", "tgt_src": "All", "description": "L and All co-occur in the same text chunk.", "weight": 1, "source_id": "fe1d77c8eb062158a11f4958592d2b35", "level": 0}
+{"src_tgt": "All", "tgt_src": "R", "description": "All and R co-occur in the same text chunk.", "weight": 1, "source_id": "fe1d77c8eb062158a11f4958592d2b35", "level": 0}
+{"src_tgt": "L", "tgt_src": "V", "description": "L and V co-occur in the same text chunk.", "weight": 1, "source_id": "f6fb0f1188ce7c4bce5dd6f975dd6d6c", "level": 0}
+{"src_tgt": "V", "tgt_src": "P", "description": "V and P co-occur in the same text chunk.", "weight": 1, "source_id": "f6fb0f1188ce7c4bce5dd6f975dd6d6c", "level": 0}
+{"src_tgt": "By", "tgt_src": "V", "description": "By and V co-occur in the same text chunk.", "weight": 1, "source_id": "ce12fc778254d52da086ad8a6b18cd46", "level": 0}
+{"src_tgt": "V", "tgt_src": "L", "description": "V and L co-occur in the same text chunk.", "weight": 1, "source_id": "ce12fc778254d52da086ad8a6b18cd46", "level": 0}
+{"src_tgt": "L", "tgt_src": "G", "description": "L and G co-occur in the same text chunk.", "weight": 1, "source_id": "ce12fc778254d52da086ad8a6b18cd46", "level": 0}
+{"src_tgt": "G", "tgt_src": "RAG", "description": "G and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "ce12fc778254d52da086ad8a6b18cd46", "level": 0}
+{"src_tgt": "KG-augmented", "tgt_src": "G", "description": "KG-augmented and G co-occur in the same text chunk.", "weight": 1, "source_id": "8e60d335e37ba1135ef19ace1ed17f4a", "level": 0}
+{"src_tgt": "G", "tgt_src": "To", "description": "G and To co-occur in the same text chunk.", "weight": 1, "source_id": "8e60d335e37ba1135ef19ace1ed17f4a", "level": 0}
+{"src_tgt": "To", "tgt_src": "LeanRAG", "description": "To and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "8e60d335e37ba1135ef19ace1ed17f4a", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "As", "description": "LeanRAG and As co-occur in the same text chunk.", "weight": 1, "source_id": "8e60d335e37ba1135ef19ace1ed17f4a", "level": 0}
+{"src_tgt": "As", "tgt_src": "Hierarchical Graph Aggregation", "description": "As and Hierarchical Graph Aggregation co-occur in the same text chunk.", "weight": 1, "source_id": "8e60d335e37ba1135ef19ace1ed17f4a", "level": 0}
+{"src_tgt": "Hierarchical Graph Aggregation", "tgt_src": "KG", "description": "Hierarchical Graph Aggregation and KG co-occur in the same text chunk.", "weight": 1, "source_id": "8e60d335e37ba1135ef19ace1ed17f4a", "level": 0}
+{"src_tgt": "KG", "tgt_src": "Structured Retrieval", "description": "KG and Structured Retrieval co-occur in the same text chunk.", "weight": 1, "source_id": "8e60d335e37ba1135ef19ace1ed17f4a", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "G", "description": "LeanRAG and G co-occur in the same text chunk.", "weight": 1, "source_id": "0069f618a8a90fe59151367f3b6c1310", "level": 0}
+{"src_tgt": "G", "tgt_src": "H", "description": "G and H co-occur in the same text chunk.", "weight": 1, "source_id": "0069f618a8a90fe59151367f3b6c1310", "level": 0}
+{"src_tgt": "H", "tgt_src": "We", "description": "H and We co-occur in the same text chunk.", "weight": 1, "source_id": "0069f618a8a90fe59151367f3b6c1310", "level": 0}
+{"src_tgt": "We", "tgt_src": "Each", "description": "We and Each co-occur in the same text chunk.", "weight": 1, "source_id": "0069f618a8a90fe59151367f3b6c1310", "level": 0}
+{"src_tgt": "Each", "tgt_src": "V", "description": "Each and V co-occur in the same text chunk.", "weight": 1, "source_id": "0069f618a8a90fe59151367f3b6c1310", "level": 0}
+{"src_tgt": "V", "tgt_src": "R", "description": "V and R co-occur in the same text chunk.", "weight": 1, "source_id": "0069f618a8a90fe59151367f3b6c1310", "level": 0}
+{"src_tgt": "R", "tgt_src": "D", "description": "R and D co-occur in the same text chunk.", "weight": 1, "source_id": "0069f618a8a90fe59151367f3b6c1310", "level": 0}
+{"src_tgt": "Recursive Semantic Clustering", "tgt_src": "Given", "description": "Recursive Semantic Clustering and Given co-occur in the same text chunk.", "weight": 1, "source_id": "e3897c355818a9ca83d42291d4c8c7af", "level": 0}
+{"src_tgt": "Given", "tgt_src": "G", "description": "Given and G co-occur in the same text chunk.", "weight": 1, "source_id": "e3897c355818a9ca83d42291d4c8c7af", "level": 0}
+{"src_tgt": "G", "tgt_src": "We", "description": "G and We co-occur in the same text chunk.", "weight": 1, "source_id": "e3897c355818a9ca83d42291d4c8c7af", "level": 0}
+{"src_tgt": "We", "tgt_src": "D", "description": "We and D co-occur in the same text chunk.", "weight": 1, "source_id": "e3897c355818a9ca83d42291d4c8c7af", "level": 0}
+{"src_tgt": "D", "tgt_src": "V", "description": "D and V co-occur in the same text chunk.", "weight": 1, "source_id": "e3897c355818a9ca83d42291d4c8c7af", "level": 0}
+{"src_tgt": "V", "tgt_src": "Following", "description": "V and Following co-occur in the same text chunk.", "weight": 1, "source_id": "e3897c355818a9ca83d42291d4c8c7af", "level": 0}
+{"src_tgt": "Following", "tgt_src": "Sarthi", "description": "Following and Sarthi co-occur in the same text chunk.", "weight": 1, "source_id": "e3897c355818a9ca83d42291d4c8c7af", "level": 0}
+{"src_tgt": "Semantic Embedding", "tgt_src": "We", "description": "Semantic Embedding and We co-occur in the same text chunk.", "weight": 1, "source_id": "c8cb3ae72f3c2f7cce496b2f97904fd2", "level": 0}
+{"src_tgt": "We", "tgt_src": "Phi", "description": "We and Phi co-occur in the same text chunk.", "weight": 1, "source_id": "c8cb3ae72f3c2f7cce496b2f97904fd2", "level": 0}
+{"src_tgt": "Phi", "tgt_src": "KG", "description": "Phi and KG co-occur in the same text chunk.", "weight": 1, "source_id": "c8cb3ae72f3c2f7cce496b2f97904fd2", "level": 0}
+{"src_tgt": "E", "tgt_src": "Phi", "description": "E and Phi co-occur in the same text chunk.", "weight": 1, "source_id": "6e431e9efce799989ef8178c661cc879", "level": 0}
+{"src_tgt": "Phi", "tgt_src": "V", "description": "Phi and V co-occur in the same text chunk.", "weight": 1, "source_id": "6e431e9efce799989ef8178c661cc879", "level": 0}
+{"src_tgt": "Gaussian Mixture Clustering", "tgt_src": "We", "description": "Gaussian Mixture Clustering and We co-occur in the same text chunk.", "weight": 1, "source_id": "beb7051903b1cfd214f314227aeccb95", "level": 0}
+{"src_tgt": "We", "tgt_src": "Gaussian Mixture Model", "description": "We and Gaussian Mixture Model co-occur in the same text chunk.", "weight": 1, "source_id": "beb7051903b1cfd214f314227aeccb95", "level": 0}
+{"src_tgt": "Gaussian Mixture Model", "tgt_src": "GMM", "description": "Gaussian Mixture Model and GMM co-occur in the same text chunk.", "weight": 1, "source_id": "beb7051903b1cfd214f314227aeccb95", "level": 0}
+{"src_tgt": "GMM", "tgt_src": "Reynolds", "description": "GMM and Reynolds co-occur in the same text chunk.", "weight": 1, "source_id": "beb7051903b1cfd214f314227aeccb95", "level": 0}
+{"src_tgt": "Reynolds", "tgt_src": "E", "description": "Reynolds and E co-occur in the same text chunk.", "weight": 1, "source_id": "beb7051903b1cfd214f314227aeccb95", "level": 0}
+{"src_tgt": "E", "tgt_src": "The GMM", "description": "E and The GMM co-occur in the same text chunk.", "weight": 1, "source_id": "beb7051903b1cfd214f314227aeccb95", "level": 0}
+{"src_tgt": "The GMM", "tgt_src": "V", "description": "The GMM and V co-occur in the same text chunk.", "weight": 1, "source_id": "beb7051903b1cfd214f314227aeccb95", "level": 0}
+{"src_tgt": "Generation", "tgt_src": "Aggregated Entities", "description": "Generation and Aggregated Entities co-occur in the same text chunk.", "weight": 1, "source_id": "16720f35f8b55fd77f754b6376319a65", "level": 0}
+{"src_tgt": "Aggregated Entities", "tgt_src": "Relations", "description": "Aggregated Entities and Relations co-occur in the same text chunk.", "weight": 1, "source_id": "16720f35f8b55fd77f754b6376319a65", "level": 0}
+{"src_tgt": "Relations", "tgt_src": "A", "description": "Relations and A co-occur in the same text chunk.", "weight": 1, "source_id": "16720f35f8b55fd77f754b6376319a65", "level": 0}
+{"src_tgt": "A", "tgt_src": "LeanRAG", "description": "A and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "16720f35f8b55fd77f754b6376319a65", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "LLMs", "description": "LeanRAG and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "16720f35f8b55fd77f754b6376319a65", "level": 0}
+{"src_tgt": "LLMs", "tgt_src": "G", "description": "LLMs and G co-occur in the same text chunk.", "weight": 1, "source_id": "16720f35f8b55fd77f754b6376319a65", "level": 0}
+{"src_tgt": "Aggregated Entity Generation", "tgt_src": "For", "description": "Aggregated Entity Generation and For co-occur in the same text chunk.", "weight": 1, "source_id": "555e433dc64fad47e6a8399555613bfa", "level": 0}
+{"src_tgt": "For", "tgt_src": "C", "description": "For and C co-occur in the same text chunk.", "weight": 1, "source_id": "555e433dc64fad47e6a8399555613bfa", "level": 0}
+{"src_tgt": "C", "tgt_src": "F", "description": "C and F co-occur in the same text chunk.", "weight": 1, "source_id": "555e433dc64fad47e6a8399555613bfa", "level": 0}
+{"src_tgt": "F", "tgt_src": "Let", "description": "F and Let co-occur in the same text chunk.", "weight": 1, "source_id": "555e433dc64fad47e6a8399555613bfa", "level": 0}
+{"src_tgt": "Let", "tgt_src": "R", "description": "Let and R co-occur in the same text chunk.", "weight": 1, "source_id": "555e433dc64fad47e6a8399555613bfa", "level": 0}
+{"src_tgt": "R", "tgt_src": "G", "description": "R and G co-occur in the same text chunk.", "weight": 1, "source_id": "555e433dc64fad47e6a8399555613bfa", "level": 0}
+{"src_tgt": "F", "tgt_src": "C", "description": "F and C co-occur in the same text chunk.", "weight": 1, "source_id": "5bcc69958989b2f041689a296ac792c5", "level": 0}
+{"src_tgt": "C", "tgt_src": "R", "description": "C and R co-occur in the same text chunk.", "weight": 1, "source_id": "5bcc69958989b2f041689a296ac792c5", "level": 0}
+{"src_tgt": "V", "tgt_src": "D", "description": "V and D co-occur in the same text chunk.", "weight": 1, "source_id": "845d467ba44a496671ed632c46b2508d", "level": 0}
+{"src_tgt": "D", "tgt_src": "C", "description": "D and C co-occur in the same text chunk.", "weight": 1, "source_id": "845d467ba44a496671ed632c46b2508d", "level": 0}
+{"src_tgt": "In", "tgt_src": "F", "description": "In and F co-occur in the same text chunk.", "weight": 1, "source_id": "fe8cf398fd9dee42d058c8605fdaec0e", "level": 0}
+{"src_tgt": "F", "tgt_src": "LLMs", "description": "F and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "fe8cf398fd9dee42d058c8605fdaec0e", "level": 0}
+{"src_tgt": "LLMs", "tgt_src": "P", "description": "LLMs and P co-occur in the same text chunk.", "weight": 1, "source_id": "fe8cf398fd9dee42d058c8605fdaec0e", "level": 0}
+{"src_tgt": "P", "tgt_src": "We", "description": "P and We co-occur in the same text chunk.", "weight": 1, "source_id": "fe8cf398fd9dee42d058c8605fdaec0e", "level": 0}
+{"src_tgt": "We", "tgt_src": "Each", "description": "We and Each co-occur in the same text chunk.", "weight": 1, "source_id": "fe8cf398fd9dee42d058c8605fdaec0e", "level": 0}
+{"src_tgt": "Each", "tgt_src": "C", "description": "Each and C co-occur in the same text chunk.", "weight": 1, "source_id": "fe8cf398fd9dee42d058c8605fdaec0e", "level": 0}
+{"src_tgt": "Aggregated Relation Generation", "tgt_src": "To", "description": "Aggregated Relation Generation and To co-occur in the same text chunk.", "weight": 1, "source_id": "f6970ad303891b20300fa2d845578817", "level": 0}
+{"src_tgt": "To", "tgt_src": "V", "description": "To and V co-occur in the same text chunk.", "weight": 1, "source_id": "f6970ad303891b20300fa2d845578817", "level": 0}
+{"src_tgt": "V", "tgt_src": "For", "description": "V and For co-occur in the same text chunk.", "weight": 1, "source_id": "f6970ad303891b20300fa2d845578817", "level": 0}
+{"src_tgt": "For", "tgt_src": "R", "description": "For and R co-occur in the same text chunk.", "weight": 1, "source_id": "f6970ad303891b20300fa2d845578817", "level": 0}
+{"src_tgt": "R", "tgt_src": "C", "description": "R and C co-occur in the same text chunk.", "weight": 1, "source_id": "f6970ad303891b20300fa2d845578817", "level": 0}
+{"src_tgt": "C", "tgt_src": "Then", "description": "C and Then co-occur in the same text chunk.", "weight": 1, "source_id": "f98ed050a6cba1435cb7076ab0c24eac", "level": 0}
+{"src_tgt": "Then", "tgt_src": "R", "description": "Then and R co-occur in the same text chunk.", "weight": 1, "source_id": "f98ed050a6cba1435cb7076ab0c24eac", "level": 0}
+{"src_tgt": "R", "tgt_src": "If", "description": "R and If co-occur in the same text chunk.", "weight": 1, "source_id": "f98ed050a6cba1435cb7076ab0c24eac", "level": 0}
+{"src_tgt": "If", "tgt_src": "LLM-driven", "description": "If and LLM-driven co-occur in the same text chunk.", "weight": 1, "source_id": "f98ed050a6cba1435cb7076ab0c24eac", "level": 0}
+{"src_tgt": "LLM-driven", "tgt_src": "F", "description": "LLM-driven and F co-occur in the same text chunk.", "weight": 1, "source_id": "f98ed050a6cba1435cb7076ab0c24eac", "level": 0}
+{"src_tgt": "F", "tgt_src": "Otherwise", "description": "F and Otherwise co-occur in the same text chunk.", "weight": 1, "source_id": "f98ed050a6cba1435cb7076ab0c24eac", "level": 0}
+{"src_tgt": "F", "tgt_src": "R", "description": "F and R co-occur in the same text chunk.", "weight": 1, "source_id": "30b9f18b2cb1fb5caadfb402eaa8a4e2", "level": 0}
+{"src_tgt": "R", "tgt_src": "C", "description": "R and C co-occur in the same text chunk.", "weight": 1, "source_id": "30b9f18b2cb1fb5caadfb402eaa8a4e2", "level": 0}
+{"src_tgt": "In", "tgt_src": "F", "description": "In and F co-occur in the same text chunk.", "weight": 1, "source_id": "189da9e1517538145d1130e874dc04f6", "level": 0}
+{"src_tgt": "F", "tgt_src": "LLMs", "description": "F and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "189da9e1517538145d1130e874dc04f6", "level": 0}
+{"src_tgt": "LLMs", "tgt_src": "P", "description": "LLMs and P co-occur in the same text chunk.", "weight": 1, "source_id": "189da9e1517538145d1130e874dc04f6", "level": 0}
+{"src_tgt": "By", "tgt_src": "KG", "description": "By and KG co-occur in the same text chunk.", "weight": 1, "source_id": "27f8b12f9488ca95e3ef2eb2e6f4009e", "level": 0}
+{"src_tgt": "Structured Retrieval", "tgt_src": "Lowest Common Ancestor", "description": "Structured Retrieval and Lowest Common Ancestor co-occur in the same text chunk.", "weight": 1, "source_id": "bceab8fd6c3d4cde9fdb4443fde5337d", "level": 0}
+{"src_tgt": "H", "tgt_src": "Our", "description": "H and Our co-occur in the same text chunk.", "weight": 1, "source_id": "9858f33d55b3e04652a99fa26fc288dd", "level": 0}
+{"src_tgt": "Initial Entity Anchoring", "tgt_src": "Given", "description": "Initial Entity Anchoring and Given co-occur in the same text chunk.", "weight": 1, "source_id": "0477d9595a62f3f7ac1feaedb9c6a679", "level": 0}
+{"src_tgt": "Given", "tgt_src": "We", "description": "Given and We co-occur in the same text chunk.", "weight": 1, "source_id": "0477d9595a62f3f7ac1feaedb9c6a679", "level": 0}
+{"src_tgt": "We", "tgt_src": "G", "description": "We and G co-occur in the same text chunk.", "weight": 1, "source_id": "0477d9595a62f3f7ac1feaedb9c6a679", "level": 0}
+{"src_tgt": "V", "tgt_src": "T", "description": "V and T co-occur in the same text chunk.", "weight": 1, "source_id": "2844c9b58538318956797662915411c0", "level": 0}
+{"src_tgt": "Contextualization", "tgt_src": "LCA Path Traversal", "description": "Contextualization and LCA Path Traversal co-occur in the same text chunk.", "weight": 1, "source_id": "1723ca49fba8789af3641f084bb210a7", "level": 0}
+{"src_tgt": "LCA Path Traversal", "tgt_src": "Graph", "description": "LCA Path Traversal and Graph co-occur in the same text chunk.", "weight": 1, "source_id": "1723ca49fba8789af3641f084bb210a7", "level": 0}
+{"src_tgt": "Graph", "tgt_src": "KG-based RAG", "description": "Graph and KG-based RAG co-occur in the same text chunk.", "weight": 1, "source_id": "1723ca49fba8789af3641f084bb210a7", "level": 0}
+{"src_tgt": "KG-based RAG", "tgt_src": "V", "description": "KG-based RAG and V co-occur in the same text chunk.", "weight": 1, "source_id": "1723ca49fba8789af3641f084bb210a7", "level": 0}
+{"src_tgt": "V", "tgt_src": "G", "description": "V and G co-occur in the same text chunk.", "weight": 1, "source_id": "1723ca49fba8789af3641f084bb210a7", "level": 0}
+{"src_tgt": "G", "tgt_src": "In", "description": "G and In co-occur in the same text chunk.", "weight": 1, "source_id": "1723ca49fba8789af3641f084bb210a7", "level": 0}
+{"src_tgt": "In", "tgt_src": "LeanRAG", "description": "In and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "1723ca49fba8789af3641f084bb210a7", "level": 0}
+{"src_tgt": "P", "tgt_src": "V", "description": "P and V co-occur in the same text chunk.", "weight": 1, "source_id": "fff95bf80b921726f3554355212a7f77", "level": 0}
+{"src_tgt": "P", "tgt_src": "V", "description": "P and V co-occur in the same text chunk.", "weight": 1, "source_id": "e94469d48e0c7da3284e44403fe97403", "level": 0}
+{"src_tgt": "V", "tgt_src": "H", "description": "V and H co-occur in the same text chunk.", "weight": 1, "source_id": "e94469d48e0c7da3284e44403fe97403", "level": 0}
+{"src_tgt": "H", "tgt_src": "S", "description": "H and S co-occur in the same text chunk.", "weight": 1, "source_id": "e94469d48e0c7da3284e44403fe97403", "level": 0}
+{"src_tgt": "ShortestPath", "tgt_src": "H", "description": "ShortestPath and H co-occur in the same text chunk.", "weight": 1, "source_id": "8331fcad0f4001128383a05555eac998", "level": 0}
+{"src_tgt": "H", "tgt_src": "Since", "description": "H and Since co-occur in the same text chunk.", "weight": 1, "source_id": "8331fcad0f4001128383a05555eac998", "level": 0}
+{"src_tgt": "Since", "tgt_src": "Finally", "description": "Since and Finally co-occur in the same text chunk.", "weight": 1, "source_id": "8331fcad0f4001128383a05555eac998", "level": 0}
+{"src_tgt": "Finally", "tgt_src": "RAG", "description": "Finally and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "8331fcad0f4001128383a05555eac998", "level": 0}
+{"src_tgt": "RAG", "tgt_src": "G", "description": "RAG and G co-occur in the same text chunk.", "weight": 1, "source_id": "8331fcad0f4001128383a05555eac998", "level": 0}
+{"src_tgt": "G", "tgt_src": "LCA", "description": "G and LCA co-occur in the same text chunk.", "weight": 1, "source_id": "8331fcad0f4001128383a05555eac998", "level": 0}
+{"src_tgt": "G", "tgt_src": "V", "description": "G and V co-occur in the same text chunk.", "weight": 1, "source_id": "65bfc088822e901547e4f9d5d5dea582", "level": 0}
+{"src_tgt": "V", "tgt_src": "R", "description": "V and R co-occur in the same text chunk.", "weight": 1, "source_id": "65bfc088822e901547e4f9d5d5dea582", "level": 0}
+{"src_tgt": "V", "tgt_src": "P", "description": "V and P co-occur in the same text chunk.", "weight": 1, "source_id": "ef3567cf5c0ca0cd18e1bd930f297abd", "level": 0}
+{"src_tgt": "R", "tgt_src": "P", "description": "R and P co-occur in the same text chunk.", "weight": 1, "source_id": "32e757f9d56e2271ba49c637377314d3", "level": 0}
+{"src_tgt": "P", "tgt_src": "For", "description": "P and For co-occur in the same text chunk.", "weight": 1, "source_id": "32e757f9d56e2271ba49c637377314d3", "level": 0}
+{"src_tgt": "For", "tgt_src": "G", "description": "For and G co-occur in the same text chunk.", "weight": 1, "source_id": "32e757f9d56e2271ba49c637377314d3", "level": 0}
+{"src_tgt": "This LCA-based", "tgt_src": "LLM", "description": "This LCA-based and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "583563da5b12c9ab7fbb8648b766d25b", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "Furthermore", "description": "LLM and Furthermore co-occur in the same text chunk.", "weight": 1, "source_id": "583563da5b12c9ab7fbb8648b766d25b", "level": 0}
+{"src_tgt": "RQ1", "tgt_src": "How", "description": "RQ1 and How co-occur in the same text chunk.", "weight": 1, "source_id": "44fa758873a75dac47e55e40b70b84de", "level": 0}
+{"src_tgt": "How", "tgt_src": "LeanRAG", "description": "How and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "44fa758873a75dac47e55e40b70b84de", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "QA", "description": "LeanRAG and QA co-occur in the same text chunk.", "weight": 1, "source_id": "44fa758873a75dac47e55e40b70b84de", "level": 0}
+{"src_tgt": "RQ2", "tgt_src": "Does LeanRAG", "description": "RQ2 and Does LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "fbcf4e6ea9f8edfa439c2a78124df2a4", "level": 0}
+{"src_tgt": "RQ3", "tgt_src": "To", "description": "RQ3 and To co-occur in the same text chunk.", "weight": 1, "source_id": "e12e502dddc3c6d8db2fa23f91c7108a", "level": 0}
+{"src_tgt": "RQ4", "tgt_src": "Is", "description": "RQ4 and Is co-occur in the same text chunk.", "weight": 1, "source_id": "502b2fc677bb535bba147a30ba7099cf", "level": 0}
+{"src_tgt": "Baselines", "tgt_src": "To", "description": "Baselines and To co-occur in the same text chunk.", "weight": 1, "source_id": "0c8827d3d9b97d07be56113059b3d725", "level": 0}
+{"src_tgt": "To", "tgt_src": "LeanRAG", "description": "To and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "0c8827d3d9b97d07be56113059b3d725", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "KG-based RAG", "description": "LeanRAG and KG-based RAG co-occur in the same text chunk.", "weight": 1, "source_id": "0c8827d3d9b97d07be56113059b3d725", "level": 0}
+{"src_tgt": "NaiveRAG", "tgt_src": "Lewis", "description": "NaiveRAG and Lewis co-occur in the same text chunk.", "weight": 1, "source_id": "a6e90a28507a3c340043202072c4b909", "level": 0}
+{"src_tgt": "Lewis", "tgt_src": "RAG", "description": "Lewis and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "a6e90a28507a3c340043202072c4b909", "level": 0}
+{"src_tgt": "GraphRAG", "tgt_src": "Edge", "description": "GraphRAG and Edge co-occur in the same text chunk.", "weight": 1, "source_id": "fad5711df51717cb19a3c9ea08326ded", "level": 0}
+{"src_tgt": "Edge", "tgt_src": "A", "description": "Edge and A co-occur in the same text chunk.", "weight": 1, "source_id": "fad5711df51717cb19a3c9ea08326ded", "level": 0}
+{"src_tgt": "A", "tgt_src": "KG-based", "description": "A and KG-based co-occur in the same text chunk.", "weight": 1, "source_id": "fad5711df51717cb19a3c9ea08326ded", "level": 0}
+{"src_tgt": "KG-based", "tgt_src": "We", "description": "KG-based and We co-occur in the same text chunk.", "weight": 1, "source_id": "fad5711df51717cb19a3c9ea08326ded", "level": 0}
+{"src_tgt": "LightRAG", "tgt_src": "Guo", "description": "LightRAG and Guo co-occur in the same text chunk.", "weight": 1, "source_id": "dd200c596ff13b6ee57fd2f5b9dc3e22", "level": 0}
+{"src_tgt": "Guo", "tgt_src": "Uses", "description": "Guo and Uses co-occur in the same text chunk.", "weight": 1, "source_id": "dd200c596ff13b6ee57fd2f5b9dc3e22", "level": 0}
+{"src_tgt": "Uses", "tgt_src": "KG-based", "description": "Uses and KG-based co-occur in the same text chunk.", "weight": 1, "source_id": "dd200c596ff13b6ee57fd2f5b9dc3e22", "level": 0}
+{"src_tgt": "KAG", "tgt_src": "Liang", "description": "KAG and Liang co-occur in the same text chunk.", "weight": 1, "source_id": "5b3a4a1f466eb61a975061a31527194e", "level": 0}
+{"src_tgt": "Liang", "tgt_src": "A", "description": "Liang and A co-occur in the same text chunk.", "weight": 1, "source_id": "5b3a4a1f466eb61a975061a31527194e", "level": 0}
+{"src_tgt": "A", "tgt_src": "LLM", "description": "A and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "5b3a4a1f466eb61a975061a31527194e", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "KG", "description": "LLM and KG co-occur in the same text chunk.", "weight": 1, "source_id": "5b3a4a1f466eb61a975061a31527194e", "level": 0}
+{"src_tgt": "FastGraphRAG", "tgt_src": "An", "description": "FastGraphRAG and An co-occur in the same text chunk.", "weight": 1, "source_id": "1afc4a6939bc64f97a7b60544ee694cf", "level": 0}
+{"src_tgt": "An", "tgt_src": "PageRank", "description": "An and PageRank co-occur in the same text chunk.", "weight": 1, "source_id": "1afc4a6939bc64f97a7b60544ee694cf", "level": 0}
+{"src_tgt": "PageRank", "tgt_src": "Page", "description": "PageRank and Page co-occur in the same text chunk.", "weight": 1, "source_id": "1afc4a6939bc64f97a7b60544ee694cf", "level": 0}
+{"src_tgt": "HiRAG", "tgt_src": "Huang", "description": "HiRAG and Huang co-occur in the same text chunk.", "weight": 1, "source_id": "ebdf1af80f8f8747476ead38c2cbfc44", "level": 0}
+{"src_tgt": "Datasets", "tgt_src": "Evaluation Metrics", "description": "Datasets and Evaluation Metrics co-occur in the same text chunk.", "weight": 1, "source_id": "e4d223c7d2dd5b45c49bc78197a586ec", "level": 0}
+{"src_tgt": "Evaluation Metrics", "tgt_src": "We", "description": "Evaluation Metrics and We co-occur in the same text chunk.", "weight": 1, "source_id": "e4d223c7d2dd5b45c49bc78197a586ec", "level": 0}
+{"src_tgt": "We", "tgt_src": "UltraDomain", "description": "We and UltraDomain co-occur in the same text chunk.", "weight": 1, "source_id": "e4d223c7d2dd5b45c49bc78197a586ec", "level": 0}
+{"src_tgt": "UltraDomain", "tgt_src": "Qian", "description": "UltraDomain and Qian co-occur in the same text chunk.", "weight": 1, "source_id": "e4d223c7d2dd5b45c49bc78197a586ec", "level": 0}
+{"src_tgt": "Qian", "tgt_src": "RAG", "description": "Qian and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "e4d223c7d2dd5b45c49bc78197a586ec", "level": 0}
+{"src_tgt": "RAG", "tgt_src": "Mix", "description": "RAG and Mix co-occur in the same text chunk.", "weight": 1, "source_id": "e4d223c7d2dd5b45c49bc78197a586ec", "level": 0}
+{"src_tgt": "Mix", "tgt_src": "CS", "description": "Mix and CS co-occur in the same text chunk.", "weight": 1, "source_id": "e4d223c7d2dd5b45c49bc78197a586ec", "level": 0}
+{"src_tgt": "Evaluation Metrics", "tgt_src": "To", "description": "Evaluation Metrics and To co-occur in the same text chunk.", "weight": 1, "source_id": "97cdba4a365362a7b07bb125c5f937fd", "level": 0}
+{"src_tgt": "To", "tgt_src": "Huang", "description": "To and Huang co-occur in the same text chunk.", "weight": 1, "source_id": "97cdba4a365362a7b07bb125c5f937fd", "level": 0}
+{"src_tgt": "Comprehensiveness", "tgt_src": "Measures", "description": "Comprehensiveness and Measures co-occur in the same text chunk.", "weight": 1, "source_id": "9505e93d0e6188321b6b396c0851bcaf", "level": 0}
+{"src_tgt": "Empowerment", "tgt_src": "Evaluates", "description": "Empowerment and Evaluates co-occur in the same text chunk.", "weight": 1, "source_id": "042ca205e950866d37e2ce694072a676", "level": 0}
+{"src_tgt": "Diversity", "tgt_src": "Assesses", "description": "Diversity and Assesses co-occur in the same text chunk.", "weight": 1, "source_id": "91492afce04ed07b45eb40411050eb05", "level": 0}
+{"src_tgt": "Overall", "tgt_src": "Provides", "description": "Overall and Provides co-occur in the same text chunk.", "weight": 1, "source_id": "5c0be86f479775ae187216c6d865c6af", "level": 0}
+{"src_tgt": "Following", "tgt_src": "LLMs", "description": "Following and LLMs co-occur in the same text chunk.", "weight": 1, "source_id": "549a256e8d6b01779c2471e815afd9b4", "level": 0}
+{"src_tgt": "LLMs", "tgt_src": "In", "description": "LLMs and In co-occur in the same text chunk.", "weight": 1, "source_id": "549a256e8d6b01779c2471e815afd9b4", "level": 0}
+{"src_tgt": "In", "tgt_src": "LLM", "description": "In and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "549a256e8d6b01779c2471e815afd9b4", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "Specifically", "description": "LLM and Specifically co-occur in the same text chunk.", "weight": 1, "source_id": "549a256e8d6b01779c2471e815afd9b4", "level": 0}
+{"src_tgt": "Specifically", "tgt_src": "DeepSeek-V3", "description": "Specifically and DeepSeek-V3 co-occur in the same text chunk.", "weight": 1, "source_id": "549a256e8d6b01779c2471e815afd9b4", "level": 0}
+{"src_tgt": "DeepSeek-V3", "tgt_src": "Liu", "description": "DeepSeek-V3 and Liu co-occur in the same text chunk.", "weight": 1, "source_id": "549a256e8d6b01779c2471e815afd9b4", "level": 0}
+{"src_tgt": "Implementation Details", "tgt_src": "Across", "description": "Implementation Details and Across co-occur in the same text chunk.", "weight": 1, "source_id": "1350e843269320150d39cb90a1ba4b04", "level": 0}
+{"src_tgt": "Across", "tgt_src": "DeepSeek-V3", "description": "Across and DeepSeek-V3 co-occur in the same text chunk.", "weight": 1, "source_id": "1350e843269320150d39cb90a1ba4b04", "level": 0}
+{"src_tgt": "DeepSeek-V3", "tgt_src": "LLM", "description": "DeepSeek-V3 and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "1350e843269320150d39cb90a1ba4b04", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "BGE-M3", "description": "LLM and BGE-M3 co-occur in the same text chunk.", "weight": 1, "source_id": "1350e843269320150d39cb90a1ba4b04", "level": 0}
+{"src_tgt": "BGE-M3", "tgt_src": "Chen", "description": "BGE-M3 and Chen co-occur in the same text chunk.", "weight": 1, "source_id": "1350e843269320150d39cb90a1ba4b04", "level": 0}
+{"src_tgt": "Chen", "tgt_src": "GMM", "description": "Chen and GMM co-occur in the same text chunk.", "weight": 1, "source_id": "1350e843269320150d39cb90a1ba4b04", "level": 0}
+{"src_tgt": "GMM", "tgt_src": "All", "description": "GMM and All co-occur in the same text chunk.", "weight": 1, "source_id": "1350e843269320150d39cb90a1ba4b04", "level": 0}
+{"src_tgt": "Overall Performance Comparison", "tgt_src": "RQ1", "description": "Overall Performance Comparison and RQ1 co-occur in the same text chunk.", "weight": 1, "source_id": "595760bbcb7173a45c954cfef8ebe623", "level": 0}
+{"src_tgt": "To", "tgt_src": "RQ1", "description": "To and RQ1 co-occur in the same text chunk.", "weight": 1, "source_id": "802f4b23c04cee237dde387427271d6f", "level": 0}
+{"src_tgt": "RQ1", "tgt_src": "LeanRAG", "description": "RQ1 and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "802f4b23c04cee237dde387427271d6f", "level": 0}
+{"src_tgt": "From", "tgt_src": "Comprehensiveness", "description": "From and Comprehensiveness co-occur in the same text chunk.", "weight": 1, "source_id": "140e903096259129d71ad363dd445f8b", "level": 0}
+{"src_tgt": "Comprehensiveness", "tgt_src": "KG-based RAG", "description": "Comprehensiveness and KG-based RAG co-occur in the same text chunk.", "weight": 1, "source_id": "140e903096259129d71ad363dd445f8b", "level": 0}
+{"src_tgt": "KG-based RAG", "tgt_src": "Lean-RAG", "description": "KG-based RAG and Lean-RAG co-occur in the same text chunk.", "weight": 1, "source_id": "140e903096259129d71ad363dd445f8b", "level": 0}
+{"src_tgt": "Lean-RAG", "tgt_src": "Furthermore", "description": "Lean-RAG and Furthermore co-occur in the same text chunk.", "weight": 1, "source_id": "140e903096259129d71ad363dd445f8b", "level": 0}
+{"src_tgt": "Furthermore", "tgt_src": "Empowerment", "description": "Furthermore and Empowerment co-occur in the same text chunk.", "weight": 1, "source_id": "140e903096259129d71ad363dd445f8b", "level": 0}
+{"src_tgt": "Empowerment", "tgt_src": "Diversity", "description": "Empowerment and Diversity co-occur in the same text chunk.", "weight": 1, "source_id": "140e903096259129d71ad363dd445f8b", "level": 0}
+{"src_tgt": "Diversity", "tgt_src": "These", "description": "Diversity and These co-occur in the same text chunk.", "weight": 1, "source_id": "140e903096259129d71ad363dd445f8b", "level": 0}
+{"src_tgt": "Analysis", "tgt_src": "Information Redundancy", "description": "Analysis and Information Redundancy co-occur in the same text chunk.", "weight": 1, "source_id": "792b1ecca86dbcd2d2a2c2feea52b581", "level": 0}
+{"src_tgt": "Information Redundancy", "tgt_src": "RQ2", "description": "Information Redundancy and RQ2 co-occur in the same text chunk.", "weight": 1, "source_id": "792b1ecca86dbcd2d2a2c2feea52b581", "level": 0}
+{"src_tgt": "Experimental Setup", "tgt_src": "To", "description": "Experimental Setup and To co-occur in the same text chunk.", "weight": 1, "source_id": "1caa43abc45a08a2a9172ad7985d6c2a", "level": 0}
+{"src_tgt": "To", "tgt_src": "RQ2", "description": "To and RQ2 co-occur in the same text chunk.", "weight": 1, "source_id": "1caa43abc45a08a2a9172ad7985d6c2a", "level": 0}
+{"src_tgt": "RQ2", "tgt_src": "We", "description": "RQ2 and We co-occur in the same text chunk.", "weight": 1, "source_id": "1caa43abc45a08a2a9172ad7985d6c2a", "level": 0}
+{"src_tgt": "We", "tgt_src": "Qwen3-14B-Instruct", "description": "We and Qwen3-14B-Instruct co-occur in the same text chunk.", "weight": 1, "source_id": "1caa43abc45a08a2a9172ad7985d6c2a", "level": 0}
+{"src_tgt": "Retrieved Context Size", "tgt_src": "LeanRAG", "description": "Retrieved Context Size and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "9a777db8c931a5adb9195209967125aa", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "On", "description": "LeanRAG and On co-occur in the same text chunk.", "weight": 1, "source_id": "9a777db8c931a5adb9195209967125aa", "level": 0}
+{"src_tgt": "On", "tgt_src": "LCA-based", "description": "On and LCA-based co-occur in the same text chunk.", "weight": 1, "source_id": "9a777db8c931a5adb9195209967125aa", "level": 0}
+{"src_tgt": "Cluster Relation Effectiveness Analysis", "tgt_src": "RQ3", "description": "Cluster Relation Effectiveness Analysis and RQ3 co-occur in the same text chunk.", "weight": 1, "source_id": "79a80d37759223bb44fec2df2628ce94", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "RQ3", "description": "LeanRAG and RQ3 co-occur in the same text chunk.", "weight": 1, "source_id": "ec008e60defee0f594feabb4df70d1ec", "level": 0}
+{"src_tgt": "RQ3", "tgt_src": "To", "description": "RQ3 and To co-occur in the same text chunk.", "weight": 1, "source_id": "ec008e60defee0f594feabb4df70d1ec", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Furthermore", "description": "LeanRAG and Furthermore co-occur in the same text chunk.", "weight": 1, "source_id": "819c18b09ffeb058cd425f02cd19c84b", "level": 0}
+{"src_tgt": "Necessity Analysis", "tgt_src": "Textual Context", "description": "Necessity Analysis and Textual Context co-occur in the same text chunk.", "weight": 1, "source_id": "f723a681e4777728f773b0d238050844", "level": 0}
+{"src_tgt": "Textual Context", "tgt_src": "RQ4", "description": "Textual Context and RQ4 co-occur in the same text chunk.", "weight": 1, "source_id": "f723a681e4777728f773b0d238050844", "level": 0}
+{"src_tgt": "Motivation", "tgt_src": "Setup", "description": "Motivation and Setup co-occur in the same text chunk.", "weight": 1, "source_id": "0644547994eb20ed75bfa5b2542e585f", "level": 0}
+{"src_tgt": "Setup", "tgt_src": "To", "description": "Setup and To co-occur in the same text chunk.", "weight": 1, "source_id": "0644547994eb20ed75bfa5b2542e585f", "level": 0}
+{"src_tgt": "To", "tgt_src": "RQ4", "description": "To and RQ4 co-occur in the same text chunk.", "weight": 1, "source_id": "0644547994eb20ed75bfa5b2542e585f", "level": 0}
+{"src_tgt": "RQ4", "tgt_src": "While", "description": "RQ4 and While co-occur in the same text chunk.", "weight": 1, "source_id": "0644547994eb20ed75bfa5b2542e585f", "level": 0}
+{"src_tgt": "While", "tgt_src": "LeanRAG", "description": "While and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "0644547994eb20ed75bfa5b2542e585f", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Context", "description": "LeanRAG and Context co-occur in the same text chunk.", "weight": 1, "source_id": "0644547994eb20ed75bfa5b2542e585f", "level": 0}
+{"src_tgt": "Context", "tgt_src": "LLM", "description": "Context and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "0644547994eb20ed75bfa5b2542e585f", "level": 0}
+{"src_tgt": "Results", "tgt_src": "Analysis", "description": "Results and Analysis co-occur in the same text chunk.", "weight": 1, "source_id": "0796767cd3492bbc4b2764d6645bea89", "level": 0}
+{"src_tgt": "Analysis", "tgt_src": "Across", "description": "Analysis and Across co-occur in the same text chunk.", "weight": 1, "source_id": "0796767cd3492bbc4b2764d6645bea89", "level": 0}
+{"src_tgt": "Across", "tgt_src": "LeanRAG", "description": "Across and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "0796767cd3492bbc4b2764d6645bea89", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "On", "description": "LeanRAG and On co-occur in the same text chunk.", "weight": 1, "source_id": "0796767cd3492bbc4b2764d6645bea89", "level": 0}
+{"src_tgt": "On", "tgt_src": "Mix", "description": "On and Mix co-occur in the same text chunk.", "weight": 1, "source_id": "0796767cd3492bbc4b2764d6645bea89", "level": 0}
+{"src_tgt": "Mix", "tgt_src": "CS", "description": "Mix and CS co-occur in the same text chunk.", "weight": 1, "source_id": "0796767cd3492bbc4b2764d6645bea89", "level": 0}
+{"src_tgt": "CS", "tgt_src": "Legal", "description": "CS and Legal co-occur in the same text chunk.", "weight": 1, "source_id": "0796767cd3492bbc4b2764d6645bea89", "level": 0}
+{"src_tgt": "Comprehensiveness", "tgt_src": "Empowerment", "description": "Comprehensiveness and Empowerment co-occur in the same text chunk.", "weight": 1, "source_id": "543f8e9adbbb9e679633c57297631115", "level": 0}
+{"src_tgt": "Empowerment", "tgt_src": "In", "description": "Empowerment and In co-occur in the same text chunk.", "weight": 1, "source_id": "543f8e9adbbb9e679633c57297631115", "level": 0}
+{"src_tgt": "In", "tgt_src": "LLM", "description": "In and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "543f8e9adbbb9e679633c57297631115", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "These", "description": "LLM and These co-occur in the same text chunk.", "weight": 1, "source_id": "543f8e9adbbb9e679633c57297631115", "level": 0}
+{"src_tgt": "These", "tgt_src": "LeanRAG", "description": "These and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "543f8e9adbbb9e679633c57297631115", "level": 0}
+{"src_tgt": "To", "tgt_src": "KG-based RAG", "description": "To and KG-based RAG co-occur in the same text chunk.", "weight": 1, "source_id": "47741fd0e06d7c109d8770dcc24abe3e", "level": 0}
+{"src_tgt": "KG-based RAG", "tgt_src": "LeanRAG", "description": "KG-based RAG and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "47741fd0e06d7c109d8770dcc24abe3e", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Our", "description": "LeanRAG and Our co-occur in the same text chunk.", "weight": 1, "source_id": "47741fd0e06d7c109d8770dcc24abe3e", "level": 0}
+{"src_tgt": "Our", "tgt_src": "LCA-based", "description": "Our and LCA-based co-occur in the same text chunk.", "weight": 1, "source_id": "47741fd0e06d7c109d8770dcc24abe3e", "level": 0}
+{"src_tgt": "LCA-based", "tgt_src": "Extensive", "description": "LCA-based and Extensive co-occur in the same text chunk.", "weight": 1, "source_id": "47741fd0e06d7c109d8770dcc24abe3e", "level": 0}
+{"src_tgt": "Extensive", "tgt_src": "Furthermore", "description": "Extensive and Furthermore co-occur in the same text chunk.", "weight": 1, "source_id": "47741fd0e06d7c109d8770dcc24abe3e", "level": 0}
+{"src_tgt": "Shanghai Artificial Intelligence Laboratory", "tgt_src": "National Key R", "description": "Shanghai Artificial Intelligence Laboratory and National Key R co-occur in the same text chunk.", "weight": 1, "source_id": "8c4a8fcfdf6985746aaa764102e3b97f", "level": 0}
+{"src_tgt": "National Key R", "tgt_src": "D Program", "description": "National Key R and D Program co-occur in the same text chunk.", "weight": 1, "source_id": "8c4a8fcfdf6985746aaa764102e3b97f", "level": 0}
+{"src_tgt": "D Program", "tgt_src": "China", "description": "D Program and China co-occur in the same text chunk.", "weight": 1, "source_id": "8c4a8fcfdf6985746aaa764102e3b97f", "level": 0}
+{"src_tgt": "Grant No", "tgt_src": "Science", "description": "Grant No and Science co-occur in the same text chunk.", "weight": 1, "source_id": "5cf5ccbb1574677274ff937b7428a70c", "level": 0}
+{"src_tgt": "Science", "tgt_src": "Technology Commission", "description": "Science and Technology Commission co-occur in the same text chunk.", "weight": 1, "source_id": "5cf5ccbb1574677274ff937b7428a70c", "level": 0}
+{"src_tgt": "Technology Commission", "tgt_src": "Shanghai Municipality", "description": "Technology Commission and Shanghai Municipality co-occur in the same text chunk.", "weight": 1, "source_id": "5cf5ccbb1574677274ff937b7428a70c", "level": 0}
+{"src_tgt": "Shanghai Municipality", "tgt_src": "Grant Nos", "description": "Shanghai Municipality and Grant Nos co-occur in the same text chunk.", "weight": 1, "source_id": "5cf5ccbb1574677274ff937b7428a70c", "level": 0}
+{"src_tgt": "It", "tgt_src": "More Results", "description": "It and More Results co-occur in the same text chunk.", "weight": 1, "source_id": "43db3f344fb7d0a2be7e3bd03f175a23", "level": 0}
+{"src_tgt": "More Results", "tgt_src": "Model Performance Across Four Datasets", "description": "More Results and Model Performance Across Four Datasets co-occur in the same text chunk.", "weight": 1, "source_id": "43db3f344fb7d0a2be7e3bd03f175a23", "level": 0}
+{"src_tgt": "Model Performance Across Four Datasets", "tgt_src": "Experimental Implementation Details", "description": "Model Performance Across Four Datasets and Experimental Implementation Details co-occur in the same text chunk.", "weight": 1, "source_id": "43db3f344fb7d0a2be7e3bd03f175a23", "level": 0}
+{"src_tgt": "Experimental Implementation Details", "tgt_src": "QA Cases", "description": "Experimental Implementation Details and QA Cases co-occur in the same text chunk.", "weight": 1, "source_id": "43db3f344fb7d0a2be7e3bd03f175a23", "level": 0}
+{"src_tgt": "QA Cases", "tgt_src": "LeanRAG", "description": "QA Cases and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "43db3f344fb7d0a2be7e3bd03f175a23", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Prompt Templates", "description": "LeanRAG and Prompt Templates co-occur in the same text chunk.", "weight": 1, "source_id": "43db3f344fb7d0a2be7e3bd03f175a23", "level": 0}
+{"src_tgt": "Large Language Model", "tgt_src": "LLM", "description": "Large Language Model and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "6fab0a5fad1fd695831281362001e653", "level": 0}
+{"src_tgt": "A", "tgt_src": "More Results", "description": "A and More Results co-occur in the same text chunk.", "weight": 1, "source_id": "0ea26c3b83032c99cbe1d828160f3996", "level": 0}
+{"src_tgt": "More Results", "tgt_src": "Model Performance Across Four Datasets", "description": "More Results and Model Performance Across Four Datasets co-occur in the same text chunk.", "weight": 1, "source_id": "0ea26c3b83032c99cbe1d828160f3996", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "NaiveRAG", "description": "LeanRAG and NaiveRAG co-occur in the same text chunk.", "weight": 1, "source_id": "21346b27d80f9679e2e171a47d21571e", "level": 0}
+{"src_tgt": "NaiveRAG", "tgt_src": "Fast-GraphRAG", "description": "NaiveRAG and Fast-GraphRAG co-occur in the same text chunk.", "weight": 1, "source_id": "21346b27d80f9679e2e171a47d21571e", "level": 0}
+{"src_tgt": "Fast-GraphRAG", "tgt_src": "KAG", "description": "Fast-GraphRAG and KAG co-occur in the same text chunk.", "weight": 1, "source_id": "21346b27d80f9679e2e171a47d21571e", "level": 0}
+{"src_tgt": "KAG", "tgt_src": "Across", "description": "KAG and Across co-occur in the same text chunk.", "weight": 1, "source_id": "21346b27d80f9679e2e171a47d21571e", "level": 0}
+{"src_tgt": "Across", "tgt_src": "Empowerment", "description": "Across and Empowerment co-occur in the same text chunk.", "weight": 1, "source_id": "21346b27d80f9679e2e171a47d21571e", "level": 0}
+{"src_tgt": "Empowerment", "tgt_src": "Diversity", "description": "Empowerment and Diversity co-occur in the same text chunk.", "weight": 1, "source_id": "21346b27d80f9679e2e171a47d21571e", "level": 0}
+{"src_tgt": "Diversity", "tgt_src": "These", "description": "Diversity and These co-occur in the same text chunk.", "weight": 1, "source_id": "21346b27d80f9679e2e171a47d21571e", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "GraphRAG", "description": "LeanRAG and GraphRAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f00751693ac9fc4ad7b0d4291ef5abc", "level": 0}
+{"src_tgt": "GraphRAG", "tgt_src": "LightRAG", "description": "GraphRAG and LightRAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f00751693ac9fc4ad7b0d4291ef5abc", "level": 0}
+{"src_tgt": "LightRAG", "tgt_src": "HiRAG", "description": "LightRAG and HiRAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f00751693ac9fc4ad7b0d4291ef5abc", "level": 0}
+{"src_tgt": "HiRAG", "tgt_src": "Although", "description": "HiRAG and Although co-occur in the same text chunk.", "weight": 1, "source_id": "5f00751693ac9fc4ad7b0d4291ef5abc", "level": 0}
+{"src_tgt": "Although", "tgt_src": "When", "description": "Although and When co-occur in the same text chunk.", "weight": 1, "source_id": "5f00751693ac9fc4ad7b0d4291ef5abc", "level": 0}
+{"src_tgt": "When", "tgt_src": "Lean-RAG", "description": "When and Lean-RAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f00751693ac9fc4ad7b0d4291ef5abc", "level": 0}
+{"src_tgt": "Lean-RAG", "tgt_src": "RAG", "description": "Lean-RAG and RAG co-occur in the same text chunk.", "weight": 1, "source_id": "5f00751693ac9fc4ad7b0d4291ef5abc", "level": 0}
+{"src_tgt": "Consistency", "tgt_src": "LeanRAG", "description": "Consistency and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "ee42e401a199fcd6d58eca97b65fbe98", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "It", "description": "LeanRAG and It co-occur in the same text chunk.", "weight": 1, "source_id": "ee42e401a199fcd6d58eca97b65fbe98", "level": 0}
+{"src_tgt": "It", "tgt_src": "Mix", "description": "It and Mix co-occur in the same text chunk.", "weight": 1, "source_id": "ee42e401a199fcd6d58eca97b65fbe98", "level": 0}
+{"src_tgt": "Mix", "tgt_src": "Computer Science", "description": "Mix and Computer Science co-occur in the same text chunk.", "weight": 1, "source_id": "ee42e401a199fcd6d58eca97b65fbe98", "level": 0}
+{"src_tgt": "Computer Science", "tgt_src": "Legal", "description": "Computer Science and Legal co-occur in the same text chunk.", "weight": 1, "source_id": "ee42e401a199fcd6d58eca97b65fbe98", "level": 0}
+{"src_tgt": "Legal", "tgt_src": "Agriculture", "description": "Legal and Agriculture co-occur in the same text chunk.", "weight": 1, "source_id": "ee42e401a199fcd6d58eca97b65fbe98", "level": 0}
+{"src_tgt": "Agriculture", "tgt_src": "Notably", "description": "Agriculture and Notably co-occur in the same text chunk.", "weight": 1, "source_id": "ee42e401a199fcd6d58eca97b65fbe98", "level": 0}
+{"src_tgt": "B", "tgt_src": "Experimental Implementation Details", "description": "B and Experimental Implementation Details co-occur in the same text chunk.", "weight": 1, "source_id": "ee1bdb38e2a14b8272e82bffc3f45be0", "level": 0}
+{"src_tgt": "B", "tgt_src": "Dataset Details", "description": "B and Dataset Details co-occur in the same text chunk.", "weight": 1, "source_id": "41b5e5a16eaa58b5470fcba104782765", "level": 0}
+{"src_tgt": "As", "tgt_src": "The Legal", "description": "As and The Legal co-occur in the same text chunk.", "weight": 1, "source_id": "9c59ca30dc4f0871c4f95d11c52cc5b9", "level": 0}
+{"src_tgt": "The Legal", "tgt_src": "In", "description": "The Legal and In co-occur in the same text chunk.", "weight": 1, "source_id": "9c59ca30dc4f0871c4f95d11c52cc5b9", "level": 0}
+{"src_tgt": "In", "tgt_src": "CS", "description": "In and CS co-occur in the same text chunk.", "weight": 1, "source_id": "9c59ca30dc4f0871c4f95d11c52cc5b9", "level": 0}
+{"src_tgt": "CS", "tgt_src": "Computer Science", "description": "CS and Computer Science co-occur in the same text chunk.", "weight": 1, "source_id": "9c59ca30dc4f0871c4f95d11c52cc5b9", "level": 0}
+{"src_tgt": "Computer Science", "tgt_src": "The Agriculture", "description": "Computer Science and The Agriculture co-occur in the same text chunk.", "weight": 1, "source_id": "9c59ca30dc4f0871c4f95d11c52cc5b9", "level": 0}
+{"src_tgt": "The Agriculture", "tgt_src": "Mix", "description": "The Agriculture and Mix co-occur in the same text chunk.", "weight": 1, "source_id": "9c59ca30dc4f0871c4f95d11c52cc5b9", "level": 0}
+{"src_tgt": "Mix", "tgt_src": "These", "description": "Mix and These co-occur in the same text chunk.", "weight": 1, "source_id": "9c59ca30dc4f0871c4f95d11c52cc5b9", "level": 0}
+{"src_tgt": "B", "tgt_src": "Graph Construction Implementation Details", "description": "B and Graph Construction Implementation Details co-occur in the same text chunk.", "weight": 1, "source_id": "a942bcebc6b66129290f264c040906d8", "level": 0}
+{"src_tgt": "To", "tgt_src": "LeanRAG", "description": "To and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "54d916e574dedfc9e530fca80b6d8f1d", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Gaussian Mixture Model", "description": "LeanRAG and Gaussian Mixture Model co-occur in the same text chunk.", "weight": 1, "source_id": "54d916e574dedfc9e530fca80b6d8f1d", "level": 0}
+{"src_tgt": "Gaussian Mixture Model", "tgt_src": "GMM", "description": "Gaussian Mixture Model and GMM co-occur in the same text chunk.", "weight": 1, "source_id": "54d916e574dedfc9e530fca80b6d8f1d", "level": 0}
+{"src_tgt": "Despite", "tgt_src": "It", "description": "Despite and It co-occur in the same text chunk.", "weight": 1, "source_id": "44bfe06a36d667a4c6630170a320aeed", "level": 0}
+{"src_tgt": "It", "tgt_src": "LeanRAG", "description": "It and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "44bfe06a36d667a4c6630170a320aeed", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Beyond", "description": "LeanRAG and Beyond co-occur in the same text chunk.", "weight": 1, "source_id": "44bfe06a36d667a4c6630170a320aeed", "level": 0}
+{"src_tgt": "Beyond", "tgt_src": "For", "description": "Beyond and For co-occur in the same text chunk.", "weight": 1, "source_id": "44bfe06a36d667a4c6630170a320aeed", "level": 0}
+{"src_tgt": "For", "tgt_src": "To", "description": "For and To co-occur in the same text chunk.", "weight": 1, "source_id": "44bfe06a36d667a4c6630170a320aeed", "level": 0}
+{"src_tgt": "To", "tgt_src": "Lean-RAG", "description": "To and Lean-RAG co-occur in the same text chunk.", "weight": 1, "source_id": "44bfe06a36d667a4c6630170a320aeed", "level": 0}
+{"src_tgt": "B", "tgt_src": "Graph Retrieval Details", "description": "B and Graph Retrieval Details co-occur in the same text chunk.", "weight": 1, "source_id": "563889a147bed072b1fc9eaffa0a656e", "level": 0}
+{"src_tgt": "B", "tgt_src": "Chunk Selection Strategy Based", "description": "B and Chunk Selection Strategy Based co-occur in the same text chunk.", "weight": 1, "source_id": "1e04a5a1f84e9cdbde45948dda678831", "level": 0}
+{"src_tgt": "Chunk Selection Strategy Based", "tgt_src": "GraphRAG", "description": "Chunk Selection Strategy Based and GraphRAG co-occur in the same text chunk.", "weight": 1, "source_id": "1e04a5a1f84e9cdbde45948dda678831", "level": 0}
+{"src_tgt": "GraphRAG", "tgt_src": "Consequently", "description": "GraphRAG and Consequently co-occur in the same text chunk.", "weight": 1, "source_id": "1e04a5a1f84e9cdbde45948dda678831", "level": 0}
+{"src_tgt": "Consequently", "tgt_src": "LeanRAG", "description": "Consequently and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "1e04a5a1f84e9cdbde45948dda678831", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "C", "description": "LeanRAG and C co-occur in the same text chunk.", "weight": 1, "source_id": "1e04a5a1f84e9cdbde45948dda678831", "level": 0}
+{"src_tgt": "Our", "tgt_src": "After", "description": "Our and After co-occur in the same text chunk.", "weight": 1, "source_id": "98692539635b0295bcc5a1b324612669", "level": 0}
+{"src_tgt": "After", "tgt_src": "V", "description": "After and V co-occur in the same text chunk.", "weight": 1, "source_id": "98692539635b0295bcc5a1b324612669", "level": 0}
+{"src_tgt": "V", "tgt_src": "We", "description": "V and We co-occur in the same text chunk.", "weight": 1, "source_id": "98692539635b0295bcc5a1b324612669", "level": 0}
+{"src_tgt": "We", "tgt_src": "Finally", "description": "We and Finally co-occur in the same text chunk.", "weight": 1, "source_id": "98692539635b0295bcc5a1b324612669", "level": 0}
+{"src_tgt": "Finally", "tgt_src": "C", "description": "Finally and C co-occur in the same text chunk.", "weight": 1, "source_id": "98692539635b0295bcc5a1b324612669", "level": 0}
+{"src_tgt": "C", "tgt_src": "Naive RAG", "description": "C and Naive RAG co-occur in the same text chunk.", "weight": 1, "source_id": "98692539635b0295bcc5a1b324612669", "level": 0}
+{"src_tgt": "B", "tgt_src": "Experiment Settings", "description": "B and Experiment Settings co-occur in the same text chunk.", "weight": 1, "source_id": "025d6e30e5abae5164c3b7aad9fda21a", "level": 0}
+{"src_tgt": "To", "tgt_src": "T", "description": "To and T co-occur in the same text chunk.", "weight": 1, "source_id": "ae24600a05ba0e946aa8927fb3c01982", "level": 0}
+{"src_tgt": "T", "tgt_src": "N", "description": "T and N co-occur in the same text chunk.", "weight": 1, "source_id": "ae24600a05ba0e946aa8927fb3c01982", "level": 0}
+{"src_tgt": "N", "tgt_src": "C", "description": "N and C co-occur in the same text chunk.", "weight": 1, "source_id": "ae24600a05ba0e946aa8927fb3c01982", "level": 0}
+{"src_tgt": "Specifically", "tgt_src": "Mix", "description": "Specifically and Mix co-occur in the same text chunk.", "weight": 1, "source_id": "a6938223d3abb86a16278c33cf6f93ed", "level": 0}
+{"src_tgt": "Mix", "tgt_src": "Agriculture", "description": "Mix and Agriculture co-occur in the same text chunk.", "weight": 1, "source_id": "a6938223d3abb86a16278c33cf6f93ed", "level": 0}
+{"src_tgt": "Agriculture", "tgt_src": "V", "description": "Agriculture and V co-occur in the same text chunk.", "weight": 1, "source_id": "a6938223d3abb86a16278c33cf6f93ed", "level": 0}
+{"src_tgt": "Conversely", "tgt_src": "Computer Science", "description": "Conversely and Computer Science co-occur in the same text chunk.", "weight": 1, "source_id": "a8e7598e0a8a0dd7e7eee02cc85f7e57", "level": 0}
+{"src_tgt": "Computer Science", "tgt_src": "CS", "description": "Computer Science and CS co-occur in the same text chunk.", "weight": 1, "source_id": "a8e7598e0a8a0dd7e7eee02cc85f7e57", "level": 0}
+{"src_tgt": "CS", "tgt_src": "Its", "description": "CS and Its co-occur in the same text chunk.", "weight": 1, "source_id": "a8e7598e0a8a0dd7e7eee02cc85f7e57", "level": 0}
+{"src_tgt": "Finally", "tgt_src": "Legal", "description": "Finally and Legal co-occur in the same text chunk.", "weight": 1, "source_id": "8624fcb62779ca72ce310d5cbf757a49", "level": 0}
+{"src_tgt": "Legal", "tgt_src": "V", "description": "Legal and V co-occur in the same text chunk.", "weight": 1, "source_id": "8624fcb62779ca72ce310d5cbf757a49", "level": 0}
+{"src_tgt": "C", "tgt_src": "QA Cases", "description": "C and QA Cases co-occur in the same text chunk.", "weight": 1, "source_id": "cbf1c7352276facce1e95ed26fe056db", "level": 0}
+{"src_tgt": "QA Cases", "tgt_src": "LeanRAG", "description": "QA Cases and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "cbf1c7352276facce1e95ed26fe056db", "level": 0}
+{"src_tgt": "To", "tgt_src": "LeanRAG", "description": "To and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "71b68728c0262c37b2d0baa46de86206", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "HiRAG", "description": "LeanRAG and HiRAG co-occur in the same text chunk.", "weight": 1, "source_id": "71b68728c0262c37b2d0baa46de86206", "level": 0}
+{"src_tgt": "HiRAG", "tgt_src": "These", "description": "HiRAG and These co-occur in the same text chunk.", "weight": 1, "source_id": "71b68728c0262c37b2d0baa46de86206", "level": 0}
+{"src_tgt": "These", "tgt_src": "By", "description": "These and By co-occur in the same text chunk.", "weight": 1, "source_id": "71b68728c0262c37b2d0baa46de86206", "level": 0}
+{"src_tgt": "D", "tgt_src": "Prompt Templates", "description": "D and Prompt Templates co-occur in the same text chunk.", "weight": 1, "source_id": "8c46610c73fa3b747df0baec65733e49", "level": 0}
+{"src_tgt": "Prompt Templates", "tgt_src": "LeanRAG", "description": "Prompt Templates and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "8c46610c73fa3b747df0baec65733e49", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "While", "description": "LeanRAG and While co-occur in the same text chunk.", "weight": 1, "source_id": "96ea53972a898c737ffeb78c84a611ce", "level": 0}
+{"src_tgt": "While", "tgt_src": "KG", "description": "While and KG co-occur in the same text chunk.", "weight": 1, "source_id": "96ea53972a898c737ffeb78c84a611ce", "level": 0}
+{"src_tgt": "KG", "tgt_src": "LightRAG", "description": "KG and LightRAG co-occur in the same text chunk.", "weight": 1, "source_id": "96ea53972a898c737ffeb78c84a611ce", "level": 0}
+{"src_tgt": "LightRAG", "tgt_src": "Entity Aggregation Prompt", "description": "LightRAG and Entity Aggregation Prompt co-occur in the same text chunk.", "weight": 1, "source_id": "96ea53972a898c737ffeb78c84a611ce", "level": 0}
+{"src_tgt": "Entity Aggregation Prompt", "tgt_src": "Inter-Cluster Relation Generation Prompt", "description": "Entity Aggregation Prompt and Inter-Cluster Relation Generation Prompt co-occur in the same text chunk.", "weight": 1, "source_id": "96ea53972a898c737ffeb78c84a611ce", "level": 0}
+{"src_tgt": "Inter-Cluster Relation Generation Prompt", "tgt_src": "Score Scoring Prompt", "description": "Inter-Cluster Relation Generation Prompt and Score Scoring Prompt co-occur in the same text chunk.", "weight": 1, "source_id": "96ea53972a898c737ffeb78c84a611ce", "level": 0}
+{"src_tgt": "Score Scoring Prompt", "tgt_src": "Win Rate Evaluation Prompt", "description": "Score Scoring Prompt and Win Rate Evaluation Prompt co-occur in the same text chunk.", "weight": 1, "source_id": "96ea53972a898c737ffeb78c84a611ce", "level": 0}
+{"src_tgt": "D", "tgt_src": "Prompt Templates", "description": "D and Prompt Templates co-occur in the same text chunk.", "weight": 1, "source_id": "e8164856ee8381a5670cb711fb1e3676", "level": 0}
+{"src_tgt": "Prompt Templates", "tgt_src": "Entity Aggregation", "description": "Prompt Templates and Entity Aggregation co-occur in the same text chunk.", "weight": 1, "source_id": "e8164856ee8381a5670cb711fb1e3676", "level": 0}
+{"src_tgt": "As", "tgt_src": "Gaussian Mixture Model", "description": "As and Gaussian Mixture Model co-occur in the same text chunk.", "weight": 1, "source_id": "ea7a01134f5e63c6aa807c8c8244136d", "level": 0}
+{"src_tgt": "Gaussian Mixture Model", "tgt_src": "GMM", "description": "Gaussian Mixture Model and GMM co-occur in the same text chunk.", "weight": 1, "source_id": "ea7a01134f5e63c6aa807c8c8244136d", "level": 0}
+{"src_tgt": "GMM", "tgt_src": "To", "description": "GMM and To co-occur in the same text chunk.", "weight": 1, "source_id": "ea7a01134f5e63c6aa807c8c8244136d", "level": 0}
+{"src_tgt": "To", "tgt_src": "Large Language Model", "description": "To and Large Language Model co-occur in the same text chunk.", "weight": 1, "source_id": "ea7a01134f5e63c6aa807c8c8244136d", "level": 0}
+{"src_tgt": "Large Language Model", "tgt_src": "LLM", "description": "Large Language Model and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "ea7a01134f5e63c6aa807c8c8244136d", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "Furthermore", "description": "LLM and Furthermore co-occur in the same text chunk.", "weight": 1, "source_id": "ea7a01134f5e63c6aa807c8c8244136d", "level": 0}
+{"src_tgt": "D", "tgt_src": "Prompt Templates", "description": "D and Prompt Templates co-occur in the same text chunk.", "weight": 1, "source_id": "5f7915529d3fae6d4e91e5566e240ff8", "level": 0}
+{"src_tgt": "Prompt Templates", "tgt_src": "Relation Aggregation", "description": "Prompt Templates and Relation Aggregation co-occur in the same text chunk.", "weight": 1, "source_id": "5f7915529d3fae6d4e91e5566e240ff8", "level": 0}
+{"src_tgt": "As", "tgt_src": "Given", "description": "As and Given co-occur in the same text chunk.", "weight": 1, "source_id": "64153e87db53518bf2765f5234cf84a4", "level": 0}
+{"src_tgt": "Given", "tgt_src": "Through", "description": "Given and Through co-occur in the same text chunk.", "weight": 1, "source_id": "64153e87db53518bf2765f5234cf84a4", "level": 0}
+{"src_tgt": "Through", "tgt_src": "LeanRAG", "description": "Through and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "64153e87db53518bf2765f5234cf84a4", "level": 0}
+{"src_tgt": "D", "tgt_src": "Prompt Template", "description": "D and Prompt Template co-occur in the same text chunk.", "weight": 1, "source_id": "e8e517cbdedce3c16e7c4510593d2d33", "level": 0}
+{"src_tgt": "Prompt Template", "tgt_src": "Absolute Quality Scoring", "description": "Prompt Template and Absolute Quality Scoring co-occur in the same text chunk.", "weight": 1, "source_id": "e8e517cbdedce3c16e7c4510593d2d33", "level": 0}
+{"src_tgt": "To", "tgt_src": "LLM", "description": "To and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "64fa25638b6979a6ec24f5880e09604c", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "Comprehensiveness", "description": "LLM and Comprehensiveness co-occur in the same text chunk.", "weight": 1, "source_id": "64fa25638b6979a6ec24f5880e09604c", "level": 0}
+{"src_tgt": "Comprehensiveness", "tgt_src": "Empowerment", "description": "Comprehensiveness and Empowerment co-occur in the same text chunk.", "weight": 1, "source_id": "64fa25638b6979a6ec24f5880e09604c", "level": 0}
+{"src_tgt": "Empowerment", "tgt_src": "All", "description": "Empowerment and All co-occur in the same text chunk.", "weight": 1, "source_id": "64fa25638b6979a6ec24f5880e09604c", "level": 0}
+{"src_tgt": "All", "tgt_src": "JSON", "description": "All and JSON co-occur in the same text chunk.", "weight": 1, "source_id": "64fa25638b6979a6ec24f5880e09604c", "level": 0}
+{"src_tgt": "D", "tgt_src": "Prompt Template", "description": "D and Prompt Template co-occur in the same text chunk.", "weight": 1, "source_id": "0c227fb007ac389439bbf5cfb7fd6bad", "level": 0}
+{"src_tgt": "Prompt Template", "tgt_src": "Pairwise Comparison", "description": "Prompt Template and Pairwise Comparison co-occur in the same text chunk.", "weight": 1, "source_id": "0c227fb007ac389439bbf5cfb7fd6bad", "level": 0}
+{"src_tgt": "In", "tgt_src": "For", "description": "In and For co-occur in the same text chunk.", "weight": 1, "source_id": "c130555f53651fa290b9075dbc8102fe", "level": 0}
+{"src_tgt": "For", "tgt_src": "LeanRAG", "description": "For and LeanRAG co-occur in the same text chunk.", "weight": 1, "source_id": "c130555f53651fa290b9075dbc8102fe", "level": 0}
+{"src_tgt": "LeanRAG", "tgt_src": "Hi-RAG", "description": "LeanRAG and Hi-RAG co-occur in the same text chunk.", "weight": 1, "source_id": "c130555f53651fa290b9075dbc8102fe", "level": 0}
+{"src_tgt": "Hi-RAG", "tgt_src": "LLM", "description": "Hi-RAG and LLM co-occur in the same text chunk.", "weight": 1, "source_id": "c130555f53651fa290b9075dbc8102fe", "level": 0}
+{"src_tgt": "LLM", "tgt_src": "The LLM", "description": "LLM and The LLM co-occur in the same text chunk.", "weight": 1, "source_id": "c130555f53651fa290b9075dbc8102fe", "level": 0}
+{"src_tgt": "The LLM", "tgt_src": "JSON", "description": "The LLM and JSON co-occur in the same text chunk.", "weight": 1, "source_id": "c130555f53651fa290b9075dbc8102fe", "level": 0}
+{"src_tgt": "Your", "tgt_src": "For", "description": "Your and For co-occur in the same text chunk.", "weight": 1, "source_id": "61c637f15c5923e574689cc1d5822134", "level": 0}
+{"src_tgt": "When", "tgt_src": "Avoid", "description": "When and Avoid co-occur in the same text chunk.", "weight": 1, "source_id": "7850c31d20a2ef126e96164119dbcc45", "level": 0}
+{"src_tgt": "Provide", "tgt_src": "Consider", "description": "Provide and Consider co-occur in the same text chunk.", "weight": 1, "source_id": "9d20d713325cc8727cd84fa305a2c630", "level": 0}
+{"src_tgt": "Low", "tgt_src": "Clearly", "description": "Low and Clearly co-occur in the same text chunk.", "weight": 1, "source_id": "5bc59e697ee4811d929fa1279c4688be", "level": 0}
+{"src_tgt": "Below", "tgt_src": "Lacking", "description": "Below and Lacking co-occur in the same text chunk.", "weight": 1, "source_id": "488509ffd4090f9e10b1734d58ff7c8b", "level": 0}
+{"src_tgt": "Average", "tgt_src": "Adequate", "description": "Average and Adequate co-occur in the same text chunk.", "weight": 1, "source_id": "146a69326345358cb622814d4ce6d6aa", "level": 0}
+{"src_tgt": "Above", "tgt_src": "Generally", "description": "Above and Generally co-occur in the same text chunk.", "weight": 1, "source_id": "244f568375c7915e5b9b9856e93e0cd3", "level": 0}
+{"src_tgt": "High", "tgt_src": "Outstanding", "description": "High and Outstanding co-occur in the same text chunk.", "weight": 1, "source_id": "d61b7b534d5231221058ceff89d0d2a5", "level": 0}
+{"src_tgt": "Evaluate", "tgt_src": "Output", "description": "Evaluate and Output co-occur in the same text chunk.", "weight": 1, "source_id": "f39e8fe6339bba7754345fa16160a255", "level": 0}
+{"src_tgt": "Output", "tgt_src": "JSON", "description": "Output and JSON co-occur in the same text chunk.", "weight": 1, "source_id": "f39e8fe6339bba7754345fa16160a255", "level": 0}

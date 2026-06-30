@@ -1,0 +1,493 @@
+{
+  "LeanRAG": [
+    "LeanRAG_image_000000",
+    "LeanRAG_image_000001",
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "Knowledge-Graph-Based Generation": [],
+  "Semantic Aggregation": [],
+  "Hierarchical Retrieval": [],
+  "Yaoze Zhang": [],
+  "Rong Wu": [],
+  "Pinlong Cai": [],
+  "Xiaoman Wang": [],
+  "Guohang Yan": [],
+  "Song Mao": [],
+  "Ding Wang": [],
+  "Botian Shi": [],
+  "Shanghai Artificial Intelligence Laboratory": [
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "University": [],
+  "Shanghai": [],
+  "Science": [],
+  "Technology": [],
+  "Zhejiang University": [],
+  "East China Normal University": [],
+  "Abstract": [],
+  "Retrieval-Augmented Generation": [
+    "LeanRAG_image_000000"
+  ],
+  "RAG": [
+    "LeanRAG_image_000000"
+  ],
+  "Large Language Models": [
+    "LeanRAG_image_000000"
+  ],
+  "To": [
+    "LeanRAG_image_000000",
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000005"
+  ],
+  "However": [
+    "LeanRAG_image_000000"
+  ],
+  "Then": [
+    "LeanRAG_image_000000"
+  ],
+  "The LeanRAG": [
+    "LeanRAG_image_000000"
+  ],
+  "Introduction": [],
+  "LLMs": [
+    "LeanRAG_image_000000",
+    "LeanRAG_image_000001"
+  ],
+  "Yet": [
+    "LeanRAG_image_000000"
+  ],
+  "Huang": [
+    "LeanRAG_image_000000"
+  ],
+  "Li": [
+    "LeanRAG_image_000000"
+  ],
+  "Gao": [
+    "LeanRAG_image_000000"
+  ],
+  "Initial": [
+    "LeanRAG_image_000000"
+  ],
+  "GraphRAG": [
+    "LeanRAG_image_000000",
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000008"
+  ],
+  "Edge": [
+    "LeanRAG_image_000000"
+  ],
+  "Subsequently": [
+    "LeanRAG_image_000000"
+  ],
+  "Hi-RAG": [
+    "LeanRAG_image_000000",
+    "LeanRAG_table_000012"
+  ],
+  "At": [],
+  "Its": [],
+  "AI": [],
+  "Nov": [],
+  "These": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000012",
+    "LeanRAG_table_000013"
+  ],
+  "Corresponding": [],
+  "Building": [],
+  "It": [],
+  "Our": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006"
+  ],
+  "A": [
+    "LeanRAG_image_000001"
+  ],
+  "By": [
+    "LeanRAG_table_000012",
+    "LeanRAG_table_000013"
+  ],
+  "We": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000010",
+    "LeanRAG_table_000011"
+  ],
+  "QA": [],
+  "Related Work": [],
+  "Lewis": [],
+  "LLM": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000013",
+    "LeanRAG_table_000012"
+  ],
+  "Wang": [],
+  "While": [
+    "LeanRAG_table_000013"
+  ],
+  "Tonellotto": [],
+  "Substantial": [],
+  "One": [],
+  "BM25": [],
+  "Robertson": [],
+  "Zaragoza": [],
+  "DPR": [],
+  "Karpukhin": [],
+  "Contriever": [],
+  "Knowledge Graph Based Retrieval-Augmented Generation": [],
+  "KGbased RAG": [],
+  "Peng": [],
+  "Early": [],
+  "For": [
+    "LeanRAG_table_000012"
+  ],
+  "Recognizing": [],
+  "HiRAG": [
+    "LeanRAG_table_000012",
+    "LeanRAG_table_000013"
+  ],
+  "LightRAG": [
+    "LeanRAG_table_000013"
+  ],
+  "Guo": [],
+  "Preliminary": [],
+  "In": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000012"
+  ],
+  "Given": [],
+  "G": [
+    "LeanRAG_image_000001"
+  ],
+  "V": [
+    "LeanRAG_image_000001",
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000010"
+  ],
+  "R": [],
+  "D": [
+    "LeanRAG_image_000001"
+  ],
+  "KG-based RAG": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "T": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000011"
+  ],
+  "S": [],
+  "Based": [],
+  "L": [],
+  "All": [
+    "LeanRAG_table_000012"
+  ],
+  "P": [],
+  "Method": [],
+  "KG-augmented": [],
+  "As": [
+    "LeanRAG_table_000013"
+  ],
+  "Hierarchical Graph Aggregation": [],
+  "KG": [
+    "LeanRAG_table_000013"
+  ],
+  "Structured Retrieval": [],
+  "Hierarchical Knowledge Graph Aggregation": [],
+  "H": [],
+  "Each": [],
+  "Recursive Semantic Clustering": [],
+  "Following": [],
+  "Sarthi": [],
+  "Semantic Embedding": [],
+  "Phi": [],
+  "E": [],
+  "Gaussian Mixture Clustering": [],
+  "Gaussian Mixture Model": [
+    "LeanRAG_table_000013"
+  ],
+  "GMM": [
+    "LeanRAG_table_000013"
+  ],
+  "Reynolds": [],
+  "The GMM": [],
+  "Generation": [
+    "LeanRAG_image_000001"
+  ],
+  "Aggregated Entities": [
+    "LeanRAG_image_000001"
+  ],
+  "Relations": [
+    "LeanRAG_image_000001"
+  ],
+  "Aggregated Entity Generation": [],
+  "C": [
+    "LeanRAG_image_000001",
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000008"
+  ],
+  "F": [],
+  "Let": [],
+  "Aggregated Relation Generation": [],
+  "If": [],
+  "LLM-driven": [],
+  "Otherwise": [],
+  "Lowest Common Ancestor": [],
+  "Initial Entity Anchoring": [],
+  "Contextualization": [],
+  "LCA Path Traversal": [],
+  "Graph": [],
+  "ShortestPath": [],
+  "Since": [],
+  "Finally": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000010",
+    "LeanRAG_table_000011"
+  ],
+  "LCA": [],
+  "This LCA-based": [],
+  "Furthermore": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000013"
+  ],
+  "Experiments": [],
+  "RQ1": [],
+  "How": [],
+  "RQ2": [],
+  "Does LeanRAG": [],
+  "RQ3": [],
+  "RQ4": [],
+  "Is": [],
+  "Baselines": [],
+  "NaiveRAG": [],
+  "KG-based": [],
+  "Uses": [],
+  "KAG": [],
+  "Liang": [],
+  "FastGraphRAG": [],
+  "An": [],
+  "PageRank": [],
+  "Page": [],
+  "Datasets": [],
+  "Evaluation Metrics": [],
+  "UltraDomain": [],
+  "Qian": [],
+  "Mix": [],
+  "CS": [],
+  "Comprehensiveness": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000012"
+  ],
+  "Measures": [],
+  "Empowerment": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004",
+    "LeanRAG_table_000012"
+  ],
+  "Evaluates": [],
+  "Diversity": [],
+  "Assesses": [],
+  "Overall": [],
+  "Provides": [],
+  "Specifically": [],
+  "DeepSeek-V3": [],
+  "Liu": [],
+  "Implementation Details": [],
+  "Across": [],
+  "BGE-M3": [],
+  "Chen": [],
+  "Overall Performance Comparison": [],
+  "From": [],
+  "Lean-RAG": [],
+  "Analysis": [],
+  "Information Redundancy": [],
+  "Experimental Setup": [],
+  "Qwen3-14B-Instruct": [],
+  "Retrieved Context Size": [],
+  "On": [],
+  "LCA-based": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "Cluster Relation Effectiveness Analysis": [],
+  "Necessity Analysis": [],
+  "Textual Context": [],
+  "Motivation": [],
+  "Setup": [],
+  "Context": [],
+  "Results": [],
+  "Legal": [],
+  "Conclusions": [
+    "LeanRAG_table_000002"
+  ],
+  "Extensive": [
+    "LeanRAG_table_000002",
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "Acknowledgments": [],
+  "National Key R": [
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "D Program": [
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "China": [
+    "LeanRAG_table_000003",
+    "LeanRAG_table_000004"
+  ],
+  "Grant No": [],
+  "Technology Commission": [],
+  "Shanghai Municipality": [],
+  "Grant Nos": [],
+  "References": [],
+  "Appendix": [],
+  "More Results": [],
+  "Model Performance Across Four Datasets": [],
+  "Experimental Implementation Details": [],
+  "QA Cases": [],
+  "Prompt Templates": [],
+  "Large Language Model": [
+    "LeanRAG_table_000013"
+  ],
+  "Fast-GraphRAG": [],
+  "Although": [],
+  "When": [],
+  "Consistency": [],
+  "Computer Science": [],
+  "Agriculture": [],
+  "Notably": [],
+  "B": [
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000008",
+    "LeanRAG_table_000009",
+    "LeanRAG_table_000010"
+  ],
+  "Dataset Details": [],
+  "The Legal": [],
+  "The Agriculture": [],
+  "Graph Construction Implementation Details": [],
+  "Despite": [],
+  "Beyond": [],
+  "Graph Retrieval Details": [
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000008",
+    "LeanRAG_table_000009",
+    "LeanRAG_table_000010"
+  ],
+  "Chunk Selection Strategy Based": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000008",
+    "LeanRAG_table_000009"
+  ],
+  "Consequently": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000008",
+    "LeanRAG_table_000009"
+  ],
+  "After": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000010",
+    "LeanRAG_table_000011"
+  ],
+  "Naive RAG": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000006",
+    "LeanRAG_table_000007",
+    "LeanRAG_table_000010",
+    "LeanRAG_table_000011"
+  ],
+  "Experiment Settings": [
+    "LeanRAG_table_000008",
+    "LeanRAG_table_000009"
+  ],
+  "N": [
+    "LeanRAG_table_000005",
+    "LeanRAG_table_000011"
+  ],
+  "Conversely": [],
+  "Entity Aggregation Prompt": [
+    "LeanRAG_table_000013"
+  ],
+  "Inter-Cluster Relation Generation Prompt": [
+    "LeanRAG_table_000013"
+  ],
+  "Score Scoring Prompt": [
+    "LeanRAG_table_000013"
+  ],
+  "Win Rate Evaluation Prompt": [
+    "LeanRAG_table_000013"
+  ],
+  "Entity Aggregation": [],
+  "Relation Aggregation": [],
+  "Through": [],
+  "Prompt Template": [],
+  "Absolute Quality Scoring": [],
+  "JSON": [
+    "LeanRAG_table_000012"
+  ],
+  "Pairwise Comparison": [],
+  "The LLM": [
+    "LeanRAG_table_000012"
+  ],
+  "Your": [],
+  "Avoid": [],
+  "Overall Quality": [],
+  "Provide": [],
+  "Consider": [],
+  "Scoring Guidelines": [],
+  "Low": [],
+  "Clearly": [],
+  "Below": [],
+  "Lacking": [],
+  "Average": [],
+  "Adequate": [],
+  "Above": [],
+  "Generally": [],
+  "High": [],
+  "Outstanding": [],
+  "Here": [],
+  "query": [],
+  "answer": [],
+  "Evaluate": [],
+  "Output": []
+}
