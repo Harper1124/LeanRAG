@@ -8,6 +8,6 @@
   "working_dir": "exp/mm_leanrag_leanrag_pdf/LeanRAG",
   "entity_vector_db": "exp/mm_leanrag_leanrag_pdf/LeanRAG/milvus_demo.db",
   "evidence_vector_db": "exp/mm_leanrag_leanrag_pdf/LeanRAG/evidence_milvus.db",
-  "graph_status": "lightweight",
+  "graph_status": "built",
   "qa_count": 0
 }
