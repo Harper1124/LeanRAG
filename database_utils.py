@@ -5,6 +5,50 @@ from pymilvus  import MilvusClient
 import pymysql
 from collections import Counter
 
+
+def _load_mysql_config():
+    config = {
+        "host": os.getenv("LEANRAG_MYSQL_HOST", "localhost"),
+        "port": int(os.getenv("LEANRAG_MYSQL_PORT", "4321")),
+        "user": os.getenv("LEANRAG_MYSQL_USER", "root"),
+        "password": os.getenv("LEANRAG_MYSQL_PASSWORD", "123"),
+        "charset": os.getenv("LEANRAG_MYSQL_CHARSET", "utf8mb4"),
+    }
+    try:
+        import yaml
+
+        with open("config.yaml", "r", encoding="utf-8") as f:
+            file_config = yaml.safe_load(f) or {}
+        mysql_config = file_config.get("mysql", {}) or {}
+        config.update(
+            {
+                "host": mysql_config.get("host", config["host"]),
+                "port": int(mysql_config.get("port", config["port"])),
+                "user": mysql_config.get("user", config["user"]),
+                "password": mysql_config.get("password", config["password"]),
+                "charset": mysql_config.get("charset", config["charset"]),
+            }
+        )
+    except FileNotFoundError:
+        pass
+    return config
+
+
+MYSQL_CONFIG = _load_mysql_config()
+
+
+def get_mysql_connection(database=None):
+    kwargs = {
+        "host": MYSQL_CONFIG["host"],
+        "port": MYSQL_CONFIG["port"],
+        "user": MYSQL_CONFIG["user"],
+        "passwd": MYSQL_CONFIG["password"],
+        "charset": MYSQL_CONFIG["charset"],
+    }
+    if database:
+        kwargs["database"] = database
+    return pymysql.connect(**kwargs)
+
 """
 建图和查询共用的数据访问层。
 
@@ -134,8 +178,7 @@ def create_db_table_mysql(working_dir):
     数据库名取 working_dir 的最后一级目录名，例如 /path/to/mix -> mix。
     注意：这里会 drop database，因此是“重建”语义，适合建图阶段重新生成索引时使用。
     """
-    con = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',  charset='utf8mb4')
+    con = get_mysql_connection()
     cur=con.cursor()
     dbname=os.path.basename(working_dir)
     
@@ -173,8 +216,7 @@ def insert_data_to_mysql(working_dir):
     - community.json -> communities 表。
     """
     dbname=os.path.basename(working_dir)
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',database=dbname,  charset='utf8mb4')
+    db = get_mysql_connection(database=dbname)
     cursor = db.cursor()
     
     entity_path=os.path.join(working_dir,"all_entities.json")
@@ -265,8 +307,7 @@ def find_tree_root(working_dir,entity):
 
     query_graph.py 会用两条 parent 链寻找召回实体之间的共同祖先。
     """
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',  charset='utf8mb4')
+    db = get_mysql_connection()
     dbname=os.path.basename(working_dir)
     res=[entity]
     cursor = db.cursor()
@@ -298,8 +339,7 @@ def find_path(entity1,entity2,working_dir,level,depth=5):
 
     当前 query_graph.py 默认使用 parent 链方式；这个函数保留给需要同层多跳检索的策略。
     """
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',  charset='utf8mb4')
+    db = get_mysql_connection()
     db_name=os.path.basename(working_dir)
     cursor = db.cursor()
 
@@ -363,8 +403,7 @@ def search_nodes_link(entity1,entity2,working_dir,level=0):
     #     return None
     # else:
     #     return ret[0]
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',  charset='utf8mb4')
+    db = get_mysql_connection()
     cursor = db.cursor()
     db_name=os.path.basename(working_dir)
     sql=f"select * from {db_name}.relations where src_tgt=%s and tgt_src=%s "
@@ -380,8 +419,7 @@ def search_nodes_link(entity1,entity2,working_dir,level=0):
         return ret[0]
 def search_chunks(working_dir,entity_set):
     """根据实体名查询 source_id；source_id 对应 chunk 文件里的 hash_code。"""
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',  charset='utf8mb4')
+    db = get_mysql_connection()
     res=[]
     db_name=os.path.basename(working_dir)
     cursor = db.cursor()
@@ -395,8 +433,7 @@ def search_chunks(working_dir,entity_set):
     return res
 def search_nodes(entity_set,working_dir):
     """查询一批原始实体节点的完整表记录，目前主要用于调试或备用检索流程。"""
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',  charset='utf8mb4')
+    db = get_mysql_connection()
     res=[]
     db_name=os.path.basename(working_dir)
     cursor = db.cursor()
@@ -478,8 +515,7 @@ def get_text_units(working_dir,chunks_set,chunks_file,k=5):
     
 def search_community(entity_name,working_dir):
     """按聚合实体名称查询 communities 表，返回建图阶段生成的聚合摘要和 findings。"""
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',  charset='utf8mb4')
+    db = get_mysql_connection()
     db_name=os.path.basename(working_dir)
     cursor = db.cursor()
     sql=f"select * from {db_name}.communities where entity_name=%s"
@@ -498,8 +534,7 @@ def insert_origin_relations(working_dir):
     原始 relation.jsonl 也补充进 MySQL，方便对比实验或调试底层边。
     """
     dbname=os.path.basename(working_dir)
-    db = pymysql.connect(host='localhost',port=4321, user='root',
-                      passwd='123',database=dbname,  charset='utf8mb4')
+    db = get_mysql_connection(database=dbname)
     cursor = db.cursor()
     # relation_path=os.path.join(f"datasets/{dbname}","relation.jsonl")
     # relation_path=os.path.join(f"/data/zyz/reproduce/HiRAG/eval/datasets/{dbname}/test")

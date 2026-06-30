@@ -14,6 +14,13 @@ deepseek:
   api_key: "ollama"
   base_url: "http://127.0.0.1:11434/v1"
 
+mysql:
+  host: "localhost"
+  port: 4321
+  user: "root"
+  password: "123"
+  charset: "utf8mb4"
+
 # Model Parameters
 model_params:
   openai_embedding_dim: 1536
