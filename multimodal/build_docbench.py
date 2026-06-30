@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import traceback
 from collections import defaultdict
 from pathlib import Path
 
@@ -153,7 +154,10 @@ def _try_build_leanrag_graph(working_dir: Path, model_config: dict) -> str:
         lean_build_graph.hierarchical_clustering(global_config)
         return "built"
     except Exception as exc:
-        write_json({"status": "failed", "error": str(exc)}, working_dir / "graph_build_error.json")
+        write_json(
+            {"status": "failed", "error": str(exc), "traceback": traceback.format_exc()},
+            working_dir / "graph_build_error.json",
+        )
         _write_lightweight_graph_artifacts(working_dir)
         return "lightweight"
 

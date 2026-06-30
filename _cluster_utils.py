@@ -170,6 +170,47 @@ def convert_response_to_json(response: str) -> dict:
         logger.info("JSON data successfully extracted.")
     
     return prediction_json
+
+
+def normalize_community_data(data: dict, fallback_name: str, fallback_description: str, layer: int) -> dict:
+    """Normalize imperfect LLM JSON into the community schema LeanRAG expects."""
+    if not isinstance(data, dict):
+        data = {}
+    nested = data.get("data")
+    if isinstance(nested, dict):
+        data = {**data, **nested}
+
+    entity_name = (
+        data.get("entity_name")
+        or data.get("name")
+        or data.get("title")
+        or data.get("aggregate_entity_name")
+        or data.get("community_name")
+        or fallback_name
+    )
+    entity_description = (
+        data.get("entity_description")
+        or data.get("description")
+        or data.get("summary")
+        or data.get("answer")
+        or data.get("reasoning")
+        or fallback_description
+    )
+    findings = data.get("findings", [])
+    if isinstance(findings, dict):
+        findings = [findings]
+    elif isinstance(findings, str):
+        findings = [{"summary": findings, "explanation": findings}]
+    elif not isinstance(findings, list):
+        findings = []
+
+    data["entity_name"] = str(entity_name).strip() or fallback_name
+    data["entity_description"] = str(entity_description).strip() or fallback_description
+    data["findings"] = findings
+    data["level"] = data.get("level", layer)
+    return data
+
+
 def encode_string_by_tiktoken(content: str, model_name: str = "gpt-4o"):
     global ENCODER
     if ENCODER is None:
@@ -476,7 +517,12 @@ def process_cluster(
     describe=_pack_single_community_describe(cluster_nodes,cluster_intern_relation)
     hint_prompt=community_report_prompt.format(input_text=describe)
     response = use_llm_func(hint_prompt)
-    data = convert_response_to_json(response)
+    data = normalize_community_data(
+        convert_response_to_json(response),
+        fallback_name=f"aggregate_layer_{layer}_label_{label}",
+        fallback_description=describe,
+        layer=layer,
+    )
     data['level'] = layer
     data['children'] = [n['entity_name'] for n in cluster_nodes]
     data['source_id'] = "|".join(set([n['source_id'] for n in cluster_nodes]))
@@ -716,7 +762,12 @@ class Hierarchical_Clustering(ClusteringAlgorithm):
             hint_prompt=community_report_prompt.format(input_text=describe)
             # response = use_llm_func(hint_prompt,**llm_extra_kwargs)
             response = use_llm_func(hint_prompt)
-            data = convert_response_to_json(response)
+            data = normalize_community_data(
+                convert_response_to_json(response),
+                fallback_name=f"aggregate_layer_{layer}_root",
+                fallback_description=describe,
+                layer=layer,
+            )
             data['level']=layer
             data['children']=[i['entity_name'] for i in cluster_nodes]
             data['source_id']= "|".join(set([i['source_id'] for i in cluster_nodes]))
