@@ -1,0 +1,3237 @@
+[
+  {
+    "chunk_id": "LeanRAG_chunk_000000",
+    "hash_code": "f062a0cc83f332c0911b6fa3100fbf05",
+    "doc_id": "LeanRAG",
+    "text": "LeanRAG: Knowledge-Graph-Based Generation with Semantic Aggregation and Hierarchical Retrieval",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      91.0,
+      118.0,
+      905.0,
+      160.0
+    ],
+    "order": 0,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000001",
+    "hash_code": "6458720695fbc9853b09538065281e22",
+    "doc_id": "LeanRAG",
+    "text": "Yaoze Zhang<sup>1,2</sup>\\*, Rong Wu<sup>1,3</sup>\\*, Pinlong Cai<sup>1†</sup>, Xiaoman Wang<sup>4</sup>, Guohang Yan<sup>1</sup> Song Mao<sup>1</sup>, Ding Wang<sup>1</sup>, Botian Shi<sup>1</sup>",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      173.0,
+      171.0,
+      826.0,
+      208.0
+    ],
+    "order": 1,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000002",
+    "hash_code": "99f2ef21fadeb1a88af03fe608f3b97a",
+    "doc_id": "LeanRAG",
+    "text": "<sup>1</sup>Shanghai Artificial Intelligence Laboratory <sup>2</sup>University of Shanghai for Science and Technology <sup>3</sup>Zhejiang University <sup>4</sup>East China Normal University",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      323.0,
+      210.0,
+      673.0,
+      267.0
+    ],
+    "order": 2,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000003",
+    "hash_code": "6299012abb44fe2b395d0b73d2e371fb",
+    "doc_id": "LeanRAG",
+    "text": "Abstract",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      250.0,
+      292.0,
+      315.0,
+      308.0
+    ],
+    "order": 3,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000004",
+    "hash_code": "f0bb245d19146916ef32d122fd1d7434",
+    "doc_id": "LeanRAG",
+    "text": "Retrieval-Augmented Generation (RAG) plays a crucial role in grounding Large Language Models by leveraging external knowledge, whereas the effectiveness is often compromised by the retrieval of contextually flawed or incomplete information. To address this, knowledge graph-based RAG methods have evolved towards hierarchical structures, organizing knowledge into multi-level summaries. However, these approaches still suffer from two critical, unaddressed challenges: high-level conceptual summaries exist as disconnected “semantic islands”, lacking the explicit relations needed for cross-community reasoning; and the retrieval process itself remains structurally unaware, often degenerating into an inefficient flat search that fails to exploit the graph’s rich topology. To overcome these limitations, we introduce LeanRAG, a framework that features a deeply collaborative design combining knowledge aggregation and retrieval strategies. LeanRAG first employs a novel semantic aggregation algorithm that forms entity clusters and constructs new explicit relations among aggregation-level summaries, creating a fully navigable semantic network. Then, a bottomup, structure-guided retrieval strategy anchors queries to the most relevant fine-grained entities and then systematically traverses the graph’s semantic pathways to gather concise yet contextually comprehensive evidence sets. The LeanRAG can mitigate the substantial overhead associated with path retrieval on graphs and minimize redundant information retrieval. Extensive experiments on four challenging QA benchmarks with different domains demonstrate that LeanRAG sig nificantly outperforms existing methods in response quality while reducing 46% retrieval redundancy. Our code is available at: https://github.com/RaZzzyz/LeanRAG.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      99.0,
+      314.0,
+      464.0,
+      707.0
+    ],
+    "order": 4,
+    "attached_media_ids": [
+      "LeanRAG_image_000000"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000005",
+    "hash_code": "9433be5f4c7ad61a06bfb53c93e373e2",
+    "doc_id": "LeanRAG",
+    "text": "Introduction",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      225.0,
+      723.0,
+      338.0,
+      739.0
+    ],
+    "order": 5,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000006",
+    "hash_code": "ffb719d8b549bd52ee1bb390044fd238",
+    "doc_id": "LeanRAG",
+    "text": "Large Language Models (LLMs) have demonstrated remarkable capabilities in natural language understanding and generation. Yet their effectiveness is often undermined by their static internal knowledge, leading to factual inaccuracies and hallucinations (Huang et al. 2025b; Li et al. 2024). Retrieval-Augmented Generation (RAG) was introduced as a potential solution, dynamically grounding LLMs in external, up-to-date information (Gao et al. 2023). However, the effectiveness of naive RAG approaches is frequently compromised. The retrieved text chunks often lack precise alignment with the user’s true intent, and the reliance on embedding-based similarity alone is often insufficient to capture the deep semantic relevance required for complex reasoning, resulting in responses that are either incomplete or contextually flawed (Zhao et al. 2024; Wang et al. 2025).",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      741.0,
+      480.0,
+      854.0
+    ],
+    "order": 6,
+    "attached_media_ids": [
+      "LeanRAG_image_000000"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000007",
+    "hash_code": "5f78619e1fd705155d35a11968e1a0ca",
+    "doc_id": "LeanRAG",
+    "text": "To overcome the limitations of unstructured retrieval, researchers have increasingly explored knowledge graphbased RAG methods. Initial efforts, such as GraphRAG (Edge et al. 2024), successfully organized documents into community-based knowledge graphs, which helped preserve local context better than disconnected text chunks. However, these methods often generated large, coarse-grained communities, leading to significant information redundancy during retrieval. Subsequently, more advanced works like Hi-RAG (Huang et al. 2025a) refined this paradigm by introducing hierarchical structures, clustering entities into multilevel summaries. This represented a significant step forward in organizing knowledge. Despite this progress, our analysis reveals that two critical challenges remain unaddressed currently (as Figure 1 shows). First, the high-level summary nodes in these hierarchies exist as “semantic islands”. They lack explicit relational connections between each other, making it hard to reason across different conceptual communities within the knowledge base. Second, the retrieval process itself remains structurally unaware, often degenerating into a simple semantic search over a flattened list of nodes, failing to exploit the rich topological information encoded in the graph. This leads to a retrieval process that is both inefficient and imprecise.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      397.0,
+      915.0,
+      731.0
+    ],
+    "order": 7,
+    "attached_media_ids": [
+      "LeanRAG_image_000000"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000008",
+    "hash_code": "9b9b63e06008fbd3201aa53c2eb3c2f5",
+    "doc_id": "LeanRAG",
+    "text": "To address these challenges, we propose LeanRAG, a novel retrieval-augmented generation framework that synergistically integrates deeply collaborative knowledge structuring with a lean, structure-guided retrieval strategy. At its core, LeanRAG introduces a semantic aggregation algorithm that constructs a hierarchical knowledge graph by organizing retrieved entities into semantically coherent clusters. Its key innovation lies not only in clustering entities based on semantic similarity but also in automatically inferring explicit inter-cluster summary relations, leveraging the underlying knowledge’s contextual and relational semantics to establish higher-order abstractions. This process transforms fragmented, isolated hierarchies into a unified, fully navigable semantic network, where both fine-grained details and abstracted knowledge are seamlessly interconnected.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      736.0,
+      915.0,
+      890.0
+    ],
+    "order": 8,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000009",
+    "hash_code": "c3e13944da9c1a239adebd444919f122",
+    "doc_id": "LeanRAG",
+    "text": "arXiv:2508.10391v4 [cs.AI] 12 Nov 2025",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      22.0,
+      277.0,
+      57.0,
+      717.0
+    ],
+    "order": 9,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000010",
+    "hash_code": "1cab3dafdd05e1a16585efe2cd7658ed",
+    "doc_id": "LeanRAG",
+    "text": "<sup>\\*</sup>These authors contributed equally.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      861.0,
+      316.0,
+      876.0
+    ],
+    "order": 10,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000011",
+    "hash_code": "0850c75ba7daa998dc91a1798e986afb",
+    "doc_id": "LeanRAG",
+    "text": "<sup>†</sup>Corresponding author",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      875.0,
+      246.0,
+      890.0
+    ],
+    "order": 11,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000012",
+    "hash_code": "9af0319d72343d4393e71bb3ca7331a0",
+    "doc_id": "LeanRAG",
+    "text": "Building upon this enriched structure, LeanRAG employs a bottom-up, structure-aware retrieval mechanism that strategically navigates the graph to maximize relevance while minimizing redundancy. The retrieval process begins by anchoring the query to the most contextually pertinent fine-grained entities at the leaf level. It then systematically traverses relational pathways across both the original entity layer and the derived summary layer, propagating evidence upward through the hierarchy. This dual-level traversal ensures that the retrieved evidence set is not only concise and focused but also contextually comprehensive, capturing both specific details and broader conceptual relations essential for accurate and coherent generation.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      479.0,
+      480.0,
+      659.0
+    ],
+    "order": 12,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000013",
+    "hash_code": "a75edc990f03e6a2e1b99334bd5efd55",
+    "doc_id": "LeanRAG",
+    "text": "Our primary contributions can be summarized as follows:",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      98.0,
+      659.0,
+      478.0,
+      672.0
+    ],
+    "order": 13,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000014",
+    "hash_code": "da32d880db7b9b7dad67032aecd11830",
+    "doc_id": "LeanRAG",
+    "text": "• A novel semantic aggregation algorithm designed for superior knowledge condensation. This method constructs a multi-resolution knowledge map by modeling and building new relational edges between summarylevel conceptual nodes, effectively preserving both finegrained facts and high-level thematic connections within a single, coherent structure.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      89.0,
+      676.0,
+      480.0,
+      773.0
+    ],
+    "order": 14,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000015",
+    "hash_code": "3b86630cf5057f49f66b182ba8da44cc",
+    "doc_id": "LeanRAG",
+    "text": "• The introduction of a bottom-up entity retrieval strategy to mitigate information redundancy. By initiating retrieval from high-relevance “anchor” nodes and expanding context strictly along relevant semantic pathways, this strategy yields a precise and compact evidence subgraph for LLMs.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      89.0,
+      775.0,
+      480.0,
+      859.0
+    ],
+    "order": 15,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000016",
+    "hash_code": "bbbbc7d40656211b3746bc0416644327",
+    "doc_id": "LeanRAG",
+    "text": "• We demonstrate through extensive experiments that LeanRAG achieves a new state-of-the-art on multiple challenging QA tasks, significantly outperforming existing methods in both response performance and efficiency.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      91.0,
+      861.0,
+      480.0,
+      888.0
+    ],
+    "order": 16,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000017",
+    "hash_code": "7e940a925be15512aa27998fbe594274",
+    "doc_id": "LeanRAG",
+    "text": "Related Work",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      653.0,
+      463.0,
+      777.0,
+      479.0
+    ],
+    "order": 17,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000018",
+    "hash_code": "4468478878f96d778a7168024ff7c29a",
+    "doc_id": "LeanRAG",
+    "text": "Retrieval-Augmented Generation",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      517.0,
+      483.0,
+      777.0,
+      498.0
+    ],
+    "order": 18,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000019",
+    "hash_code": "a0522964a61e7fa201c674f04511daa6",
+    "doc_id": "LeanRAG",
+    "text": "Retrieval-Augmented Generation was introduced as a powerful paradigm to mitigate the intrinsic knowledge limitations of LLMs by grounding them in external information (Lewis et al. 2020). The standard RAG framework operates by retrieving relevant text chunks from a corpus and providing them as context to an LLM for answer generation (Wang et al. 2024). While effective, this approach is fundamentally constrained by the “chunking dilemma”: small, fine-grained chunks risk losing critical context, whereas larger chunks often introduce significant noise and dilute the LLM’s focus (Tonellotto et al. 2024).",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      501.0,
+      915.0,
+      654.0
+    ],
+    "order": 19,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000020",
+    "hash_code": "60192fa1ca70f2c7f41be2ef7faf935a",
+    "doc_id": "LeanRAG",
+    "text": "Substantial research has been dedicated to overcoming this limitation. One line of work improves the retriever itself, evolving from sparse methods like BM25 (Robertson, Zaragoza et al. 2009) to dense models such as DPR (Karpukhin et al. 2020) and Contriever (Izacard et al. 2021), which better capture semantic relevance. Another focuses on indexing and organizing source documents (Jiang et al. 2023), with recent methods creating hierarchical summaries of text chunks to enable multi-level retrieval. For example, RAPTOR builds a tree of recursively summarized clusters, allowing retrieval of fine-grained details and high-level summaries (Sarthi et al. 2024). However, these approaches still treat knowledge as linear or simple hierarchical structures and do not explicitly model complex, non-hierarchical relations between entities and concepts, limiting their ability to answer queries requiring reasoning over such connections—motivating KG-based RAG methods.",
+    "modality": "text",
+    "page_start": 1,
+    "page_end": 1,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      654.0,
+      915.0,
+      890.0
+    ],
+    "order": 20,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000021",
+    "hash_code": "718f847130aee4a8c09dd309bac7adfb",
+    "doc_id": "LeanRAG",
+    "text": "Knowledge Graph Based Retrieval-Augmented Generation",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      68.0,
+      447.0,
+      98.0
+    ],
+    "order": 21,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000022",
+    "hash_code": "f88bfe687672bfda5fa1fc2353b9f4d1",
+    "doc_id": "LeanRAG",
+    "text": "To better capture the relational nature of information, KGbased RAG has emerged as a prominent research direction. By representing knowledge as a graph of entities and relations, these methods aim to provide a more structured and semantically rich context for the LLM (Peng et al. 2024). Early approaches in this domain focused on leveraging graph structures for improved retrieval. For instance, GraphRAG (Edge et al. 2024) organizes documents into community-based KGs to preserve local context, while other methods like FastGraphRAG utilize graph-centrality metrics such as PageRank (Page et al. 1999) to prioritize more important nodes during retrieval. This subgraph retrieval approach has also proven effective in industrial applications like customer service, where KGs are constructed from historical support tickets to provide structured context (Xu et al. 2024). These methods marked a significant step forward by imposing a macro-structure onto the knowledge base, moving beyond disconnected text chunks.",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      101.0,
+      480.0,
+      352.0
+    ],
+    "order": 22,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000023",
+    "hash_code": "48a5ecb00a7a3b130006301a67c9e473",
+    "doc_id": "LeanRAG",
+    "text": "Recognizing the need for more fine-grained control and abstraction, subsequent works have explored more sophisticated hierarchical structures. HiRAG, the current stateof-the-art, clusters entities to form multi-level summaries (Huang et al. 2025a), while LightRAG (Guo et al. 2024) proposes a dual-level framework to balance global and local information retrieval. While these hierarchical methods have progressively improved retrieval quality, a critical gap persists in how the constructed graph structures are leveraged at query time. The retrieval process is often decoupled from the indexing structure; for instance, an initial search may be performed over a “flattened” list of all nodes, rather than being directly guided by the indexed community or hierarchical relations. This decoupling means the rich structural information is primarily used for post-retrieval context expansion, rather than for guiding the initial, crucial step of identifying relevant information. This can limit performance on complex queries where the relations between entities are paramount, highlighting the need for a new paradigm where the retrieval process is natively co-designed with the knowledge structure.",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      349.0,
+      482.0,
+      643.0
+    ],
+    "order": 23,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000024",
+    "hash_code": "11d04c747589e0a3b53761b58e0467f2",
+    "doc_id": "LeanRAG",
+    "text": "Preliminary",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      228.0,
+      655.0,
+      334.0,
+      671.0
+    ],
+    "order": 24,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000025",
+    "hash_code": "c8064883edb6e1fc5feddb8cb8fd9963",
+    "doc_id": "LeanRAG",
+    "text": "In this section, we will introduce and give a formal definition of a RAG system with a specific knowledge graph.",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      674.0,
+      478.0,
+      703.0
+    ],
+    "order": 25,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000026",
+    "hash_code": "804a7543e282e442965a005c3603b621",
+    "doc_id": "LeanRAG",
+    "text": "Given a rich knowledge graph with the description of vertexes and relations $\\mathcal { G } \\ = \\ \\mathsf { \\bar { ( } } V , R , D _ { ( v e r ) } , D _ { ( r e l ) } \\mathsf { \\bar { ) } }$ , where V and R denote the set of entities and relations, $D _ { ( v e r ) }$ represents the collection of entity descriptions and $D _ { ( r e l ) }$ represents the collection of relationship descriptions. The goal of KG-based RAG is to leverage existing information to build a query-relevant sub-graph that helps LLMs generate highquality responses. Given a query $q ,$ the searching process can be formulated as:",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      702.0,
+      480.0,
+      829.0
+    ],
+    "order": 26,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000027",
+    "hash_code": "88d50b48b239bc0954d85ca1c18e9494",
+    "doc_id": "LeanRAG",
+    "text": "$$\n\\tilde { V } = \\mathrm { T o p } { \\cdot } \\mathrm { n } _ { v \\in V } ( \\mathrm { S i m } ( q , d _ { v } ) )\\tag{1}\n$$",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      186.0,
+      838.0,
+      375.0,
+      858.0
+    ],
+    "order": 27,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000028",
+    "hash_code": "07569c0efc4a60374c1aec35e0aa7fb1",
+    "doc_id": "LeanRAG",
+    "text": "where $S i m ( \\cdot , \\cdot )$ is the embedding similarity metric function, and n is the choice number of similarity entities. Based on",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      859.0,
+      480.0,
+      890.0
+    ],
+    "order": 28,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000029",
+    "hash_code": "fe1d77c8eb062158a11f4958592d2b35",
+    "doc_id": "LeanRAG",
+    "text": "the metric, $\\tilde { V }$ contains the top n entities. Then we can search the relational paths L between nodes $v \\in \\tilde { V }$ . All relations r that constitute the path L belong to the relation set $R .$",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      68.0,
+      915.0,
+      113.0
+    ],
+    "order": 29,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000030",
+    "hash_code": "f6fb0f1188ce7c4bce5dd6f975dd6d6c",
+    "doc_id": "LeanRAG",
+    "text": "$$\nL = \\bigcup _ { x , y \\in \\tilde { \\mathcal { V } } } P a t h ( x , y ) = ( r _ { 1 } , r _ { 2 } , . . . )\\tag{2}\n$$",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      588.0,
+      125.0,
+      841.0,
+      159.0
+    ],
+    "order": 30,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000031",
+    "hash_code": "ce12fc778254d52da086ad8a6b18cd46",
+    "doc_id": "LeanRAG",
+    "text": "By leveraging $\\tilde { V }$ and $L ,$ , the sub-graph $\\tilde { \\mathcal { G } }$ is constructed to support RAG systems with focused, query-relevant, and semantically enriched knowledge retrieval.",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      165.0,
+      915.0,
+      210.0
+    ],
+    "order": 31,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000032",
+    "hash_code": "dce8d3c96b8795c1b2ce10c7e017d553",
+    "doc_id": "LeanRAG",
+    "text": "Method",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      679.0,
+      222.0,
+      751.0,
+      238.0
+    ],
+    "order": 32,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000033",
+    "hash_code": "8e60d335e37ba1135ef19ace1ed17f4a",
+    "doc_id": "LeanRAG",
+    "text": "The performance of a generic KG-augmented retrieval framework is fundamentally determined by the structural and semantic quality of the underlying knowledge graph ${ \\mathcal { G } } ,$ as well as the precision and efficiency of the retrieval strategy. To address the limitations of a flat graph structure and naive path search strategy, we introduce LeanRAG, a framework built on the principle of tightly co-designing its aggregation and retrieval processes. As illustrated in Figure 2, LeanRAG consists of two core innovations: (1) a Hierarchical Graph Aggregation method that recursively builds a multi-level, navigable semantic network from the base KG; and (2) a Structured Retrieval strategy that leverages this hierarchy via Lowest Common Ancestor (LCA) path search approach to construct a compact and coherent context.",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      242.0,
+      915.0,
+      439.0
+    ],
+    "order": 33,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000034",
+    "hash_code": "12c15ae6c09885fc46778fd0a37ed25d",
+    "doc_id": "LeanRAG",
+    "text": "Hierarchical Knowledge Graph Aggregation",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      449.0,
+      862.0,
+      465.0
+    ],
+    "order": 34,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000035",
+    "hash_code": "0069f618a8a90fe59151367f3b6c1310",
+    "doc_id": "LeanRAG",
+    "text": "The foundation of LeanRAG is the transformation of a flat knowledge graph $\\mathcal { G } _ { 0 }$ into a multi-level, semantically rich hierarchy H. This hierarchy allows for retrieval at varying levels of abstraction. We construct this hierarchy, denoted as ${ \\mathcal { H } } = \\{ { \\mathcal { G } } _ { 0 } , { \\mathcal { G } } _ { 1 } , \\ldots , { \\mathcal { G } } _ { k } \\}$ , in a bottom-up, layer-by-layer fashion. Each layer $\\mathcal { G } _ { i } = \\dot { ( V _ { i } , R _ { i } , D _ { ( v e r ) _ { i } } , D _ { ( r e l ) _ { i } } ) }$ represents a more abstract view of the layer below it, $\\mathcal { G } _ { i - 1 }$ . The core of this construction lies in a recursive aggregation process that clusters nodes based on semantic similarity and then intelligently generates new, more abstract entities and relations to form the next layer.",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      468.0,
+      915.0,
+      623.0
+    ],
+    "order": 35,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000036",
+    "hash_code": "e3897c355818a9ca83d42291d4c8c7af",
+    "doc_id": "LeanRAG",
+    "text": "Recursive Semantic Clustering. Given a knowledge graph layer $\\mathcal { G } _ { i - 1 }$ , the first step is to identify groups of semantically related entities that can be abstracted into a single, higher-level concept. We leverage the rich descriptive text $d _ { v } \\in D _ { ( v e r ) }$ associated with each entity $v \\in V _ { i - 1 }$ for i−1 this purpose. Following recent works in clustering text representation (Sarthi et al. 2024), we employ a two-step process:",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      630.0,
+      915.0,
+      732.0
+    ],
+    "order": 36,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000037",
+    "hash_code": "c8cb3ae72f3c2f7cce496b2f97904fd2",
+    "doc_id": "LeanRAG",
+    "text": "1. Semantic Embedding: We first encode the textual description of each entity into a dense vector representation using a pre-trained embedding model $\\Phi ( \\cdot )$ . This yields a set of embeddings for the entire KG layer:",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      517.0,
+      736.0,
+      915.0,
+      794.0
+    ],
+    "order": 37,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000038",
+    "hash_code": "6e431e9efce799989ef8178c661cc879",
+    "doc_id": "LeanRAG",
+    "text": "$$\n\\mathbf { E } _ { i - 1 } = \\{ \\Phi ( d _ { v } ) \\mid v \\in V _ { i - 1 } \\}\\tag{3}\n$$",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      629.0,
+      809.0,
+      820.0,
+      825.0
+    ],
+    "order": 38,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000039",
+    "hash_code": "beb7051903b1cfd214f314227aeccb95",
+    "doc_id": "LeanRAG",
+    "text": "2. Gaussian Mixture Clustering: We then apply a Gaussian Mixture Model (GMM) (Reynolds 2015) to the set of embeddings $\\mathbf E _ { i - 1 }$ . The GMM partitions the entities $V _ { i - 1 }$ into m disjoint clusters $\\mathcal { C } _ { i - 1 } \\stackrel { \\cdot } { = } \\{ C _ { 1 } , C _ { 2 } , \\ldots , C _ { m } \\}$ where each cluster $C _ { j } ~ ( j \\in [ 1 , m ] )$ contains entities that are semantically similar in the embedding space.",
+    "modality": "text",
+    "page_start": 2,
+    "page_end": 2,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      832.0,
+      913.0,
+      891.0
+    ],
+    "order": 39,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000040",
+    "hash_code": "3629763aa68182c6e100a0a9bbbfae71",
+    "doc_id": "LeanRAG",
+    "text": "This clustering provides a principled grouping of finegrained entities, setting the stage for conceptual abstraction.",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      354.0,
+      480.0,
+      386.0
+    ],
+    "order": 40,
+    "attached_media_ids": [
+      "LeanRAG_image_000001"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000041",
+    "hash_code": "16720f35f8b55fd77f754b6376319a65",
+    "doc_id": "LeanRAG",
+    "text": "Generation of Aggregated Entities and Relations. A key limitation of prior hierarchical methods is that they often only cluster entities, losing the rich relational information in the process. LeanRAG overcomes this by using LLMs to intelligently generate both new entities and new relations for the subsequent layer $\\mathcal { G } _ { i }$",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      391.0,
+      480.0,
+      477.0
+    ],
+    "order": 41,
+    "attached_media_ids": [
+      "LeanRAG_image_000001"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000042",
+    "hash_code": "555e433dc64fad47e6a8399555613bfa",
+    "doc_id": "LeanRAG",
+    "text": "Aggregated Entity Generation. For each cluster $C _ { j } ~ \\in$ $\\mathcal { C } _ { i - 1 }$ , we generate a single, more abstract aggregated entity $\\alpha _ { j }$ that represents the cluster’s collective semantics. This abstraction is achieved via a generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ , which synthesizes a new concept by considering both the entities within the cluster and the relations that exist among them. Let $R _ { C _ { i } }$ be the set of relations in $\\mathcal { G } _ { i - 1 }$ among entities within cluster $\\mathbf { \\bar { \\mathit { C } } } _ { j }$",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      482.0,
+      480.0,
+      594.0
+    ],
+    "order": 42,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000043",
+    "hash_code": "5bcc69958989b2f041689a296ac792c5",
+    "doc_id": "LeanRAG",
+    "text": "$$\n( \\alpha _ { j } , d _ { \\alpha _ { j } } ) = \\mathcal { F } _ { \\mathrm { e n t i t y } } ( C _ { j } , R _ { C _ { j } } )\\tag{4}\n$$",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      184.0,
+      607.0,
+      379.0,
+      625.0
+    ],
+    "order": 43,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000044",
+    "hash_code": "845d467ba44a496671ed632c46b2508d",
+    "doc_id": "LeanRAG",
+    "text": "The new entity set $V _ { i } = \\{ \\alpha _ { j } \\} _ { j = 1 } ^ { m }$ and their associated descriptions $D _ { V _ { i } } \\{ d _ { \\alpha _ { j } } \\} _ { j = 1 } ^ { m }$ are defined as the parent nodes of $\\{ C _ { 1 } , C _ { 2 } , \\ldots , C _ { m } \\}$ in the hierarchy, i.e., the nodes located at the immediate higher level in the hierarchical structure.",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      626.0,
+      480.0,
+      688.0
+    ],
+    "order": 44,
+    "attached_media_ids": [
+      "LeanRAG_image_000001"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000045",
+    "hash_code": "fe8cf398fd9dee42d058c8605fdaec0e",
+    "doc_id": "LeanRAG",
+    "text": "In practice, the generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ is implemented by LLMs guided by a carefully designed prompt $\\mathcal { P } _ { \\mathrm { e n t i t y } }$ . We prompt LLMs to produce a concise name for the new entity $\\alpha _ { j }$ and a comprehensive description $d _ { \\alpha _ { i } }$ that summarizes its components. Each entity $v \\in C _ { j }$ is then linked to its new parent entity $\\alpha _ { j }$ , forming the parent-child connections in the hierarchy.",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      685.0,
+      480.0,
+      785.0
+    ],
+    "order": 45,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000046",
+    "hash_code": "f6970ad303891b20300fa2d845578817",
+    "doc_id": "LeanRAG",
+    "text": "Aggregated Relation Generation. To prevent the formation of “semantic islands” at higher layers, we explicitly create new relations between the aggregated entities in $V _ { i } .$ . This ensures that the graph remains connected and navigable at all levels of abstraction. For any pair of aggregated entities $( \\alpha _ { j } , \\alpha _ { k } )$ , we confirm the inter-cluster relations $R _ { < C _ { j } , C _ { k } > }$ that contains the relations between nodes that belong to the",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      791.0,
+      480.0,
+      890.0
+    ],
+    "order": 46,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000047",
+    "hash_code": "f98ed050a6cba1435cb7076ab0c24eac",
+    "doc_id": "LeanRAG",
+    "text": "$C _ { j }$ and $C _ { k }$ , respectively. Then, we constitute the inter-cluster aggregated relation $r _ { < C _ { i } , C _ { k } > }$ by $R _ { < C _ { j } , C _ { k } > }$ . This paper defines the number of $R _ { < \\dot { C } _ { j } , C _ { k } > }$ as the connectivity strength, $\\lambda _ { j , k }$ . If $\\lambda _ { j , k }$ exceeds a dynamically defined threshold τ , we infer that a meaningful high-level relationship exists, which is summarized by the LLM-driven function $\\mathcal { F } _ { \\mathrm { r e l } }$ . Otherwise, the inter-cluster aggregated relation is simply regarded as the text concatenation of $R _ { < C _ { j } , C _ { k } > }$",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      320.0,
+      915.0,
+      434.0
+    ],
+    "order": 47,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000048",
+    "hash_code": "30b9f18b2cb1fb5caadfb402eaa8a4e2",
+    "doc_id": "LeanRAG",
+    "text": "$$\nr _ { < \\alpha _ { j } , \\alpha _ { k } > } = \\left\\{ \\begin{array} { l l } { \\mathcal { F } _ { ( \\mathrm { r e l } ) } ( \\alpha _ { j } , \\alpha _ { k } , R _ { < C _ { j } , C _ { k } > } ) , } & { \\mathrm { i f ~ } \\lambda _ { j , k } > \\tau } \\\\ { C o n c a t e ( R _ { < C _ { j } , C _ { k } > } ) , } & { \\mathrm { o t h e r w i s e } } \\end{array} \\right.\\tag{5}\n$$",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      519.0,
+      441.0,
+      882.0,
+      476.0
+    ],
+    "order": 48,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000049",
+    "hash_code": "189da9e1517538145d1130e874dc04f6",
+    "doc_id": "LeanRAG",
+    "text": "In practice, the generation function $\\mathcal { F } _ { \\mathrm { r e l } }$ is implemented by LLMs guided by a specific prompt $\\mathcal { P } _ { \\mathrm { r e l } }$",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      482.0,
+      913.0,
+      511.0
+    ],
+    "order": 49,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000050",
+    "hash_code": "5ec9a97dbd680a10685503cb12cde29b",
+    "doc_id": "LeanRAG",
+    "text": "The threshold τ is a data-dependent hyper-parameter that may vary with the layer index to reflect the knowledge graph’s density at different abstraction levels, ensuring only salient, well-supported relations are propagated.",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      511.0,
+      913.0,
+      566.0
+    ],
+    "order": 50,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000051",
+    "hash_code": "27f8b12f9488ca95e3ef2eb2e6f4009e",
+    "doc_id": "LeanRAG",
+    "text": "By recursively applying this process of clustering and generation, we construct a rich, multi-layered KG where each layer provides a progressively more abstract, yet semantically coherent, view of the original information.",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      565.0,
+      915.0,
+      623.0
+    ],
+    "order": 51,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000052",
+    "hash_code": "bceab8fd6c3d4cde9fdb4443fde5337d",
+    "doc_id": "LeanRAG",
+    "text": "Structured Retrieval via Lowest Common Ancestor",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      632.0,
+      913.0,
+      648.0
+    ],
+    "order": 52,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000053",
+    "hash_code": "9858f33d55b3e04652a99fa26fc288dd",
+    "doc_id": "LeanRAG",
+    "text": "The hierarchical knowledge graph H enables a retrieval strategy that is fundamentally more structured and efficient than searching over a flat graph. Our approach moves beyond simple similarity-based retrieval by leveraging the graph’s topology to construct a compact and contextually coherent subgraph. This process consists of two main phases: initial entity anchoring at the base layer, followed by a structured traversal of the hierarchy to gather context.",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      650.0,
+      915.0,
+      763.0
+    ],
+    "order": 53,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000054",
+    "hash_code": "0477d9595a62f3f7ac1feaedb9c6a679",
+    "doc_id": "LeanRAG",
+    "text": "Initial Entity Anchoring. Given a user query $q ,$ the first step is to ground the query in the most specific, fine-grained facts available. We achieve this by performing a dense retrieval search exclusively over the entities of the original graph, including the initial entities, that ${ \\mathrm { i s } } ,$ the base-layer graph $\\mathcal { G } _ { 0 }$ . We identify the top n entities whose textual descriptions are most semantically similar to the query:",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      768.0,
+      915.0,
+      868.0
+    ],
+    "order": 54,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000055",
+    "hash_code": "2844c9b58538318956797662915411c0",
+    "doc_id": "LeanRAG",
+    "text": "$$\nV _ { \\mathrm { s e e d } } = \\mathrm { T o p } { \\cdot } \\mathsf { n } _ { v \\in V _ { 0 } } ( \\sin ( q , d _ { v } ) )\\tag{6}\n$$",
+    "modality": "text",
+    "page_start": 3,
+    "page_end": 3,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      611.0,
+      873.0,
+      818.0,
+      891.0
+    ],
+    "order": 55,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000056",
+    "hash_code": "e716ad0831a318662f52e3f12380e080",
+    "doc_id": "LeanRAG",
+    "text": "This set of “seed entities”, $V _ { \\mathrm { s e e d } }$ , serves as the starting point for structured traversal, ensuring our retrieval process is anchored in the most relevant parts of the knowledge base.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      69.0,
+      480.0,
+      112.0
+    ],
+    "order": 56,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000057",
+    "hash_code": "1723ca49fba8789af3641f084bb210a7",
+    "doc_id": "LeanRAG",
+    "text": "Contextualization via LCA Path Traversal. Graph retrieval methods in the prior KG-based RAG would typically find all paths between entities in $V _ { \\mathrm { s e e d } }$ on the flat graph $\\mathcal { G } _ { 0 }$ This approach often retrieves a large number of intermediate nodes that add noise and redundancy. In contrast, LeanRAG utilizes the entire hierarchy H to define a much more focused and meaningful context. Our core idea is to construct a minimal subgraph that connects the seed entities through their most immediate shared concepts in the hierarchy. We achieve this using the principle of the LCA. For two seed entities in $V _ { \\mathrm { s e e d } }$ , their lowest common ancestor $\\left( \\mathrm { L C A } \\right) v _ { \\mathrm { l c a } }$ is defined as the common ancestor with the minimum depth in the hierarchy H among all their ancestors. This ensures that the combined path length from the two seed entities to $v _ { \\mathrm { l c a } }$ is minimized to avoid information redundancy.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      117.0,
+      480.0,
+      325.0
+    ],
+    "order": 57,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000058",
+    "hash_code": "fff95bf80b921726f3554355212a7f77",
+    "doc_id": "LeanRAG",
+    "text": "The retrieval path $\\mathcal { P } _ { \\mathrm { l c a } }$ is then defined as the union of all shortest paths in the hierarchy from each seed entity $v \\in$ $V _ { \\mathrm { s e e d } }$ to the common ancestor $v _ { \\mathrm { l c a } } \\mathrm { . }$",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      325.0,
+      478.0,
+      368.0
+    ],
+    "order": 58,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000059",
+    "hash_code": "e94469d48e0c7da3284e44403fe97403",
+    "doc_id": "LeanRAG",
+    "text": "$$\n\\mathcal { P } _ { \\mathrm { l c a } } ( V _ { \\mathrm { s e e d } } , \\mathcal { H } ) = \\bigcup _ { v \\in V _ { \\mathrm { s e e d } } } \\mathrm { S h o r t e s t P a t h } _ { \\mathcal { H } } ( v , v _ { \\mathrm { l c a } } )\\tag{7}\n$$",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      129.0,
+      373.0,
+      433.0,
+      406.0
+    ],
+    "order": 59,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000060",
+    "hash_code": "8331fcad0f4001128383a05555eac998",
+    "doc_id": "LeanRAG",
+    "text": "where ShortestPath $ _ { \\cdot \\mathcal { H } } ( \\cdot , \\cdot )$ denotes the shortest path between two nodes within the hierarchical graph H. Since our hierarchy is tree-like, this path consists of the direct chain of from child nodes to parent nodes. Finally, the retrieved subgraph for RAG context $\\mathcal { G } _ { \\mathrm { r e t } }$ is composed of all entities and relations that lie on these LCA paths:",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      411.0,
+      480.0,
+      496.0
+    ],
+    "order": 60,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000061",
+    "hash_code": "65bfc088822e901547e4f9d5d5dea582",
+    "doc_id": "LeanRAG",
+    "text": "$$\n\\mathcal { G } _ { \\mathrm { r e t } } = ( V _ { \\mathrm { r e t } } , R _ { \\mathrm { r e t } } )\\tag{8}\n$$",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      222.0,
+      501.0,
+      339.0,
+      517.0
+    ],
+    "order": 61,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000062",
+    "hash_code": "ef3567cf5c0ca0cd18e1bd930f297abd",
+    "doc_id": "LeanRAG",
+    "text": "$$\nV _ { \\mathrm { r e t } } = \\{ v \\mid v \\in \\mathcal { P } _ { \\mathrm { l c a } } \\}\\tag{9}\n$$",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      210.0,
+      521.0,
+      351.0,
+      537.0
+    ],
+    "order": 62,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000063",
+    "hash_code": "96e9f79e93873eec4327d16ae5baf35d",
+    "doc_id": "LeanRAG",
+    "text": "$$\nR _ { \\mathrm { { r e t } } } = R _ { \\mathrm { { l c a } } } \\cup R _ { \\mathrm { { i n t e r - c l u s t e r } } }\\tag{10}\n$$",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      200.0,
+      540.0,
+      364.0,
+      556.0
+    ],
+    "order": 63,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000064",
+    "hash_code": "32e757f9d56e2271ba49c637377314d3",
+    "doc_id": "LeanRAG",
+    "text": "where $R _ { \\mathrm { l c a } }$ contains the relations within the retrieval path $\\mathcal { P } _ { \\mathrm { l c a } }$ and $R _ { \\mathrm { i n t e r - c l u s t e r } }$ contains the inter-cluster relations between aggregation entities that are in the same level in the hierarchical knowledge graph. For example, $r _ { < \\alpha _ { j } , \\alpha _ { k } > } ~ \\in$ $R _ { \\mathrm { i n t e r - c l u s t e r } } ,$ where $\\alpha _ { j } \\in { \\mathcal G } _ { i }$ and $\\alpha _ { k } \\in \\mathcal G _ { i }$",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      558.0,
+      478.0,
+      628.0
+    ],
+    "order": 64,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000065",
+    "hash_code": "583563da5b12c9ab7fbb8648b766d25b",
+    "doc_id": "LeanRAG",
+    "text": "This LCA-based traversal strategy ensures that the retrieved context is not just a collection of relevant entities, but a connected, coherent narrative structure, spanning from specific facts to their shared abstract concepts. This significantly reduces information redundancy and provides a much richer, more structured context to the final LLM generator. Furthermore, we return the original chunks from which the entities were sourced as supporting evidence. The illustration of this process is provided in Figure 2.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      628.0,
+      480.0,
+      755.0
+    ],
+    "order": 65,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000066",
+    "hash_code": "2289bd46825efa1b71da66acd3b08ea4",
+    "doc_id": "LeanRAG",
+    "text": "Experiments",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      225.0,
+      765.0,
+      338.0,
+      781.0
+    ],
+    "order": 66,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000067",
+    "hash_code": "142d797786f779464e7229ee3b43b48f",
+    "doc_id": "LeanRAG",
+    "text": "In our experiments, we aim to answer the following research questions:",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      784.0,
+      480.0,
+      813.0
+    ],
+    "order": 67,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000068",
+    "hash_code": "44fa758873a75dac47e55e40b70b84de",
+    "doc_id": "LeanRAG",
+    "text": "• RQ1: How does LeanRAG’s QA performance compare against state-of-the-art baselines across diverse domains?",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      89.0,
+      815.0,
+      480.0,
+      845.0
+    ],
+    "order": 68,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000069",
+    "hash_code": "fbcf4e6ea9f8edfa439c2a78124df2a4",
+    "doc_id": "LeanRAG",
+    "text": "• RQ2: Does LeanRAG’s retrieval strategy reduce information redundancy while improving generation quality?",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      89.0,
+      847.0,
+      480.0,
+      888.0
+    ],
+    "order": 69,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000070",
+    "hash_code": "e12e502dddc3c6d8db2fa23f91c7108a",
+    "doc_id": "LeanRAG",
+    "text": "• RQ3: To what extent does the explicit generation of relations between aggregated entities contribute to the quality of the response?",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      69.0,
+      913.0,
+      112.0
+    ],
+    "order": 70,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000071",
+    "hash_code": "502b2fc677bb535bba147a30ba7099cf",
+    "doc_id": "LeanRAG",
+    "text": "• RQ4: Is the structured knowledge retrieved from the graph sufficient for high-quality generation, or is the inclusion of the entities original textual context essential?",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      113.0,
+      915.0,
+      156.0
+    ],
+    "order": 71,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000072",
+    "hash_code": "0c8827d3d9b97d07be56113059b3d725",
+    "doc_id": "LeanRAG",
+    "text": "Baselines. To evaluate the performance of LeanRAG, we compare it against a comprehensive suite of representative and state-of-the-art KG-based RAG methods. The selected baselines include:",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      162.0,
+      915.0,
+      219.0
+    ],
+    "order": 72,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000073",
+    "hash_code": "a6e90a28507a3c340043202072c4b909",
+    "doc_id": "LeanRAG",
+    "text": "• NaiveRAG (Lewis et al. 2020): The foundational RAG approach, which retrieves semantically similar text chunks from a document corpus.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      223.0,
+      915.0,
+      266.0
+    ],
+    "order": 73,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000074",
+    "hash_code": "fad5711df51717cb19a3c9ea08326ded",
+    "doc_id": "LeanRAG",
+    "text": "• GraphRAG (Edge et al. 2024): A prominent KG-based method that organizes knowledge into communities. We utilize its local search mode, as the global mode has significant computational overhead and does not leverage local entity context.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      268.0,
+      915.0,
+      339.0
+    ],
+    "order": 74,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000075",
+    "hash_code": "dd200c596ff13b6ee57fd2f5b9dc3e22",
+    "doc_id": "LeanRAG",
+    "text": "• LightRAG (Guo et al. 2024): Uses a dual-level retrieval framework based on a KG-based text indexing paradigm.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      340.0,
+      913.0,
+      369.0
+    ],
+    "order": 75,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000076",
+    "hash_code": "5b3a4a1f466eb61a975061a31527194e",
+    "doc_id": "LeanRAG",
+    "text": "• KAG (Liang et al. 2025): A pipeline that aligns LLM generation with structured KG reasoning through mutual knowledge-text indexing and logic-form guidance.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      371.0,
+      913.0,
+      415.0
+    ],
+    "order": 76,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000077",
+    "hash_code": "1afc4a6939bc64f97a7b60544ee694cf",
+    "doc_id": "LeanRAG",
+    "text": "• FastGraphRAG: An enhancement of graph retrieval that uses the PageRank algorithm (Page et al. 1999) to prioritize nodes of higher importance.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      416.0,
+      913.0,
+      460.0
+    ],
+    "order": 77,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000078",
+    "hash_code": "ebdf1af80f8f8747476ead38c2cbfc44",
+    "doc_id": "LeanRAG",
+    "text": "• HiRAG (Huang et al. 2025a): The current state-of-theart, which introduces hierarchical structures by clustering entities into multi-level summaries.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      460.0,
+      913.0,
+      503.0
+    ],
+    "order": 78,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000079",
+    "hash_code": "e4d223c7d2dd5b45c49bc78197a586ec",
+    "doc_id": "LeanRAG",
+    "text": "Datasets and Evaluation Metrics. We used four datasets from the UltraDomain benchmark (Qian et al. 2024), which is designed to evaluate RAG systems across diverse applications, focusing on long context tasks and high-level queries in specialized domains. We used Mix, CS, Legal, and Agriculture datasets following the prior work (Guo et al. 2024).",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      511.0,
+      915.0,
+      595.0
+    ],
+    "order": 79,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000080",
+    "hash_code": "97cdba4a365362a7b07bb125c5f937fd",
+    "doc_id": "LeanRAG",
+    "text": "Evaluation Metrics. To provide a multi-faceted and indepth analysis of system performance, we evaluate the generated answers along four crucial dimensions, following the prior work (Huang et al. 2025a):",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      602.0,
+      915.0,
+      659.0
+    ],
+    "order": 80,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000081",
+    "hash_code": "9505e93d0e6188321b6b396c0851bcaf",
+    "doc_id": "LeanRAG",
+    "text": "• Comprehensiveness: Measures how thoroughly the answer addresses the user’s query.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      522.0,
+      664.0,
+      913.0,
+      693.0
+    ],
+    "order": 81,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000082",
+    "hash_code": "042ca205e950866d37e2ce694072a676",
+    "doc_id": "LeanRAG",
+    "text": "• Empowerment: Evaluates the answer’s practical utility and its ability to provide actionable information.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      694.0,
+      913.0,
+      723.0
+    ],
+    "order": 82,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000083",
+    "hash_code": "91492afce04ed07b45eb40411050eb05",
+    "doc_id": "LeanRAG",
+    "text": "• Diversity: Assesses the breadth of information and perspectives presented in the answer.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      726.0,
+      913.0,
+      755.0
+    ],
+    "order": 83,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000084",
+    "hash_code": "5c0be86f479775ae187216c6d865c6af",
+    "doc_id": "LeanRAG",
+    "text": "• Overall: Provides a single, holistic quality score to measure how the answer performs overall, considering comprehensiveness, empowerment, diversity, and any other relevant factors.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      524.0,
+      757.0,
+      915.0,
+      813.0
+    ],
+    "order": 84,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000085",
+    "hash_code": "549a256e8d6b01779c2471e815afd9b4",
+    "doc_id": "LeanRAG",
+    "text": "Following recent best practices in automated evaluation, we employ powerful LLMs as judges to score the outputs of all methods on the 1 to 10 scale defined by our metrics. In order to directly reflect the quality of the answers, we will also use LLM to directly evaluate the two answers to obtain their win rates. Specifically, we use DeepSeek-V3 (Liu et al. 2024) as our evaluators, providing them with carefully designed prompts to ensure consistent and unbiased scoring, and each query and answer is scored 5 times.",
+    "modality": "text",
+    "page_start": 4,
+    "page_end": 4,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      819.0,
+      915.0,
+      890.0
+    ],
+    "order": 85,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000086",
+    "hash_code": "1350e843269320150d39cb90a1ba4b04",
+    "doc_id": "LeanRAG",
+    "text": "Implementation Details. Across all experiments, we use DeepSeek-V3 as an LLM generator for all models to ensure a fair comparison. The text embedding for retrieval is computed using BGE-M3 (Chen et al. 2024). The number of clusters for the GMM and other key hyperparameters are tuned on a held-out validation set. All main experiments were conducted by leveraging commercial API services. For our main experiments, we utilized the Deepseek-V3 mode as the backbone for all models, following the prior work (Huang et al. 2025a), ensuring a fair comparison. In addition, in order to evaluate RQ2 efficiently, we reproduced the baseline methods on the Qwen3-14b (Yang et al. 2025) model to evaluate the redundancy between LeanRAG and other methods. All implementation details are provided in the extended version (?).",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      132.0,
+      482.0,
+      342.0
+    ],
+    "order": 86,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000087",
+    "hash_code": "595760bbcb7173a45c954cfef8ebe623",
+    "doc_id": "LeanRAG",
+    "text": "Overall Performance Comparison (RQ1)",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      353.0,
+      400.0,
+      369.0
+    ],
+    "order": 87,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000088",
+    "hash_code": "802f4b23c04cee237dde387427271d6f",
+    "doc_id": "LeanRAG",
+    "text": "To address RQ1 , we compare LeanRAG against all baseline models across four benchmarks, as presented in Table 1. The experimental results demonstrate that LeanRAG almost outperforms all baselines across the evaluated datasets.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      371.0,
+      480.0,
+      429.0
+    ],
+    "order": 88,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000089",
+    "hash_code": "140e903096259129d71ad363dd445f8b",
+    "doc_id": "LeanRAG",
+    "text": "From a Comprehensiveness perspective, even after removing the information-intensive community structure of traditional KG-based RAG, the aggregation used by Lean-RAG still provides sufficient query-related information. Furthermore, Empowerment and Diversity effectively measure the relevance of the provided information. These indicate that LeanRAG effectively enhances the breadth of information by establishing inter-cluster relations, resulting in optimal performance. In summary, LeanRAG demonstrates state-of-the-art performance on the majority of metrics across four evaluated datasets and achieves highly competitive results on the remaining ones.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      428.0,
+      482.0,
+      597.0
+    ],
+    "order": 89,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000090",
+    "hash_code": "792b1ecca86dbcd2d2a2c2feea52b581",
+    "doc_id": "LeanRAG",
+    "text": "Analysis of Information Redundancy (RQ2)",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      606.0,
+      423.0,
+      622.0
+    ],
+    "order": 90,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000091",
+    "hash_code": "1caa43abc45a08a2a9172ad7985d6c2a",
+    "doc_id": "LeanRAG",
+    "text": "Experimental Setup. To answer RQ2, we evaluate the information redundancy of different methods. We use the token count of the retrieved context as a metric for redundancy, where a lower token count at a comparable performance level signifies a less redundant context. We re-implemented all baselines with Qwen3-14B-Instruct.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      626.0,
+      480.0,
+      710.0
+    ],
+    "order": 91,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000092",
+    "hash_code": "9a777db8c931a5adb9195209967125aa",
+    "doc_id": "LeanRAG",
+    "text": "Retrieved Context Size. Figure 3 shows the number of tokens in the context retrieved by each method. The results indicate that LeanRAG retrieves a substantially more compact context compared to all baselines. On average, its retrieved context is 46% smaller than baselines. This result can be attributed to our LCA-based traversal strategy, which constructs a focused subgraph by navigating the hierarchy, in contrast to methods that retrieve larger communities.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      717.0,
+      482.0,
+      830.0
+    ],
+    "order": 92,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000093",
+    "hash_code": "79a80d37759223bb44fec2df2628ce94",
+    "doc_id": "LeanRAG",
+    "text": "Cluster Relation Effectiveness Analysis (RQ3)",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      840.0,
+      439.0,
+      857.0
+    ],
+    "order": 93,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000094",
+    "hash_code": "ec008e60defee0f594feabb4df70d1ec",
+    "doc_id": "LeanRAG",
+    "text": "The core innovation of LeanRAG is not only its use of finegrained, controllable aggregate entities but also its establishment of paths between them, which creates a fully navigable semantic network for retrieval. This design directly addresses RQ3: whether the inter-cluster relationships, which break the traditional “semantic islands” problem, can truly improve retrieval quality. To test this, we conducted experiments on four datasets, comparing the retrieval results of LeanRAG with and without the inclusion of path information. The win rates across four different metrics were then analyzed, with the results summarized in Table 2.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      859.0,
+      480.0,
+      890.0
+    ],
+    "order": 94,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000095",
+    "hash_code": "819c18b09ffeb058cd425f02cd19c84b",
+    "doc_id": "LeanRAG",
+    "text": "The data in Table 3 clearly shows that when relational paths are removed, LeanRAG’s retrieval diversity, or the breadth of its information, decreases significantly. This result confirms that establishing relationships between clusters effectively connects isolated entities, thereby enriching the information available for retrieval. Furthermore, by explicitly returning these relationships, the retrieval process is enhanced, leading to a demonstrable improvement in the overall quality of the retrieved answers.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      450.0,
+      915.0,
+      578.0
+    ],
+    "order": 95,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000096",
+    "hash_code": "f723a681e4777728f773b0d238050844",
+    "doc_id": "LeanRAG",
+    "text": "Necessity Analysis of Textual Context (RQ4)",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      585.0,
+      861.0,
+      602.0
+    ],
+    "order": 96,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000097",
+    "hash_code": "0644547994eb20ed75bfa5b2542e585f",
+    "doc_id": "LeanRAG",
+    "text": "Motivation and Setup. To answer RQ4, we investigate the role of the original unstructured text chunks in our framework. While the graph structure serves as an effective retrieval guide, it is crucial to assess whether structured information alone suffices for the generator or if the source text remains essential. To this end, we conduct an ablation study using a variant of our model, denoted as LeanRAG w/o Context. This variant follows the same hierarchical retrieval process, but the final context provided to the LLM generator includes only the names and descriptions of the retrieved graph entities, excluding the original text chunks linked to the base-level entities. We then compare its performance with that of the full LeanRAG model.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      603.0,
+      915.0,
+      786.0
+    ],
+    "order": 97,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000098",
+    "hash_code": "0796767cd3492bbc4b2764d6645bea89",
+    "doc_id": "LeanRAG",
+    "text": "Results and Analysis. The results of this comparison are presented in Table 3. Across all four datasets and nearly every evaluation metric, the performance of LeanRAG drops significantly when the original textual context is removed. On average, the overall quality score decreases from 8.59 to 7.93 on the Mix dataset, and similar degradations are observed on the CS, Legal, and Agriculture datasets.",
+    "modality": "text",
+    "page_start": 5,
+    "page_end": 5,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      791.0,
+      916.0,
+      890.0
+    ],
+    "order": 98,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000099",
+    "hash_code": "543f8e9adbbb9e679633c57297631115",
+    "doc_id": "LeanRAG",
+    "text": "The most pronounced drops are consistently seen in the Comprehensiveness and Empowerment metrics. This is expected, as raw text chunks contain the detailed explanations, evidence, and nuanced language necessary for generating thorough and actionable answers. In contrast, a context composed solely of structured entity information, while semantically focused, lacks the narrative richness required by the LLM. These findings confirm our hypothesis: the hierarchical graph in LeanRAG acts as an effective semantic index and navigation system whose primary function is to precisely locate critical segments of unstructured text. The collaboration between structured graph traversal for guidance and the rich content of unstructured text for generation is essential to achieving state-of-the-art performance.",
+    "modality": "text",
+    "page_start": 6,
+    "page_end": 6,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      484.0,
+      482.0,
+      681.0
+    ],
+    "order": 99,
+    "attached_media_ids": [
+      "LeanRAG_table_000002",
+      "LeanRAG_table_000003",
+      "LeanRAG_table_000004"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000100",
+    "hash_code": "c291bb698cb52f25155395b80075e0a6",
+    "doc_id": "LeanRAG",
+    "text": "Conclusions",
+    "modality": "text",
+    "page_start": 6,
+    "page_end": 6,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      228.0,
+      698.0,
+      336.0,
+      714.0
+    ],
+    "order": 100,
+    "attached_media_ids": [
+      "LeanRAG_table_000002"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000101",
+    "hash_code": "47741fd0e06d7c109d8770dcc24abe3e",
+    "doc_id": "LeanRAG",
+    "text": "To address the critical challenges of “semantic islands” and the structure-retrieval mismatch prevalent in the KG-based RAG systems, we introduced LeanRAG, a novel framework that resolves these issues through a tight co-design of its knowledge aggregation and retrieval mechanisms. Our approach features a hierarchical aggregation algorithm that constructs a fully navigable semantic network by generating explicit relations between abstract summary concepts, and a complementary bottom-up, LCA-based retrieval strategy that efficiently traverses this structure. Extensive experiments validated our design, demonstrating that LeanRAG achieves state-of-the-art performance while significantly reducing information redundancy. Furthermore, our ablation studies confirmed that both the generation of summary information and the original textual context are essential for producing comprehensive and diverse answers.",
+    "modality": "text",
+    "page_start": 6,
+    "page_end": 6,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      720.0,
+      482.0,
+      890.0
+    ],
+    "order": 101,
+    "attached_media_ids": [
+      "LeanRAG_table_000002",
+      "LeanRAG_table_000003",
+      "LeanRAG_table_000004"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000102",
+    "hash_code": "4da2df140b97ccc6d0ac6194e4a566af",
+    "doc_id": "LeanRAG",
+    "text": "Acknowledgments",
+    "modality": "text",
+    "page_start": 6,
+    "page_end": 6,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      635.0,
+      840.0,
+      795.0,
+      857.0
+    ],
+    "order": 102,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000103",
+    "hash_code": "8c4a8fcfdf6985746aaa764102e3b97f",
+    "doc_id": "LeanRAG",
+    "text": "The research was supported by Shanghai Artificial Intelligence Laboratory, the National Key R&D Program of China",
+    "modality": "text",
+    "page_start": 6,
+    "page_end": 6,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      859.0,
+      915.0,
+      890.0
+    ],
+    "order": 103,
+    "attached_media_ids": [
+      "LeanRAG_table_000003",
+      "LeanRAG_table_000004"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000104",
+    "hash_code": "5cf5ccbb1574677274ff937b7428a70c",
+    "doc_id": "LeanRAG",
+    "text": "(Grant No. 2022ZD0160201) and the Science and Technology Commission of Shanghai Municipality (Grant Nos. 22DZ1100102).",
+    "modality": "text",
+    "page_start": 7,
+    "page_end": 7,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      68.0,
+      480.0,
+      111.0
+    ],
+    "order": 104,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000105",
+    "hash_code": "d9f96eb150bcd613ea441e16a55d19d7",
+    "doc_id": "LeanRAG",
+    "text": "References",
+    "modality": "text",
+    "page_start": 7,
+    "page_end": 7,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      232.0,
+      122.0,
+      331.0,
+      138.0
+    ],
+    "order": 105,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000106",
+    "hash_code": "759a521b26f33e0ef5b40b58db0fdb4b",
+    "doc_id": "LeanRAG",
+    "text": "Appendix",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      236.0,
+      65.0,
+      326.0,
+      84.0
+    ],
+    "order": 106,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000107",
+    "hash_code": "43db3f344fb7d0a2be7e3bd03f175a23",
+    "doc_id": "LeanRAG",
+    "text": "The appendix provides supplementary materials and detailed information to support the main findings of this paper. It includes a comprehensive breakdown of our methodology, covering the following key sections: More Results of Model Performance Across Four Datasets, Experimental Implementation Details, QA Cases of LeanRAG, Prompt Templates used in LeanRAG.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      87.0,
+      480.0,
+      184.0
+    ],
+    "order": 107,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000108",
+    "hash_code": "6fab0a5fad1fd695831281362001e653",
+    "doc_id": "LeanRAG",
+    "text": "This section is designed to ensure the reproducibility of our work by offering an in-depth look at the implementation specifics, including a detailed description of the datasets, the graph construction process, and the retrieval strategies employed. The provided prompt examples and templates further illustrate the mechanisms used to guide the Large Language Model (LLM) in generating high-quality responses.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      184.0,
+      482.0,
+      285.0
+    ],
+    "order": 108,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000109",
+    "hash_code": "0ea26c3b83032c99cbe1d828160f3996",
+    "doc_id": "LeanRAG",
+    "text": "A. More Results of Model Performance Across Four Datasets",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      295.0,
+      478.0,
+      329.0
+    ],
+    "order": 109,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000110",
+    "hash_code": "885e93e50d7170e6aa867dad2bb65c7b",
+    "doc_id": "LeanRAG",
+    "text": "The results consistently demonstrate that LeanRAG outperforms all baseline methods across all four datasets and evaluation metrics, achieving notably higher win rates. This suggests that the proposed approach offers a more efficient and reliable framework for retrieval and generation compared to existing methods.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      333.0,
+      480.0,
+      417.0
+    ],
+    "order": 110,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000111",
+    "hash_code": "21346b27d80f9679e2e171a47d21571e",
+    "doc_id": "LeanRAG",
+    "text": "LeanRAG significantly outperforms NaiveRAG, Fast-GraphRAG, and KAG: Across these baselines, LeanRAG exhibits overwhelming superiority, with win rates often exceeding 95%, and reaching 100% in some cases. This advantage is particularly pronounced in the Empowerment and Diversity metrics, underscoring LeanRAG’s ability to leverage structured knowledge graphs to provide more relevant and diverse information. These findings validate the fundamental advantage of graph-based methods over simple text retrieval approaches.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      416.0,
+      480.0,
+      556.0
+    ],
+    "order": 111,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000112",
+    "hash_code": "5f00751693ac9fc4ad7b0d4291ef5abc",
+    "doc_id": "LeanRAG",
+    "text": "LeanRAG demonstrates strong performance against more advanced baselines such as GraphRAG, LightRAG, and HiRAG: Although the win rates are comparatively lower than against simpler baselines, LeanRAG still maintains a substantial performance margin. When compared to other graph-based methods like GraphRAG and HiRAG, Lean-RAG achieves win rates consistently between 50% and 80%. This highlights the competitive advantage of LeanRAG’s strategy in aggregating entities and constructing multi-level semantic networks, surpassing conventional graph-based or hierarchy-based RAG techniques. On the Comprehensiveness metric within the Legal domain, LeanRAG’s win rate against GraphRAG is the lowest (51.0% vs. 49.0%), indicating that the dense and domain-specific nature of legal texts poses similar challenges for both models. In comparison with LightRAG, LeanRAG consistently outperforms it across the Mix and Legal datasets, with win rates frequently exceeding 80%, particularly in the Empowerment and Diversity categories. This indicates that LeanRAG’s enhanced graph construction and retrieval mechanisms are more effective than those employed by LightRAG.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      555.0,
+      480.0,
+      847.0
+    ],
+    "order": 112,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000113",
+    "hash_code": "ee42e401a199fcd6d58eca97b65fbe98",
+    "doc_id": "LeanRAG",
+    "text": "Consistency across datasets and metrics: LeanRAG’s superior performance is not limited to any single dataset or metric. It consistently outperforms baselines across diverse domains, including Mix, Computer Science, Legal, and Agriculture, demonstrating both robustness and generalizability. Notably, its highest win rates are often observed in the Empowerment and Diversity metrics, which are critical for generating high-quality, non-redundant, and actionable responses. This underscores the effectiveness of LeanRAG’s core design in producing meaningful outputs.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      847.0,
+      480.0,
+      890.0
+    ],
+    "order": 113,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000114",
+    "hash_code": "ee1bdb38e2a14b8272e82bffc3f45be0",
+    "doc_id": "LeanRAG",
+    "text": "B. Experimental Implementation Details",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      542.0,
+      186.0,
+      887.0,
+      204.0
+    ],
+    "order": 114,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000115",
+    "hash_code": "41b5e5a16eaa58b5470fcba104782765",
+    "doc_id": "LeanRAG",
+    "text": "B.1 Dataset Details",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      214.0,
+      668.0,
+      229.0
+    ],
+    "order": 115,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000116",
+    "hash_code": "11437dd46bb05ecf494cde76931e956f",
+    "doc_id": "LeanRAG",
+    "text": "This subsection provides a comprehensive description of the dataset(s) utilized in this study. It includes details regarding the source of the data and its overall size (e.g., number of documents, total tokens).",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      239.0,
+      915.0,
+      296.0
+    ],
+    "order": 116,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000117",
+    "hash_code": "9c59ca30dc4f0871c4f95d11c52cc5b9",
+    "doc_id": "LeanRAG",
+    "text": "As presented in Table 5, the datasets vary significantly in size and content. The Legal dataset is the largest, containing 94 documents and a substantial 5,279,400 tokens, reflecting the detailed and extensive nature of legal texts. In contrast, the CS (Computer Science) dataset, while having fewer documents (10), still comprises a significant 2,210,894 tokens, indicating potentially longer and more technical documents within that domain. The Agriculture dataset contributes 12 documents and 2,028,496 tokens, while the Mix dataset, serving as a general collection, includes 61 documents and 625,948 tokens. These diverse characteristics allow for a thorough assessment of our model’s performance across varied information landscapes.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      297.0,
+      915.0,
+      479.0
+    ],
+    "order": 117,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000118",
+    "hash_code": "a942bcebc6b66129290f264c040906d8",
+    "doc_id": "LeanRAG",
+    "text": "B.2 Graph Construction Implementation Details",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      517.0,
+      497.0,
+      892.0,
+      513.0
+    ],
+    "order": 118,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000119",
+    "hash_code": "54d916e574dedfc9e530fca80b6d8f1d",
+    "doc_id": "LeanRAG",
+    "text": "To effectively manage the scale of LeanRAG, we introduced a hyperparameter, clustersize, which allows us to control the number of clusters generated during the Gaussian Mixture Model (GMM) clustering process by manually limiting the number of nodes within each cluster. This design choice provides a significant degree of controllability, enabling us to adjust the size of LeanRAG according to specific application requirements.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      523.0,
+      915.0,
+      636.0
+    ],
+    "order": 119,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000120",
+    "hash_code": "14756869bde4b1d76146ccfdae7814ea",
+    "doc_id": "LeanRAG",
+    "text": "In our experiments, we performed a unified entity and relationship extraction for all documents within each dataset to build a single knowledge graph. This approach ensures a consistent graph structure for each dataset, rather than generating a separate graph for each question-answer pair.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      636.0,
+      915.0,
+      708.0
+    ],
+    "order": 120,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000121",
+    "hash_code": "44bfe06a36d667a4c6630170a320aeed",
+    "doc_id": "LeanRAG",
+    "text": "Despite the four datasets varying considerably in both size and domain, we consistently used a clustersize of 20 for graph construction. It’s important to note that clustersize is a pivotal factor that not only dictates the overall size of the LeanRAG graph but also profoundly impacts its retrieval efficiency and quality. Beyond this, the threshold τ , which governs the generation of inter-cluster relationships, also profoundly impacts LeanRAG’s performance. For our experiments, we set this threshold to 3.To further assess the efficacy of our method and cater to diverse use cases, future work will involve a comprehensive exploration of how different clustersize values and τ values influence Lean-RAG’s performance.",
+    "modality": "text",
+    "page_start": 8,
+    "page_end": 8,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      708.0,
+      915.0,
+      890.0
+    ],
+    "order": 121,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000122",
+    "hash_code": "563889a147bed072b1fc9eaffa0a656e",
+    "doc_id": "LeanRAG",
+    "text": "B.3 Graph Retrieval Details",
+    "modality": "text",
+    "page_start": 9,
+    "page_end": 9,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      743.0,
+      302.0,
+      760.0
+    ],
+    "order": 122,
+    "attached_media_ids": [
+      "LeanRAG_table_000006",
+      "LeanRAG_table_000007",
+      "LeanRAG_table_000008",
+      "LeanRAG_table_000009",
+      "LeanRAG_table_000010"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000123",
+    "hash_code": "1e04a5a1f84e9cdbde45948dda678831",
+    "doc_id": "LeanRAG",
+    "text": "B.3.1 Chunk Selection Strategy Based on our observations of traditional GraphRAG methods, we found that even after extracting structured entities, relationships, and community information, the original text chunks remain crucial for answering questions. This is because these chunks often contain incoherent semantic information that cannot be structurally extracted, yet still plays a vital role. Consequently, in LeanRAG, we also return the top-C retrieved chunks during the process.",
+    "modality": "text",
+    "page_start": 9,
+    "page_end": 9,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      763.0,
+      482.0,
+      890.0
+    ],
+    "order": 123,
+    "attached_media_ids": [
+      "LeanRAG_table_000005",
+      "LeanRAG_table_000006",
+      "LeanRAG_table_000007",
+      "LeanRAG_table_000008",
+      "LeanRAG_table_000009",
+      "LeanRAG_table_000010",
+      "LeanRAG_table_000011"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000124",
+    "hash_code": "98692539635b0295bcc5a1b324612669",
+    "doc_id": "LeanRAG",
+    "text": "Our specific approach is as follows: After identifying the initial seed nodes $V _ { \\mathrm { s e e d } } .$ , we trace back to their original text chunks. We then rank these chunks in descending order based on the number of entities from $V _ { \\mathrm { s e e d } }$ that appear within each chunk. Finally, we return the top-C chunks from this ranked list. This method allows us to pinpoint the top-C chunks most relevant to the query by aligning with the user’s intent through entity-based searching, which we find to be more effective than the similarity-based chunk retrieval employed by Naive RAG.",
+    "modality": "text",
+    "page_start": 9,
+    "page_end": 9,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      650.0,
+      915.0,
+      790.0
+    ],
+    "order": 124,
+    "attached_media_ids": [
+      "LeanRAG_table_000005",
+      "LeanRAG_table_000006",
+      "LeanRAG_table_000007",
+      "LeanRAG_table_000010",
+      "LeanRAG_table_000011"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000125",
+    "hash_code": "025d6e30e5abae5164c3b7aad9fda21a",
+    "doc_id": "LeanRAG",
+    "text": "B.4 Experiment Settings",
+    "modality": "text",
+    "page_start": 9,
+    "page_end": 9,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      800.0,
+      709.0,
+      816.0
+    ],
+    "order": 125,
+    "attached_media_ids": [
+      "LeanRAG_table_000008",
+      "LeanRAG_table_000009"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000126",
+    "hash_code": "ae24600a05ba0e946aa8927fb3c01982",
+    "doc_id": "LeanRAG",
+    "text": "To ensure our method achieves optimal performance across all four datasets, we fine-tuned the hyperparameter clustersize, $T o p - N$ , and $T o p - C$ . The specific parameter settings used for these adjustments are detailed below:",
+    "modality": "text",
+    "page_start": 9,
+    "page_end": 9,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      819.0,
+      915.0,
+      875.0
+    ],
+    "order": 126,
+    "attached_media_ids": [
+      "LeanRAG_table_000005",
+      "LeanRAG_table_000011"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000127",
+    "hash_code": "1f2d1192e3ae95d5064bdc884263a6ec",
+    "doc_id": "LeanRAG",
+    "text": "Our observations during the retrieval phase revealed distinct characteristics across the datasets, influencing the optimal parameter settings for effective information retrieval.",
+    "modality": "text",
+    "page_start": 9,
+    "page_end": 9,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      532.0,
+      875.0,
+      913.0,
+      888.0
+    ],
+    "order": 127,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000128",
+    "hash_code": "a6938223d3abb86a16278c33cf6f93ed",
+    "doc_id": "LeanRAG",
+    "text": "Specifically, for the Mix and Agriculture datasets, a relatively smaller number of seed nodes $V _ { \\mathrm { s e e d } }$ was sufficient for robust query resolution. This can be attributed to the limited scope of content within a subset of documents and the overall stronger internal connectedness within their respective knowledge bases.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      223.0,
+      480.0,
+      306.0
+    ],
+    "order": 128,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000129",
+    "hash_code": "a8e7598e0a8a0dd7e7eee02cc85f7e57",
+    "doc_id": "LeanRAG",
+    "text": "Conversely, the Computer Science (CS) dataset presented unique challenges. Its weaker intrinsic associativity and the less structured nature of its specialized terminology necessitated the retrieval of a larger number of supporting chunks. This suggests that relevant information for a given query in the CS domain might be more distributed and less directly interlinked within the graph structure.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      305.0,
+      480.0,
+      402.0
+    ],
+    "order": 129,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000130",
+    "hash_code": "8624fcb62779ca72ce310d5cbf757a49",
+    "doc_id": "LeanRAG",
+    "text": "Finally, the Legal dataset, characterized by its highly specialized and extensive terminology and greater documentlevel separability, required the retrieval of a larger volume of information. This indicated a need for a higher count of $V _ { \\mathrm { s e e d } } \\mathrm { t o }$ achieve a comprehensive understanding of the query, as pertinent details tended to be more dispersed across a broader range of documents.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      402.0,
+      482.0,
+      501.0
+    ],
+    "order": 130,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000131",
+    "hash_code": "cbf1c7352276facce1e95ed26fe056db",
+    "doc_id": "LeanRAG",
+    "text": "C. QA Cases of LeanRAG",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      169.0,
+      512.0,
+      393.0,
+      529.0
+    ],
+    "order": 131,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000132",
+    "hash_code": "71b68728c0262c37b2d0baa46de86206",
+    "doc_id": "LeanRAG",
+    "text": "To illustrate the effectiveness of our approach, this section presents a few straightforward examples comparing the performance of LeanRAG with the HiRAG method. These cases are designed to highlight how LeanRAG’s optimized graph structure and retrieval strategy lead to more precise and coherent answers. By directly contrasting their outputs, we aim to demonstrate the practical benefits of our method in various query scenarios,the case can be found in Table 7.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      532.0,
+      482.0,
+      646.0
+    ],
+    "order": 132,
+    "attached_media_ids": [
+      "LeanRAG_table_000012",
+      "LeanRAG_table_000013"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000133",
+    "hash_code": "8c46610c73fa3b747df0baec65733e49",
+    "doc_id": "LeanRAG",
+    "text": "D. Prompt Templates used in LeanRAG",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      112.0,
+      657.0,
+      450.0,
+      674.0
+    ],
+    "order": 133,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000134",
+    "hash_code": "96ea53972a898c737ffeb78c84a611ce",
+    "doc_id": "LeanRAG",
+    "text": "This section details the specific prompt templates employed within the LeanRAG framework. While our knowledge graph (KG) generation code aligns with that of LightRAG and will not be reiterated here, this chapter focuses on the four distinct prompt templates critical to LeanRAG’s operation: the Entity Aggregation Prompt, the Inter-Cluster Relation Generation Prompt, the Score Scoring Prompt, and the Win Rate Evaluation Prompt. Each prompt plays a vital role in guiding the Large Language Model (LLM) through various stages of information processing, from consolidating entities to evaluating retrieval outcomes.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      676.0,
+      482.0,
+      832.0
+    ],
+    "order": 134,
+    "attached_media_ids": [
+      "LeanRAG_table_000013"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000135",
+    "hash_code": "e8164856ee8381a5670cb711fb1e3676",
+    "doc_id": "LeanRAG",
+    "text": "D.1 Prompt Templates for Entity Aggregation",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      83.0,
+      842.0,
+      437.0,
+      858.0
+    ],
+    "order": 135,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000136",
+    "hash_code": "ea7a01134f5e63c6aa807c8c8244136d",
+    "doc_id": "LeanRAG",
+    "text": "As depicted in Figure 8, we leverage the clusters generated by the Gaussian Mixture Model (GMM) to derive descriptions of all entities within a cluster, along with the relationships between these intra-cluster entities. This information is then used to generate an aggregated entity. To circumvent the limitations of traditional community concepts, which can forcibly aggregate all entities and inadvertently assign irrelevant attributes, we explicitly constrain the Large Language Model (LLM) to generate information solely based on the current set of entity descriptions. Furthermore, we emphasize the connecting role of the generated aggregated entity for its constituent sub-entities, ensuring its relevance and coherence within the broader knowledge graph.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      81.0,
+      859.0,
+      482.0,
+      890.0
+    ],
+    "order": 136,
+    "attached_media_ids": [
+      "LeanRAG_table_000013"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000137",
+    "hash_code": "5f7915529d3fae6d4e91e5566e240ff8",
+    "doc_id": "LeanRAG",
+    "text": "D.2 Prompt Templates for Relation Aggregation",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      232.0,
+      888.0,
+      248.0
+    ],
+    "order": 137,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000138",
+    "hash_code": "64153e87db53518bf2765f5234cf84a4",
+    "doc_id": "LeanRAG",
+    "text": "As illustrated in Figure 9, we employ a specialized relation prompt to generate relationships between the aggregated entities. This prompt leverages the names and descriptions of two aggregated entities, alongside the existing relationships between their constituent sub-entities, to infer and generate all relevant connections between the two aggregated entities. Given that the descriptions of the aggregated entities already encapsulate the broad information of their sub-entities, we did not incorporate additional sub-entity descriptions to enrich the input. Through this generation of relationships between sets of aggregated entities, LeanRAG effectively mitigates the problem of “semantic islands”, thereby constructing a multi-level navigable semantic network.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      251.0,
+      915.0,
+      434.0
+    ],
+    "order": 138,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000139",
+    "hash_code": "e8e517cbdedce3c16e7c4510593d2d33",
+    "doc_id": "LeanRAG",
+    "text": "D.3 Prompt Template for Absolute Quality Scoring",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      443.0,
+      911.0,
+      458.0
+    ],
+    "order": 139,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000140",
+    "hash_code": "64fa25638b6979a6ec24f5880e09604c",
+    "doc_id": "LeanRAG",
+    "text": "To obtain a quantitative measure of performance for each model, we designed a prompt for absolute quality scoring. This prompt instructs an evaluating LLM to assess a single generated answer based on our predefined metrics (Comprehensiveness, Empowerment, etc.) and assign a numerical score from 1 to 10 for each. To ensure transparency and facilitate analysis, the LLM is also required to provide a concise rationale for each score. All assessments are structured in a JSON format to ensure consistency and ease of parsing. The detailed template used for this scoring task is presented in Table 10.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      460.0,
+      915.0,
+      616.0
+    ],
+    "order": 140,
+    "attached_media_ids": [
+      "LeanRAG_table_000012"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000141",
+    "hash_code": "0c227fb007ac389439bbf5cfb7fd6bad",
+    "doc_id": "LeanRAG",
+    "text": "D.4 Prompt Template for Pairwise Comparison",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      516.0,
+      625.0,
+      883.0,
+      641.0
+    ],
+    "order": 141,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000142",
+    "hash_code": "c130555f53651fa290b9075dbc8102fe",
+    "doc_id": "LeanRAG",
+    "text": "In addition to absolute scoring, we conducted pairwise comparisons to determine the relative performance between different models, resulting in win-rate statistics. For this purpose, we developed a separate prompt that presents the answers from two different models (e.g., LeanRAG vs. Hi-RAG) to an evaluating LLM. The prompt then instructs the evaluator to act as an impartial judge and determine which of the two answers is superior, considering the overall quality. The LLM must declare a “winner” and provide a detailed justification for its decision, again in a structured JSON format. The template used for these head-to-head comparisons is shown in Table 11.",
+    "modality": "text",
+    "page_start": 10,
+    "page_end": 10,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      514.0,
+      643.0,
+      915.0,
+      811.0
+    ],
+    "order": 142,
+    "attached_media_ids": [
+      "LeanRAG_table_000012"
+    ]
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000143",
+    "hash_code": "f175b8fb80a75892a364a5d5c3562c61",
+    "doc_id": "LeanRAG",
+    "text": "Table 9: The prompt template of generate relation between aggregation entities.",
+    "modality": "text",
+    "page_start": 13,
+    "page_end": 13,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      235.0,
+      64.0,
+      761.0,
+      82.0
+    ],
+    "order": 143,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000144",
+    "hash_code": "3f6a3fc68c2ddeeef24ea96e3eb3cb06",
+    "doc_id": "LeanRAG",
+    "text": "Table 10: The prompt template of scoring model response.",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      303.0,
+      64.0,
+      692.0,
+      82.0
+    ],
+    "order": 144,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000145",
+    "hash_code": "601af114412de17ef912b974b8a5180e",
+    "doc_id": "LeanRAG",
+    "text": "QA scoring prompt",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      95.0,
+      233.0,
+      111.0
+    ],
+    "order": 145,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000146",
+    "hash_code": "61c637f15c5923e574689cc1d5822134",
+    "doc_id": "LeanRAG",
+    "text": "Your task is to evaluate the following answer based on four criteria. For each criterion, assign a score from 1 to 10 , following the detailed scoring rubric.",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      114.0,
+      893.0,
+      143.0
+    ],
+    "order": 146,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000147",
+    "hash_code": "7850c31d20a2ef126e96164119dbcc45",
+    "doc_id": "LeanRAG",
+    "text": "When explaining your score, you must refer directly to specific parts of the answer to justify your reasoning. Avoid general statements — your explanation must be grounded in the content provided.",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      164.0,
+      893.0,
+      193.0
+    ],
+    "order": 147,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000148",
+    "hash_code": "97a577e99795b1d1ae84cae1bd7209f7",
+    "doc_id": "LeanRAG",
+    "text": "- Comprehensiveness:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      213.0,
+      246.0,
+      227.0
+    ],
+    "order": 148,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000149",
+    "hash_code": "e4eeff41e3bd8a8841c32953dba06f2b",
+    "doc_id": "LeanRAG",
+    "text": "How much detail does the answer provide to cover all aspects and details of the question?",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      226.0,
+      637.0,
+      242.0
+    ],
+    "order": 149,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000150",
+    "hash_code": "717db9a9c1fc39c54bc5597f8c4e244a",
+    "doc_id": "LeanRAG",
+    "text": "- Diversity:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      262.0,
+      179.0,
+      276.0
+    ],
+    "order": 150,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000151",
+    "hash_code": "8e6351f7e25bb565ac10a6e6221b5057",
+    "doc_id": "LeanRAG",
+    "text": "How varied and rich is the answer in providing different perspectives and insights on the question?",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      275.0,
+      689.0,
+      290.0
+    ],
+    "order": 151,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000152",
+    "hash_code": "ec261f50b0b9e43fee8bdb1d9a4be065",
+    "doc_id": "LeanRAG",
+    "text": "- Empowerment:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      311.0,
+      215.0,
+      325.0
+    ],
+    "order": 152,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000153",
+    "hash_code": "3b6b8bc0b887677aa1a134fab6678196",
+    "doc_id": "LeanRAG",
+    "text": "How well does the answer help the reader understand and make informed judgments about the topic?",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      323.0,
+      704.0,
+      339.0
+    ],
+    "order": 153,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000154",
+    "hash_code": "703863839ac2046747da0c7faae2e3eb",
+    "doc_id": "LeanRAG",
+    "text": "- Overall Quality:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      361.0,
+      220.0,
+      375.0
+    ],
+    "order": 154,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000155",
+    "hash_code": "9d20d713325cc8727cd84fa305a2c630",
+    "doc_id": "LeanRAG",
+    "text": "Provide an overall evaluation based on the combined performance across all four dimensions. Consider both content quality and answer usefulness to the question.",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      372.0,
+      893.0,
+      401.0
+    ],
+    "order": 155,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000156",
+    "hash_code": "ffba0900d53a9ecc2c7d44fd4e3e74d3",
+    "doc_id": "LeanRAG",
+    "text": "Scoring Guidelines:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      421.0,
+      232.0,
+      438.0
+    ],
+    "order": 156,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000157",
+    "hash_code": "5bc59e697ee4811d929fa1279c4688be",
+    "doc_id": "LeanRAG",
+    "text": "“1-2”: “Low score description: Clearly deficient in this aspect, with significant issues.”,",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      445.0,
+      622.0,
+      460.0
+    ],
+    "order": 157,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000158",
+    "hash_code": "488509ffd4090f9e10b1734d58ff7c8b",
+    "doc_id": "LeanRAG",
+    "text": "“3-4”: “Below average score description: Lacking in several important areas, with noticeable problems.”,",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      459.0,
+      725.0,
+      473.0
+    ],
+    "order": 158,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000159",
+    "hash_code": "146a69326345358cb622814d4ce6d6aa",
+    "doc_id": "LeanRAG",
+    "text": "“5-6”: “Average score description: Adequate but not exemplary, meets basic expectations with some minor issues.”,",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      472.0,
+      785.0,
+      484.0
+    ],
+    "order": 159,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000160",
+    "hash_code": "244f568375c7915e5b9b9856e93e0cd3",
+    "doc_id": "LeanRAG",
+    "text": "“7-8”: “Above average score description: Generally strong but with minor shortcomings.”,",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      484.0,
+      638.0,
+      497.0
+    ],
+    "order": 160,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000161",
+    "hash_code": "d61b7b534d5231221058ceff89d0d2a5",
+    "doc_id": "LeanRAG",
+    "text": "“9-10”: “High score description: Outstanding in this aspect, with no noticeable issues.”",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      497.0,
+      622.0,
+      512.0
+    ],
+    "order": 161,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000162",
+    "hash_code": "9e537820cc33e5154a6b389b882597b7",
+    "doc_id": "LeanRAG",
+    "text": "Here is the question:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      534.0,
+      232.0,
+      546.0
+    ],
+    "order": 162,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000163",
+    "hash_code": "8e01cad25aa402b4c3372902f756bb01",
+    "doc_id": "LeanRAG",
+    "text": "{query}",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      106.0,
+      546.0,
+      168.0,
+      560.0
+    ],
+    "order": 163,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000164",
+    "hash_code": "4e7af066ac04b39f506b54c2d1112478",
+    "doc_id": "LeanRAG",
+    "text": "Here are the answer:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      582.0,
+      230.0,
+      597.0
+    ],
+    "order": 164,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000165",
+    "hash_code": "0f36cae62aa97d13b92524fecad6335a",
+    "doc_id": "LeanRAG",
+    "text": "{answer}",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      104.0,
+      607.0,
+      178.0,
+      622.0
+    ],
+    "order": 165,
+    "attached_media_ids": []
+  },
+  {
+    "chunk_id": "LeanRAG_chunk_000166",
+    "hash_code": "f39e8fe6339bba7754345fa16160a255",
+    "doc_id": "LeanRAG",
+    "text": "Evaluate the answer using the criteria listed above and provide detailed explanations for each criterion with reference to the text. Output your evaluation in the following JSON format:",
+    "modality": "text",
+    "page_start": 14,
+    "page_end": 14,
+    "section_title": null,
+    "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+    "bbox": [
+      102.0,
+      631.0,
+      892.0,
+      659.0
+    ],
+    "order": 166,
+    "attached_media_ids": []
+  }
+]
