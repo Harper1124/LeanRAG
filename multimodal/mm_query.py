@@ -187,6 +187,13 @@ def _install_default_model_funcs(config: dict[str, Any], full_config: dict[str, 
         llm_conf = dict(full_config["deepseek"])
         llm_conf.setdefault("api_key_env", "DASHSCOPE_API_KEY")
         config["use_llm_func"] = make_chat_func(llm_conf)
+    if "embeddings_func" not in config:
+        try:
+            from query_graph import embedding
+
+            config["embeddings_func"] = embedding
+        except Exception:
+            pass
     if "use_vlm_func" not in config:
         vlm_conf = {
             "model": config.get("vlm_model"),
