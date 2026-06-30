@@ -112,8 +112,7 @@ def search_vector_search(working_dir,query,topk=10,level_mode=2):
         print(f"{working_dir}milvus_demo.db already exists, using it")
         milvus_client = MilvusClient(uri=f"{working_dir}/milvus_demo.db")
     else:
-        print("milvus_demo.db not found, using default")
-        milvus_client = MilvusClient(uri=f"/data/zyz/trag_ds/exp/ds_hire_cs20_top20_chunk5/{dataset}/milvus_demo.db")
+        raise FileNotFoundError(f"milvus_demo.db not found under {working_dir}")
     collection_name = "entity_collection"
     # query_embedding = emb_text(query)
     search_results = milvus_client.search(
