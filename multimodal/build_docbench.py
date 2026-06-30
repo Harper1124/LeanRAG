@@ -24,6 +24,7 @@ def build_docbench(
     build_graph: bool = True,
     use_media_caption: bool = False,
     use_table_summary: bool = False,
+    model_config: dict | None = None,
 ) -> list[dict]:
     samples = load_docbench(docbench_dir)
     docs = _group_by_doc(samples)
@@ -59,7 +60,7 @@ def build_docbench(
             _ensure_minimal_triples(working_dir, artifact_paths["leanrag_chunk_file"])
             media_items = link_media_to_entities(str(working_dir), chunks, media_items, embedding_func=None)
             save_dataclasses(media_items, working_dir / "mm_media.json")
-            graph_status = _try_build_leanrag_graph(working_dir)
+            graph_status = _try_build_leanrag_graph(working_dir, model_config or {})
 
         manifest = {
             "doc_id": doc_id,
@@ -131,17 +132,23 @@ def _ensure_minimal_triples(working_dir: Path, chunk_file: str) -> None:
     write_jsonl(relations, relation_path)
 
 
-def _try_build_leanrag_graph(working_dir: Path) -> str:
+def _try_build_leanrag_graph(working_dir: Path, model_config: dict) -> str:
     try:
         import build_graph as lean_build_graph
         from query_graph import embedding
+
+        use_llm_func = None
+        if model_config.get("deepseek", {}).get("base_url"):
+            from .openai_clients import make_chat_func
+
+            use_llm_func = make_chat_func(model_config["deepseek"])
 
         lean_build_graph.WORKING_DIR = str(working_dir)
         global_config = {
             "max_workers": 4,
             "working_dir": str(working_dir),
             "embeddings_func": embedding,
-            "use_llm_func": None,
+            "use_llm_func": use_llm_func,
         }
         lean_build_graph.hierarchical_clustering(global_config)
         return "built"
@@ -234,7 +241,8 @@ def main() -> None:
     parser.add_argument("--skip_graph", action="store_true")
     parser.add_argument("--config", default="config.yaml")
     args = parser.parse_args()
-    config = _load_mm_config(args.config)
+    full_config = _load_config(args.config)
+    config = full_config.get("multimodal", {})
     manifests = build_docbench(
         docbench_dir=args.docbench_dir,
         working_root=args.working_root,
@@ -245,16 +253,17 @@ def main() -> None:
         build_graph=not args.skip_graph,
         use_media_caption=bool(config.get("use_media_caption", False)),
         use_table_summary=bool(config.get("use_table_summary", False)),
+        model_config=full_config,
     )
     print(f"Built {len(manifests)} document workspaces under {args.working_root}")
 
 
-def _load_mm_config(path: str) -> dict:
+def _load_config(path: str) -> dict:
     try:
         import yaml
 
         with open(path, "r", encoding="utf-8") as f:
-            return (yaml.safe_load(f) or {}).get("multimodal", {})
+            return yaml.safe_load(f) or {}
     except (FileNotFoundError, ModuleNotFoundError):
         return {}
 
