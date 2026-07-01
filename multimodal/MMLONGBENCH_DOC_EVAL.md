@@ -4,16 +4,25 @@ MMLongBench-Doc is a document QA benchmark with 1,090 questions over 135 PDFs. T
 
 ## Recommended Flow
 
-1. Prepare the local dataset directory:
+1. Prepare the local dataset directory from the GitHub repository:
 
 ```bash
-python -m multimodal.prepare_mmlongbench_doc --output_dir datasets/mmlongbench_doc
+python -m multimodal.prepare_mmlongbench_doc --source github --output_dir datasets/mmlongbench_doc
 ```
 
-For a fast smoke test:
+If the server cannot access GitHub directly, clone or upload the repository data first, then prepare offline:
 
 ```bash
-python -m multimodal.prepare_mmlongbench_doc --output_dir datasets/mmlongbench_doc_smoke --max_docs 2
+python -m multimodal.prepare_mmlongbench_doc \
+  --output_dir datasets/mmlongbench_doc \
+  --local_data_file /path/to/MMLongBench-Doc/data/samples.json \
+  --local_documents_dir /path/to/MMLongBench-Doc/data/documents
+```
+
+For a fast smoke test with only the first two documents:
+
+```bash
+python -m multimodal.prepare_mmlongbench_doc --source github --output_dir datasets/mmlongbench_doc_smoke --max_docs 2
 ```
 
 2. Build MM-LeanRAG workspaces:

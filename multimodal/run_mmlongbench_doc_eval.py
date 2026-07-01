@@ -14,6 +14,11 @@ def run_mmlongbench_doc_eval(
     dataset_dir: str,
     working_root: str,
     output_dir: str,
+    source: str = "github",
+    github_repo: str = "mayubo2333/MMLongBench-Doc",
+    repo_id: str = "yubo2333/MMLongBench-Doc",
+    local_data_file: str | None = None,
+    local_documents_dir: str | None = None,
     prepare: bool = False,
     build: bool = False,
     predict: bool = True,
@@ -27,7 +32,15 @@ def run_mmlongbench_doc_eval(
     output.mkdir(parents=True, exist_ok=True)
     full_config = _load_config(config_file)
     if prepare:
-        prepare_mmlongbench_doc(dataset_dir, max_docs=max_docs)
+        prepare_mmlongbench_doc(
+            dataset_dir,
+            source=source,
+            github_repo=github_repo,
+            repo_id=repo_id,
+            max_docs=max_docs,
+            local_data_file=local_data_file,
+            local_documents_dir=local_documents_dir,
+        )
     if build:
         mm_config = full_config.get("multimodal", {})
         build_docbench(
@@ -54,6 +67,11 @@ def main() -> None:
     parser.add_argument("--dataset_dir", required=True)
     parser.add_argument("--working_root", required=True)
     parser.add_argument("--output_dir", required=True)
+    parser.add_argument("--source", choices=["github", "hf"], default="github")
+    parser.add_argument("--github_repo", default="mayubo2333/MMLongBench-Doc")
+    parser.add_argument("--repo_id", default="yubo2333/MMLongBench-Doc")
+    parser.add_argument("--local_data_file", default=None)
+    parser.add_argument("--local_documents_dir", default=None)
     parser.add_argument("--prepare", action="store_true")
     parser.add_argument("--build", action="store_true")
     parser.add_argument("--no_predict", action="store_true")
@@ -67,6 +85,11 @@ def main() -> None:
         dataset_dir=args.dataset_dir,
         working_root=args.working_root,
         output_dir=args.output_dir,
+        source=args.source,
+        github_repo=args.github_repo,
+        repo_id=args.repo_id,
+        local_data_file=args.local_data_file,
+        local_documents_dir=args.local_documents_dir,
         prepare=args.prepare,
         build=args.build,
         predict=not args.no_predict,
