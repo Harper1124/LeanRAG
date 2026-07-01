@@ -11,7 +11,7 @@ def load_docbench(dataset_dir: str) -> list[dict]:
     Load a flexible DocBench-style directory.
 
     The loader accepts common layouts:
-    - metadata/qa files: *.jsonl, *.json, *.csv under dataset_dir
+    - metadata/qa files: *.jsonl, *.json, *.csv, *.parquet under dataset_dir
     - PDF files under pdfs/ or anywhere below dataset_dir
     """
     root = Path(dataset_dir)
@@ -73,7 +73,7 @@ def _find_pdfs(root: Path) -> dict[str, Path]:
 
 
 def _find_qa_rows(root: Path) -> list[dict[str, Any]]:
-    candidates = [path for path in root.rglob("*") if path.suffix.lower() in {".jsonl", ".json", ".csv"}]
+    candidates = [path for path in root.rglob("*") if path.suffix.lower() in {".jsonl", ".json", ".csv", ".parquet"}]
     rows = []
     for path in sorted(candidates):
         if path.name.endswith(("_chunk.json", "mm_chunk.json", "mm_media.json", "leanrag_chunk.json")):
@@ -92,6 +92,12 @@ def _load_records(path: Path) -> list[dict[str, Any]]:
         if path.suffix.lower() == ".csv":
             with path.open("r", encoding="utf-8-sig", newline="") as f:
                 return list(csv.DictReader(f))
+        if path.suffix.lower() == ".parquet":
+            try:
+                import pandas as pd
+            except ModuleNotFoundError:
+                return []
+            return pd.read_parquet(path).to_dict(orient="records")
         with path.open("r", encoding="utf-8-sig") as f:
             data = json.load(f)
         if isinstance(data, list):
