@@ -146,7 +146,7 @@ def truncate_text(text, max_tokens=4096):
         tokens = tokens[:max_tokens]
     truncated_text = tokenizer.decode(tokens)
     return truncated_text
-def embedding_data(entity_results):
+def embedding_data(entity_results, max_workers: int = 8):
     """
     为所有原始实体批量生成向量。
 
@@ -163,7 +163,7 @@ def embedding_data(entity_results):
         for i in range(num_embeddings_batches)
     ]
 
-    with ProcessPoolExecutor(max_workers=8) as executor:
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
         futures = [executor.submit(embedding_init, batch) for batch in batches]
         for future in tqdm(as_completed(futures), total=len(futures)):
             result = future.result()
@@ -191,7 +191,7 @@ def hierarchical_clustering(global_config):
     6. 创建并写入 MySQL 表，供 query_graph.py 按 parent/path/relation 检索。
     """
     entity_results,relation_results=get_common_rag_res(global_config['working_dir'])
-    all_entities=embedding_data(entity_results)
+    all_entities=embedding_data(entity_results, max_workers=int(global_config.get("embedding_max_workers", 1)))
     hierarchical_cluster = Hierarchical_Clustering()
     all_entities,generate_relations,community =hierarchical_cluster.perform_clustering(global_config=global_config,entities=all_entities,relations=relation_results,\
         WORKING_DIR=WORKING_DIR,max_workers=global_config['max_workers'])

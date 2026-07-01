@@ -50,4 +50,5 @@ multimodal:
   vlm_api_key: "ollama"
 
   embedding_dim: 1024
-
+  graph_max_workers: 1
+  graph_embedding_max_workers: 1

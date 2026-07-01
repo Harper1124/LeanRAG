@@ -145,8 +145,10 @@ def _try_build_leanrag_graph(working_dir: Path, model_config: dict) -> str:
             use_llm_func = make_chat_func(model_config["deepseek"])
 
         lean_build_graph.WORKING_DIR = str(working_dir)
+        mm_config = model_config.get("multimodal", {}) if model_config else {}
         global_config = {
-            "max_workers": 4,
+            "max_workers": int(mm_config.get("graph_max_workers", 1)),
+            "embedding_max_workers": int(mm_config.get("graph_embedding_max_workers", 1)),
             "working_dir": str(working_dir),
             "embeddings_func": embedding,
             "use_llm_func": use_llm_func,
