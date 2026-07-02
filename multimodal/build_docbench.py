@@ -154,6 +154,9 @@ def _try_build_leanrag_graph(working_dir: Path, model_config: dict) -> str:
             "use_llm_func": use_llm_func,
         }
         lean_build_graph.hierarchical_clustering(global_config)
+        error_path = working_dir / "graph_build_error.json"
+        if error_path.exists():
+            error_path.unlink()
         return "built"
     except Exception as exc:
         write_json(
