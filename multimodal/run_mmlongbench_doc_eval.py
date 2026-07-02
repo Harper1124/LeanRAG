@@ -27,6 +27,7 @@ def run_mmlongbench_doc_eval(
     limit: int | None = None,
     config_file: str = "config.yaml",
     skip_graph: bool = False,
+    force: bool = False,
 ) -> dict:
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
@@ -47,6 +48,7 @@ def run_mmlongbench_doc_eval(
             docbench_dir=dataset_dir,
             working_root=working_root,
             build_graph=not skip_graph,
+            force=force,
             use_media_caption=bool(mm_config.get("use_media_caption", False)),
             use_table_summary=bool(mm_config.get("use_table_summary", False)),
             model_config=full_config,
@@ -77,6 +79,7 @@ def main() -> None:
     parser.add_argument("--no_predict", action="store_true")
     parser.add_argument("--no_score", action="store_true")
     parser.add_argument("--skip_graph", action="store_true")
+    parser.add_argument("--force", action="store_true")
     parser.add_argument("--max_docs", type=int, default=None)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--config", default="config.yaml")
@@ -98,6 +101,7 @@ def main() -> None:
         limit=args.limit,
         config_file=args.config,
         skip_graph=args.skip_graph,
+        force=args.force,
     )
     print(json.dumps(result, ensure_ascii=False, indent=2))
 

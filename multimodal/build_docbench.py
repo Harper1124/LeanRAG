@@ -35,6 +35,11 @@ def build_docbench(
         working_dir = Path(working_root) / doc_id
         mineru_dir = working_dir / "mineru_output"
         working_dir.mkdir(parents=True, exist_ok=True)
+        existing_manifest = _read_manifest(working_dir / "manifest.json")
+        if _can_reuse_manifest(existing_manifest, force=force, build_graph=build_graph):
+            existing_manifest["reused"] = True
+            manifests.append(existing_manifest)
+            continue
 
         mineru_info = parse_pdf_with_mineru(
             pdf_path=pdf_path,
@@ -75,11 +80,31 @@ def build_docbench(
             "evidence_vector_db": str(working_dir / "evidence_milvus.db"),
             "graph_status": graph_status,
             "qa_count": len([row for row in rows if row.get("question")]),
+            "reused": False,
         }
         write_json(manifest, working_dir / "manifest.json")
         manifests.append(manifest)
     write_json(manifests, Path(working_root) / "manifest.json")
     return manifests
+
+
+def _read_manifest(path: Path) -> dict:
+    if not path.exists():
+        return {}
+    try:
+        with path.open("r", encoding="utf-8-sig") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _can_reuse_manifest(manifest: dict, force: bool, build_graph: bool) -> bool:
+    if force or not manifest:
+        return False
+    if build_graph:
+        return manifest.get("graph_status") == "built"
+    return True
 
 
 def _group_by_doc(samples: list[dict]) -> dict[str, list[dict]]:

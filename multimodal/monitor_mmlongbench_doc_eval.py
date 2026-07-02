@@ -61,6 +61,7 @@ def collect_progress(
         "prediction_docs": dict(pred_docs),
         "doc_statuses": doc_statuses,
         "status_counts": Counter(item["stage"] for item in doc_statuses),
+        "graph_status_counts": Counter(item.get("graph_status") or "none" for item in doc_statuses),
     }
 
 
@@ -81,7 +82,11 @@ def _doc_status(doc_dir: Path) -> dict[str, Any]:
         "community": (doc_dir / "community.json").exists(),
         "manifest": (doc_dir / "manifest.json").exists(),
     }
-    if manifest:
+    manifest_mtime = _file_mtime(doc_dir / "manifest.json")
+    latest_mtime = _latest_mtime_value(doc_dir)
+    if manifest and latest_mtime and manifest_mtime and latest_mtime > manifest_mtime + 2:
+        stage = "rebuilding_after_manifest"
+    elif manifest:
         stage = "built"
     elif files["all_entities"] or files["community"]:
         stage = "graph_building_or_partial"
@@ -94,7 +99,7 @@ def _doc_status(doc_dir: Path) -> dict[str, Any]:
     else:
         stage = "started"
 
-    updated_at = _latest_mtime(doc_dir)
+    updated_at = _format_mtime(latest_mtime)
     graph_status = manifest.get("graph_status") if manifest else None
     show_error = graph_status != "built"
     return {
@@ -103,6 +108,7 @@ def _doc_status(doc_dir: Path) -> dict[str, Any]:
         "error": error.get("error") if show_error and error else None,
         "stale_error": error.get("error") if graph_status == "built" and error else None,
         "updated_at": updated_at,
+        "manifest_updated_at": _format_mtime(manifest_mtime),
         "files": files,
     }
 
@@ -145,6 +151,10 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _latest_mtime(path: Path) -> str | None:
+    return _format_mtime(_latest_mtime_value(path))
+
+
+def _latest_mtime_value(path: Path) -> float | None:
     latest = None
     for item in path.rglob("*"):
         try:
@@ -152,13 +162,25 @@ def _latest_mtime(path: Path) -> str | None:
         except OSError:
             continue
         latest = mtime if latest is None else max(latest, mtime)
-    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(latest)) if latest else None
+    return latest
+
+
+def _file_mtime(path: Path) -> float | None:
+    try:
+        return path.stat().st_mtime
+    except OSError:
+        return None
+
+
+def _format_mtime(value: float | None) -> str | None:
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(value)) if value else None
 
 
 def format_snapshot(snapshot: dict[str, Any]) -> str:
     total_docs = snapshot["total_docs"]
     total_questions = snapshot["total_questions"]
     status_counts = snapshot["status_counts"]
+    graph_status_counts = snapshot["graph_status_counts"]
     built = status_counts.get("built", 0)
     partial = status_counts.get("graph_building_or_partial", 0)
     started = total_docs - status_counts.get("not_started", 0)
@@ -168,6 +190,7 @@ def format_snapshot(snapshot: dict[str, Any]) -> str:
         f"Docs: started {started}/{total_docs}, built {built}/{total_docs}, graph_partial {partial}/{total_docs}",
         f"Questions: predictions {snapshot['prediction_count']}/{total_questions}",
         "Stage counts: " + ", ".join(f"{key}={value}" for key, value in sorted(status_counts.items())),
+        "Graph status counts: " + ", ".join(f"{key}={value}" for key, value in sorted(graph_status_counts.items())),
     ]
     current = _recent_docs(snapshot["doc_statuses"], limit=8)
     if current:
@@ -175,7 +198,8 @@ def format_snapshot(snapshot: dict[str, Any]) -> str:
         for item in current:
             extra = f", graph_status={item['graph_status']}" if item.get("graph_status") else ""
             error = f", error={item['error']}" if item.get("error") else ""
-            lines.append(f"  - {item['doc_id']}: {item['stage']}{extra}{error}, updated={item.get('updated_at')}")
+            manifest_time = f", manifest={item['manifest_updated_at']}" if item.get("manifest_updated_at") else ""
+            lines.append(f"  - {item['doc_id']}: {item['stage']}{extra}{error}, updated={item.get('updated_at')}{manifest_time}")
     if snapshot.get("predictions_file"):
         lines.append(f"Predictions file: {snapshot['predictions_file']}")
     return "\n".join(lines)
