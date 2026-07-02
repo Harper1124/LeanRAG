@@ -163,11 +163,16 @@ def embedding_data(entity_results, max_workers: int = 8):
         for i in range(num_embeddings_batches)
     ]
 
-    with ProcessPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(embedding_init, batch) for batch in batches]
-        for future in tqdm(as_completed(futures), total=len(futures)):
-            result = future.result()
+    if max_workers <= 1:
+        for batch in tqdm(batches, total=len(batches)):
+            result = embedding_init(batch)
             entity_with_embeddings.extend(result)
+    else:
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(embedding_init, batch) for batch in batches]
+            for future in tqdm(as_completed(futures), total=len(futures)):
+                result = future.result()
+                entity_with_embeddings.extend(result)
 
     for i in entity_with_embeddings:
         entiy_name=i['entity_name']
