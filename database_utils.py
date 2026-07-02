@@ -1,5 +1,6 @@
 import json
 import os
+import hashlib
 import numpy as np
 from pymilvus  import MilvusClient
 import pymysql
@@ -48,6 +49,16 @@ def get_mysql_connection(database=None):
     if database:
         kwargs["database"] = database
     return pymysql.connect(**kwargs)
+
+
+def _mysql_db_name(working_dir):
+    raw_name = os.path.basename(working_dir)
+    digest = hashlib.md5(raw_name.encode("utf-8")).hexdigest()[:16]
+    return f"leanrag_{digest}"
+
+
+def _quote_identifier(identifier):
+    return f"`{str(identifier).replace('`', '``')}`"
 
 """
 建图和查询共用的数据访问层。
@@ -180,13 +191,14 @@ def create_db_table_mysql(working_dir):
     """
     con = get_mysql_connection()
     cur=con.cursor()
-    dbname=os.path.basename(working_dir)
+    dbname=_mysql_db_name(working_dir)
+    quoted_dbname = _quote_identifier(dbname)
     
-    cur.execute(f"drop database if exists {dbname};")
-    cur.execute(f"create database {dbname} character set utf8mb4;")
+    cur.execute(f"drop database if exists {quoted_dbname};")
+    cur.execute(f"create database {quoted_dbname} character set utf8mb4;")
     
     # 使用库
-    cur.execute(f"use {dbname};")
+    cur.execute(f"use {quoted_dbname};")
     cur.execute("drop table if exists entities;")
     # 建表
     cur.execute("create table entities\
@@ -215,7 +227,7 @@ def insert_data_to_mysql(working_dir):
     - generate_relations.json -> relations 表。
     - community.json -> communities 表。
     """
-    dbname=os.path.basename(working_dir)
+    dbname=_mysql_db_name(working_dir)
     db = get_mysql_connection(database=dbname)
     cursor = db.cursor()
     
@@ -308,10 +320,9 @@ def find_tree_root(working_dir,entity):
     query_graph.py 会用两条 parent 链寻找召回实体之间的共同祖先。
     """
     db = get_mysql_connection()
-    dbname=os.path.basename(working_dir)
     res=[entity]
     cursor = db.cursor()
-    db_name=os.path.basename(working_dir)
+    db_name=_quote_identifier(_mysql_db_name(working_dir))
     depth_sql=f"select max(level) from {db_name}.entities"
     cursor.execute(depth_sql)
     depth=cursor.fetchall()[0][0]
@@ -340,7 +351,7 @@ def find_path(entity1,entity2,working_dir,level,depth=5):
     当前 query_graph.py 默认使用 parent 链方式；这个函数保留给需要同层多跳检索的策略。
     """
     db = get_mysql_connection()
-    db_name=os.path.basename(working_dir)
+    db_name=_quote_identifier(_mysql_db_name(working_dir))
     cursor = db.cursor()
 
     query = f"""
@@ -405,7 +416,7 @@ def search_nodes_link(entity1,entity2,working_dir,level=0):
     #     return ret[0]
     db = get_mysql_connection()
     cursor = db.cursor()
-    db_name=os.path.basename(working_dir)
+    db_name=_quote_identifier(_mysql_db_name(working_dir))
     sql=f"select * from {db_name}.relations where src_tgt=%s and tgt_src=%s "
     cursor.execute(sql,(entity1,entity2))
     ret=cursor.fetchall()
@@ -421,7 +432,7 @@ def search_chunks(working_dir,entity_set):
     """根据实体名查询 source_id；source_id 对应 chunk 文件里的 hash_code。"""
     db = get_mysql_connection()
     res=[]
-    db_name=os.path.basename(working_dir)
+    db_name=_quote_identifier(_mysql_db_name(working_dir))
     cursor = db.cursor()
     for entity in entity_set:
         if entity=='root':
@@ -435,7 +446,7 @@ def search_nodes(entity_set,working_dir):
     """查询一批原始实体节点的完整表记录，目前主要用于调试或备用检索流程。"""
     db = get_mysql_connection()
     res=[]
-    db_name=os.path.basename(working_dir)
+    db_name=_quote_identifier(_mysql_db_name(working_dir))
     cursor = db.cursor()
     for entity in entity_set:
         sql=f"select * from {db_name}.entities where entity_name=%s and level=0"
@@ -480,7 +491,7 @@ def get_text_units(working_dir,chunks_set,chunks_file,k=5):
     一个实体可能来自多个 chunk，source_id 之间用 | 拼接。这里会统计 chunk hash 出现频次，
     优先选择被多个召回实体共同指向的 chunk，因为它们更可能是高价值证据。
     """
-    db_name=os.path.basename(working_dir)
+    db_name=_quote_identifier(_mysql_db_name(working_dir))
     chunks_list=_flatten_chunk_ids(chunks_set)
     counter = Counter(chunks_list)
 
@@ -516,7 +527,7 @@ def get_text_units(working_dir,chunks_set,chunks_file,k=5):
 def search_community(entity_name,working_dir):
     """按聚合实体名称查询 communities 表，返回建图阶段生成的聚合摘要和 findings。"""
     db = get_mysql_connection()
-    db_name=os.path.basename(working_dir)
+    db_name=_quote_identifier(_mysql_db_name(working_dir))
     cursor = db.cursor()
     sql=f"select * from {db_name}.communities where entity_name=%s"
     cursor.execute(sql,(entity_name,))
@@ -533,12 +544,13 @@ def insert_origin_relations(working_dir):
     主流程 insert_data_to_mysql 主要导入聚合关系 generate_relations.json；这个函数用于把
     原始 relation.jsonl 也补充进 MySQL，方便对比实验或调试底层边。
     """
-    dbname=os.path.basename(working_dir)
+    raw_dbname=os.path.basename(working_dir)
+    dbname=_mysql_db_name(working_dir)
     db = get_mysql_connection(database=dbname)
     cursor = db.cursor()
     # relation_path=os.path.join(f"datasets/{dbname}","relation.jsonl")
     # relation_path=os.path.join(f"/data/zyz/reproduce/HiRAG/eval/datasets/{dbname}/test")
-    relation_path=os.path.join(f"hi_ex/{dbname}","relation.jsonl")
+    relation_path=os.path.join(f"hi_ex/{raw_dbname}","relation.jsonl")
     # relation_path=os.path.join(f"32b/{dbname}","relation.jsonl")
     with open(relation_path,"r")as f:
         val=[]
