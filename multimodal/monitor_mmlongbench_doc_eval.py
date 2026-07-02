@@ -95,10 +95,13 @@ def _doc_status(doc_dir: Path) -> dict[str, Any]:
         stage = "started"
 
     updated_at = _latest_mtime(doc_dir)
+    graph_status = manifest.get("graph_status") if manifest else None
+    show_error = graph_status != "built"
     return {
         "stage": stage,
-        "graph_status": manifest.get("graph_status") if manifest else None,
-        "error": error.get("error") if error else None,
+        "graph_status": graph_status,
+        "error": error.get("error") if show_error and error else None,
+        "stale_error": error.get("error") if graph_status == "built" and error else None,
         "updated_at": updated_at,
         "files": files,
     }
