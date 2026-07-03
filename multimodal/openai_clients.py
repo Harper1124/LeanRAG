@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import io
 import mimetypes
 import os
 from pathlib import Path
@@ -58,7 +59,9 @@ def make_vlm_func(config: dict[str, Any]):
         content = [{"type": "text", "text": prompt}]
         for image_path in image_paths or []:
             if image_path:
-                content.append({"type": "image_url", "image_url": {"url": _image_to_data_url(image_path)}})
+                data_url = _image_to_data_url(image_path, config)
+                if data_url:
+                    content.append({"type": "image_url", "image_url": {"url": data_url}})
         response = client.chat.completions.create(
             model=model,
             messages=[{"role": "user", "content": content}],
@@ -69,10 +72,42 @@ def make_vlm_func(config: dict[str, Any]):
     return vlm
 
 
-def _image_to_data_url(path: str) -> str:
+def _image_to_data_url(path: str, config: dict[str, Any] | None = None) -> str | None:
     # VLM API 需要可访问的 image_url；本地文件用 base64 data URL 内联传入。
+    config = config or {}
     path_obj = Path(path)
-    mime_type = mimetypes.guess_type(path_obj.name)[0] or "image/png"
-    with path_obj.open("rb") as f:
-        encoded = base64.b64encode(f.read()).decode("ascii")
+    image_bytes, mime_type = _compact_image_bytes(
+        path_obj,
+        max_side=int(config.get("vlm_image_max_side", 1024)),
+        quality=int(config.get("vlm_image_quality", 75)),
+    )
+    if image_bytes is None:
+        mime_type = mimetypes.guess_type(path_obj.name)[0] or "image/png"
+        with path_obj.open("rb") as f:
+            image_bytes = f.read()
+        max_bytes = int(config.get("vlm_raw_image_max_bytes", 50000))
+        if max_bytes > 0 and len(image_bytes) > max_bytes:
+            return None
+    encoded = base64.b64encode(image_bytes).decode("ascii")
     return f"data:{mime_type};base64,{encoded}"
+
+
+def _compact_image_bytes(path: Path, max_side: int, quality: int) -> tuple[bytes | None, str]:
+    if max_side <= 0:
+        return None, ""
+    try:
+        from PIL import Image
+    except Exception:
+        return None, ""
+    try:
+        with Image.open(path) as image:
+            image.load()
+            if max(image.size) > max_side:
+                image.thumbnail((max_side, max_side))
+            if image.mode not in ("RGB", "L"):
+                image = image.convert("RGB")
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=quality, optimize=True)
+            return buffer.getvalue(), "image/jpeg"
+    except Exception:
+        return None, ""

@@ -92,7 +92,7 @@ def query_mm_graph(
     visual_evidence, table_evidence = _media_for_text_evidence(text_evidence, chunks, media_items)
     visual_evidence = _merge_evidence(direct_visual, visual_evidence, "media_id")[: _media_limit(global_config, query, "image")]
     table_evidence = _merge_evidence(direct_tables, table_evidence, "media_id")[: _media_limit(global_config, query, "table")]
-    context = _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence)
+    context = _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence, global_config)
 
     if visual_evidence and global_config.get("answer_with_vlm_when_media", True):
         # 有图片证据时优先使用 VLM；不可用时自动降级到普通 LLM。
@@ -322,15 +322,35 @@ def _media_evidence(media: MMMedia, score: float = 0.0) -> dict:
     return item
 
 
-def _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence) -> str:
-    # 将所有证据序列化为 JSON，方便模型看到页码、bbox、路径和摘要等结构化字段。
+def _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence, global_config: dict | None = None) -> str:
+    # Keep traces complete, but send a compact answer-facing evidence view to the model.
+    global_config = global_config or {}
+    max_chars = int(global_config.get("max_evidence_field_chars", 2000))
     payload = {
-        "text_evidence": text_evidence,
+        "text_evidence": [_slim_text_evidence(item, max_chars) for item in text_evidence],
         "graph_evidence": graph_evidence,
-        "visual_evidence": visual_evidence,
-        "table_evidence": table_evidence,
+        "visual_evidence": [_slim_media_evidence(item, max_chars, include_table=False) for item in visual_evidence],
+        "table_evidence": [_slim_media_evidence(item, max_chars, include_table=True) for item in table_evidence],
     }
     return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def _slim_text_evidence(item: dict, max_chars: int) -> dict:
+    keys = ("chunk_id", "hash_code", "doc_id", "text", "page_start", "page_end", "section_title", "bbox", "order", "score")
+    return {key: _truncate_value(item.get(key), max_chars) for key in keys if key in item}
+
+
+def _slim_media_evidence(item: dict, max_chars: int, include_table: bool) -> dict:
+    keys = ["media_id", "doc_id", "modality", "page", "path", "caption", "ocr_text", "summary", "bbox", "score"]
+    if include_table:
+        keys.append("table_markdown")
+    return {key: _truncate_value(item.get(key), max_chars) for key in keys if key in item}
+
+
+def _truncate_value(value, max_chars: int):
+    if isinstance(value, str) and len(value) > max_chars:
+        return value[:max_chars].rstrip() + "\n...[truncated]"
+    return value
 
 
 def _call_llm(func: Callable | None, query: str, context: str):
