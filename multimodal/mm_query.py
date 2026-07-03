@@ -80,6 +80,7 @@ def query_mm_graph(
     del db
     working_dir = global_config["working_dir"]
     chunks, media_items = _load_mm_artifacts(working_dir)
+    mm_retrieval_trace = _run_phase2_direct_recall(global_config, query, doc_id)
     # 优先走 LeanRAG 的图/向量检索；检索失败时再退回关键词检索。
     text_evidence, graph_evidence, selected_entities = _retrieve_text_evidence(global_config, query, chunks)
     if not text_evidence:
@@ -111,7 +112,25 @@ def query_mm_graph(
         "table_evidence": table_evidence,
         "selected_entities": selected_entities,
     }
+    trace.update(mm_retrieval_trace)
     return str(answer), trace
+
+
+def _run_phase2_direct_recall(global_config: dict, query: str, doc_id: str | None) -> dict:
+    try:
+        from .retrieval.mm_retriever import mm_hybrid_retrieve
+
+        _, _, trace = mm_hybrid_retrieve(query, global_config, doc_id=doc_id)
+        return trace
+    except Exception as exc:
+        return {
+            "query_info": {},
+            "retrieved_nodes_by_type": {"text": [], "entity": [], "media": [], "page": [], "aggregate": []},
+            "direct_recall": {"text": [], "entity": [], "media": [], "page": []},
+            "merged_candidates": [],
+            "failure_stage": "direct_recall_failed",
+            "direct_recall_error": str(exc),
+        }
 
 
 def _retrieve_text_evidence(global_config: dict, query: str, chunks: list[MMChunk]):
