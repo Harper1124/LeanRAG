@@ -10,6 +10,7 @@ from .prepare_mmlongbench_doc import prepare_mmlongbench_doc
 from .score_mmlongbench_doc import score_mmlongbench_doc
 
 
+# 端到端评测编排入口：prepare/build/predict/score 四个阶段都可通过参数开关控制。
 def run_mmlongbench_doc_eval(
     dataset_dir: str,
     working_root: str,
@@ -33,6 +34,7 @@ def run_mmlongbench_doc_eval(
     output.mkdir(parents=True, exist_ok=True)
     full_config = _load_config(config_file)
     if prepare:
+        # 准备数据阶段：下载或复制原始 benchmark 元数据和 PDF。
         prepare_mmlongbench_doc(
             dataset_dir,
             source=source,
@@ -43,6 +45,7 @@ def run_mmlongbench_doc_eval(
             local_documents_dir=local_documents_dir,
         )
     if build:
+        # 构建阶段：解析 PDF、生成 chunk/media，并按需构建 LeanRAG 图。
         mm_config = full_config.get("multimodal", {})
         build_docbench(
             docbench_dir=dataset_dir,
@@ -58,8 +61,10 @@ def run_mmlongbench_doc_eval(
     scores_file = output / "mmlongbench_doc_scores.json"
     result = {"predictions_file": str(predictions_file), "scores_file": str(scores_file)}
     if predict:
+        # 回答阶段：只读取已有工作区，不会重新解析 PDF 或重建图。
         run_docbench_eval(dataset_dir, working_root, str(predictions_file), limit=limit, config_file=config_file)
     if score:
+        # 评分阶段：离线读取 predictions 文件和 gold QA。
         result["scores"] = score_mmlongbench_doc(dataset_dir, str(predictions_file), str(scores_file))["summary"]
     return result
 

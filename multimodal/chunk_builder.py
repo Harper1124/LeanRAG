@@ -15,6 +15,7 @@ from .io_utils import save_dataclasses, write_json
 from .schema import MMChunk, MMMedia, dataclass_to_dict
 
 
+# 将 MinerU 的解析产物统一转换为本项目内部使用的 chunk/media 数据结构。
 def build_mm_chunks_from_mineru(
     mineru_output_dir: str,
     doc_id: str,
@@ -26,9 +27,11 @@ def build_mm_chunks_from_mineru(
     out = Path(mineru_output_dir)
     content_file = _find_content_list(out)
     if content_file:
+        # 优先使用 MinerU 的 content_list，它保留了页码、bbox、图片和表格等结构化信息。
         content_items = _load_content_items(content_file)
         asset_root = content_file.parent
     else:
+        # 某些解析结果只有 markdown；此时退化为纯文本文档。
         markdown = _find_markdown(out)
         if not markdown:
             raise FileNotFoundError(f"No MinerU content_list JSON or markdown found under {mineru_output_dir}")
@@ -41,6 +44,7 @@ def build_mm_chunks_from_mineru(
     media_order = 0
     section_title = None
     for item in content_items:
+        # MinerU 不同版本字段名略有差异，先统一抽取类型、页码和位置框。
         item_type = _item_type(item)
         page = _extract_page(item)
         bbox = _extract_bbox(item)
@@ -49,6 +53,7 @@ def build_mm_chunks_from_mineru(
             if _looks_like_heading(text):
                 section_title = text[:200]
             for part in _split_text(text, max_token_size, overlap_token_size):
+                # hash_code 是 LeanRAG 后续图构建和证据回填的稳定键。
                 chunk_id = f"{doc_id}_chunk_{text_order:06d}"
                 hash_code = _hash(f"{doc_id}|{text_order}|{part}")
                 chunks.append(
@@ -67,6 +72,7 @@ def build_mm_chunks_from_mineru(
                 )
                 text_order += 1
         elif item_type in {"image", "table"}:
+            # 媒体本身不直接进入 LeanRAG 文本图，而是通过 summary/nearby_chunk_ids 与文本证据关联。
             path = _resolve_media_path(item, asset_root)
             media_id = f"{doc_id}_{item_type}_{media_order:06d}"
             caption = _clean_text(_first(item, [f"{item_type}_caption", "caption", "img_caption", "table_caption"], ""))
@@ -108,6 +114,7 @@ def save_mm_artifacts(
     media_items: list[MMMedia],
     working_dir: str,
 ) -> dict[str, str]:
+    # 同时保存多模态完整结构和 LeanRAG 原生文本 chunk 结构。
     working = Path(working_dir)
     mm_chunk_file = working / "mm_chunk.json"
     mm_media_file = working / "mm_media.json"
@@ -148,6 +155,7 @@ def _find_markdown(out: Path) -> Path | None:
 
 
 def _load_content_items(path: Path) -> list[dict[str, Any]]:
+    # 兼容 list、带 content/items/blocks 字段、以及按 pages 嵌套的多种 MinerU 输出。
     with path.open("r", encoding="utf-8-sig") as f:
         data = json.load(f)
     if isinstance(data, list):
@@ -179,6 +187,7 @@ def _item_type(item: dict[str, Any]) -> str:
 
 
 def _extract_page(item: dict[str, Any]) -> int | None:
+    # MinerU 有时使用 0 基页码；这里统一为更常见的 1 基页码。
     value = _first(item, ["page_idx", "page", "page_no"], None)
     if value in (None, ""):
         return None
@@ -210,6 +219,7 @@ def _resolve_media_path(item: dict[str, Any], asset_root: Path) -> Path | None:
 
 
 def _split_text(text: str, max_token_size: int, overlap_token_size: int) -> list[str]:
+    # 有 tiktoken 时按 token 切分；否则按字符长度近似切分，保证离线也能运行。
     text = _clean_text(text)
     if not text:
         return []
@@ -231,6 +241,7 @@ def _split_text(text: str, max_token_size: int, overlap_token_size: int) -> list
 
 
 def _make_media_summary(modality: str, caption: str, ocr_text: str, table_text: str, footnote: str) -> str:
+    # 将 caption/OCR/table/footnote 压成一段可用于检索的媒体文本。
     parts = []
     if caption:
         parts.append(f"Caption: {caption}")

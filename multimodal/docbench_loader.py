@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 
+# 统一加载 DocBench/MMLongBench-Doc 风格的数据目录，输出后续构建和评测共用的 sample 列表。
 def load_docbench(dataset_dir: str) -> list[dict]:
     """
     Load a flexible DocBench-style directory.
@@ -35,6 +36,7 @@ def load_docbench(dataset_dir: str) -> list[dict]:
 
     samples = []
     for index, row in enumerate(qa_rows):
+        # 兼容不同数据集常见字段名，将 doc_id/pdf_path/question/answer 归一化。
         doc_id = _first(row, ["doc_id", "document_id", "pdf_id", "file_id", "id"])
         pdf_path = _first(row, ["pdf_path", "file_path", "document_path", "path"])
         if pdf_path:
@@ -73,6 +75,7 @@ def _find_pdfs(root: Path) -> dict[str, Path]:
 
 
 def _find_qa_rows(root: Path) -> list[dict[str, Any]]:
+    # 只读取候选 QA 文件，避免把结果文件、chunk 文件误识别为评测样本。
     candidates = _qa_candidates(root)
     rows = []
     for path in sorted(candidates):
@@ -83,6 +86,7 @@ def _find_qa_rows(root: Path) -> list[dict[str, Any]]:
 
 
 def _qa_candidates(root: Path) -> list[Path]:
+    # 如果存在标准 qa 文件，优先只读它；否则 samples.json 和 qa.jsonl 会导致样本重复。
     preferred_names = (
         "qa.jsonl",
         "qa.json",
@@ -102,6 +106,7 @@ def _qa_candidates(root: Path) -> list[Path]:
     excluded_suffixes = ("_chunk.json", "mm_chunk.json", "mm_media.json", "leanrag_chunk.json")
     candidates = []
     for path in root.rglob("*"):
+        # 兜底扫描时排除构建产物和结果目录，只保留可能的原始 QA 元数据。
         if path.suffix.lower() not in {".jsonl", ".json", ".csv", ".parquet"}:
             continue
         if path.name in excluded_names or path.name.endswith(excluded_suffixes):
@@ -113,6 +118,7 @@ def _qa_candidates(root: Path) -> list[Path]:
 
 
 def _load_records(path: Path) -> list[dict[str, Any]]:
+    # 兼容 JSONL/CSV/Parquet/JSON；无法读取时返回空列表，让上层继续尝试其它文件。
     try:
         if path.suffix.lower() == ".jsonl":
             with path.open("r", encoding="utf-8-sig") as f:
@@ -152,6 +158,7 @@ def _first(row: dict[str, Any], keys: list[str], default: Any = None) -> Any:
 
 
 def _resolve_path(root: Path, raw_path: str) -> Path | None:
+    # 支持绝对路径、相对数据集根目录路径，以及仅给文件名时的递归匹配。
     path = Path(raw_path)
     if path.is_absolute() and path.exists():
         return path

@@ -15,6 +15,7 @@ from .media_linker import link_media_to_chunks, link_media_to_entities
 from .mineru_parser import parse_pdf_with_mineru
 
 
+# 构建阶段的总入口：把 DocBench/MMLongBench-Doc 数据集转成 LeanRAG 可查询的工作目录。
 def build_docbench(
     docbench_dir: str,
     working_root: str,
@@ -37,10 +38,12 @@ def build_docbench(
         working_dir.mkdir(parents=True, exist_ok=True)
         existing_manifest = _read_manifest(working_dir / "manifest.json")
         if _can_reuse_manifest(existing_manifest, force=force, build_graph=build_graph):
+            # 已经构建成功的文档直接复用，避免重复解析 PDF 和重建图。
             existing_manifest["reused"] = True
             manifests.append(existing_manifest)
             continue
 
+        # 先用 MinerU 把 PDF 解析成结构化内容，再转成文本 chunk 与图片/表格媒体记录。
         mineru_info = parse_pdf_with_mineru(
             pdf_path=pdf_path,
             output_dir=str(mineru_dir),
@@ -55,14 +58,16 @@ def build_docbench(
             overlap_token_size=overlap_token_size,
         )
         if use_media_caption:
-            media_items = caption_images(media_items, _default_vlm_captioner)
+            media_items = caption_images(media_items, _make_captioner(model_config or {}))
         if use_table_summary:
-            media_items = summarize_tables(media_items, _default_table_summarizer)
+            media_items = summarize_tables(media_items, _make_table_summarizer(model_config or {}))
+        # 将图片/表格挂到相邻或语义相关的文本 chunk 上，查询时可以随文本证据带出媒体证据。
         chunks, media_items = link_media_to_chunks(chunks, media_items, embedding_func=None)
         artifact_paths = save_mm_artifacts(chunks, media_items, str(working_dir))
 
         graph_status = "skipped"
         if build_graph:
+            # LeanRAG 原图构建依赖实体/关系文件；如果抽取失败，先生成一个最小可用版本兜底。
             _ensure_minimal_triples(working_dir, artifact_paths["leanrag_chunk_file"])
             media_items = link_media_to_entities(str(working_dir), chunks, media_items, embedding_func=None)
             save_dataclasses(media_items, working_dir / "mm_media.json")
@@ -103,6 +108,7 @@ def _can_reuse_manifest(manifest: dict, force: bool, build_graph: bool) -> bool:
     if force or not manifest:
         return False
     if build_graph:
+        # 需要图检索时，只有完整图构建成功的 manifest 才能复用。
         return manifest.get("graph_status") == "built"
     return True
 
@@ -115,6 +121,7 @@ def _group_by_doc(samples: list[dict]) -> dict[str, list[dict]]:
 
 
 def _ensure_minimal_triples(working_dir: Path, chunk_file: str) -> None:
+    # 从 chunk 文本中粗略抽取候选实体和共现关系，保证图构建至少有输入。
     entity_path = working_dir / "entity.jsonl"
     relation_path = working_dir / "relation.jsonl"
     if entity_path.exists() and relation_path.exists():
@@ -157,7 +164,7 @@ def _ensure_minimal_triples(working_dir: Path, chunk_file: str) -> None:
     write_jsonl(entities.values(), entity_path)
     write_jsonl(relations, relation_path)
 
-
+#调用leanRAG本身的层级知识图谱构建和查询构建
 def _try_build_leanrag_graph(working_dir: Path, model_config: dict) -> str:
     try:
         import build_graph as lean_build_graph
@@ -184,6 +191,7 @@ def _try_build_leanrag_graph(working_dir: Path, model_config: dict) -> str:
             error_path.unlink()
         return "built"
     except Exception as exc:
+        # 图构建失败时保留错误详情，并写入轻量图文件，避免整个文档工作区不可查询。
         write_json(
             {"status": "failed", "error": str(exc), "traceback": traceback.format_exc()},
             working_dir / "graph_build_error.json",
@@ -193,6 +201,7 @@ def _try_build_leanrag_graph(working_dir: Path, model_config: dict) -> str:
 
 
 def _write_lightweight_graph_artifacts(working_dir: Path) -> None:
+    # 将最小实体/关系转换成查询侧期望的图文件格式。
     entity_path = working_dir / "entity.jsonl"
     relation_path = working_dir / "relation.jsonl"
     if not entity_path.exists():
@@ -230,6 +239,7 @@ def _write_lightweight_graph_artifacts(working_dir: Path) -> None:
 
 
 def _extract_candidate_entities(text: str, limit: int = 8) -> list[str]:
+    # 优先抓英文大写短语；如果没有，再退化为中英文连续片段。
     phrases = re.findall(r"\b[A-Z][A-Za-z0-9%/-]*(?:\s+[A-Z][A-Za-z0-9%/-]*){0,4}\b", text)
     if not phrases:
         phrases = re.findall(r"[\u4e00-\u9fffA-Za-z0-9][\u4e00-\u9fffA-Za-z0-9%/-]{2,20}", text)
@@ -255,13 +265,43 @@ def _sentence_around(text: str, entity: str) -> str:
 def _default_vlm_captioner(prompt=None, image_paths=None, image_path=None, **kwargs):
     del prompt, kwargs
     path = image_path or (image_paths[0] if image_paths else "")
-    return f"Image evidence from {path}"
+    name = Path(path).name if path else "image"
+    return f"Document image {name}"
 
 
 def _default_table_summarizer(prompt=None, **kwargs):
     del kwargs
     text = str(prompt or "")
     return " ".join(text.split())[:1000]
+
+
+def _make_captioner(model_config: dict):
+    try:
+        from .openai_clients import make_vlm_func
+
+        mm_config = model_config.get("multimodal", {}) if model_config else {}
+        vlm_conf = {
+            "model": mm_config.get("vlm_model"),
+            "base_url": mm_config.get("vlm_base_url"),
+            "api_key": mm_config.get("vlm_api_key", ""),
+            "api_key_env": mm_config.get("vlm_api_key_env", "DASHSCOPE_API_KEY"),
+        }
+        if vlm_conf["model"] and vlm_conf["base_url"]:
+            return make_vlm_func(vlm_conf)
+    except Exception:
+        pass
+    return _default_vlm_captioner
+
+
+def _make_table_summarizer(model_config: dict):
+    try:
+        from .openai_clients import make_chat_func
+
+        if model_config.get("deepseek", {}).get("base_url"):
+            return make_chat_func(model_config["deepseek"])
+    except Exception:
+        pass
+    return _default_table_summarizer
 
 
 def main() -> None:

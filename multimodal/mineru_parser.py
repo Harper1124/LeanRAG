@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 
+# 调用 MinerU 解析 PDF，并返回后续 chunk 构建所需的关键文件位置。
 def parse_pdf_with_mineru(
     pdf_path: str,
     output_dir: str,
@@ -22,10 +23,12 @@ def parse_pdf_with_mineru(
         raise FileNotFoundError(f"PDF not found: {pdf_path}")
     out = Path(output_dir)
     if force and out.exists():
+        # force=True 时清掉旧解析产物，保证重新解析。
         shutil.rmtree(out)
     out.mkdir(parents=True, exist_ok=True)
 
     if not _find_content_list(out):
+        # 如果已经有 content_list，则复用旧结果；否则调用 MinerU CLI。
         _run_mineru_cli(pdf, out, mineru_backend)
 
     content_list = _find_content_list(out)
@@ -43,6 +46,7 @@ def parse_pdf_with_mineru(
 
 
 def _run_mineru_cli(pdf: Path, out: Path, mineru_backend: str) -> None:
+    # 兼容不同 MinerU 版本的命令名称和 backend 参数名。
     commands = [
         ["magic-pdf", "-p", str(pdf), "-o", str(out), "-m", mineru_backend],
         ["mineru", "-p", str(pdf), "-o", str(out), "-b", mineru_backend],
@@ -64,6 +68,7 @@ def _run_mineru_cli(pdf: Path, out: Path, mineru_backend: str) -> None:
 
 
 def _find_content_list(out: Path) -> Path | None:
+    # content_list 优先，其它 JSON 作为兜底；middle.json 通常不是最终内容列表。
     candidates = sorted(out.rglob("*content_list*.json"))
     if candidates:
         return candidates[0]
@@ -77,6 +82,7 @@ def _find_markdown(out: Path) -> Path | None:
 
 
 def _first_existing_dir(root: Path, names: list[str]) -> Path:
+    # 不同解析版本图片/表格目录名不一致，这里按常见名称尝试匹配。
     for name in names:
         matches = [path for path in root.rglob(name) if path.is_dir()]
         if matches:

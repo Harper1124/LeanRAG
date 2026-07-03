@@ -8,6 +8,7 @@ from typing import Any
 from .docbench_loader import load_docbench
 
 
+# 检查每个文档工作区是否已经具备完整 LeanRAG 图检索产物。
 def check_graph_build_status(dataset_dir: str, working_root: str, output_file: str | None = None) -> dict[str, Any]:
     docs = _dataset_docs(dataset_dir)
     rows = []
@@ -31,6 +32,7 @@ def check_graph_build_status(dataset_dir: str, working_root: str, output_file: s
 
 
 def _dataset_docs(dataset_dir: str) -> list[str]:
+    # 从 QA 样本中抽取唯一文档列表，保持原数据顺序。
     docs = []
     seen = set()
     for sample in load_docbench(dataset_dir):
@@ -42,6 +44,7 @@ def _dataset_docs(dataset_dir: str) -> list[str]:
 
 
 def _inspect_doc(doc_id: str, doc_dir: Path) -> dict[str, Any]:
+    # 逐项检查构建图所需文件，并收集不完整原因。
     manifest = _read_json(doc_dir / "manifest.json")
     error = _read_json(doc_dir / "graph_build_error.json")
     files = {
@@ -60,6 +63,7 @@ def _inspect_doc(doc_id: str, doc_dir: Path) -> dict[str, Any]:
     if not files["manifest"]:
         reasons.append("missing_manifest")
     if graph_status != "built":
+        # lightweight/skipped/failed 都不算完整图构建成功。
         reasons.append(f"graph_status={graph_status or 'none'}")
     for key in ("all_entities", "community", "generate_relations", "milvus"):
         if not files[key]:
@@ -91,6 +95,7 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _count_reasons(rows: list[dict[str, Any]]) -> dict[str, int]:
+    # 将具体错误文本归并为 graph_build_error，便于看总体失败类别。
     counts: dict[str, int] = {}
     for row in rows:
         for reason in row["reasons"]:
