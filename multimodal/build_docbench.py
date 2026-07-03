@@ -12,6 +12,7 @@ from .docbench_loader import load_docbench
 from .io_utils import save_dataclasses, write_json, write_jsonl
 from .media_captioner import caption_images, summarize_tables
 from .media_linker import link_media_to_chunks, link_media_to_entities
+from .mm_node_builder import build_phase1_mm_graph
 from .mineru_parser import parse_pdf_with_mineru
 
 
@@ -71,6 +72,7 @@ def build_docbench(
             _ensure_minimal_triples(working_dir, artifact_paths["leanrag_chunk_file"])
             media_items = link_media_to_entities(str(working_dir), chunks, media_items, embedding_func=None)
             save_dataclasses(media_items, working_dir / "mm_media.json")
+            build_phase1_mm_graph(str(working_dir), validate=False)
             graph_status = _try_build_leanrag_graph(working_dir, model_config or {})
 
         manifest = {
@@ -79,6 +81,8 @@ def build_docbench(
             "mineru_output_dir": mineru_info["mineru_output_dir"],
             "mm_chunk_file": artifact_paths["mm_chunk_file"],
             "mm_media_file": artifact_paths["mm_media_file"],
+            "mm_nodes_file": artifact_paths["mm_nodes_file"],
+            "mm_edges_seed_file": artifact_paths["mm_edges_seed_file"],
             "leanrag_chunk_file": artifact_paths["leanrag_chunk_file"],
             "working_dir": str(working_dir),
             "entity_vector_db": str(working_dir / "milvus_demo.db"),

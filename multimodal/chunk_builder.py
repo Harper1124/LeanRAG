@@ -122,10 +122,20 @@ def save_mm_artifacts(
     save_dataclasses(chunks, mm_chunk_file)
     save_dataclasses(media_items, mm_media_file)
     export_leanrag_text_chunks(chunks, str(leanrag_chunk_file))
+    try:
+        from .mm_node_builder import build_phase1_mm_graph
+
+        build_phase1_mm_graph(working_dir, validate=False)
+    except Exception:
+        # Node/edge generation can be rerun with multimodal.mm_node_builder;
+        # keep the legacy chunk export path available if optional artifacts fail.
+        pass
     return {
         "mm_chunk_file": str(mm_chunk_file),
         "mm_media_file": str(mm_media_file),
         "leanrag_chunk_file": str(leanrag_chunk_file),
+        "mm_nodes_file": str(working / "mm_nodes.jsonl"),
+        "mm_edges_seed_file": str(working / "mm_edges_seed.jsonl"),
     }
 
 

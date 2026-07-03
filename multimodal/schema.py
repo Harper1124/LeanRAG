@@ -40,6 +40,50 @@ class MMMedia:
     attach_scores: dict[str, float] = field(default_factory=dict)
 
 
+@dataclass
+class MMNode:
+    node_id: str
+    doc_id: str
+    node_type: Literal["text", "entity", "media", "page", "aggregate"]
+    page_id: int | None
+    text_for_embedding: str
+    raw_ref: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+    bbox: list[float] | None = None
+    caption: str = ""
+    ocr_text: str = ""
+    summary: str = ""
+    source: str = ""
+
+
+@dataclass
+class MMEdge:
+    edge_id: str
+    src: str
+    dst: str
+    src_type: str
+    dst_type: str
+    edge_type: Literal[
+        "document_contains_page",
+        "page_contains_node",
+        "text_mentions_entity",
+        "entity_relation_entity",
+        "text_caption_of_media",
+        "text_refers_to_media",
+        "entity_link_media",
+        "media_near_text",
+        "media_same_page_media",
+        "node_semantic_similar_node",
+        "node_aggregate_parent",
+        "page_next_page",
+        "page_prev_page",
+    ]
+    weight: float = 1.0
+    direction: Literal["directed", "undirected"] = "directed"
+    evidence: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
 T = TypeVar("T")
 
 
