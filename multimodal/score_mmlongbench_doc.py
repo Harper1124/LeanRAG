@@ -88,14 +88,48 @@ def _answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
 
 def _evidence_metrics(gold_pages: list[int], pred_pages: list[int]) -> dict:
     if not gold_pages:
-        return {"page_hit": None, "page_precision": None, "page_recall": None, "page_f1": None}
+        return {
+            "page_hit": None,
+            "page_precision": None,
+            "page_recall": None,
+            "page_f1": None,
+            "page_hit_near": None,
+            "page_precision_near": None,
+            "page_recall_near": None,
+            "page_f1_near": None,
+            "page_min_abs_delta": None,
+        }
     gold_set = set(gold_pages)
     pred_set = set(pred_pages)
     hit = 1.0 if gold_set & pred_set else 0.0
     precision = len(gold_set & pred_set) / len(pred_set) if pred_set else 0.0
     recall = len(gold_set & pred_set) / len(gold_set)
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-    return {"page_hit": hit, "page_precision": precision, "page_recall": recall, "page_f1": f1}
+    near_pred_set = _expand_pages(pred_set, tolerance=1)
+    near_gold_set = _expand_pages(gold_set, tolerance=1)
+    near_hit = 1.0 if gold_set & near_pred_set else 0.0
+    near_precision = len(pred_set & near_gold_set) / len(pred_set) if pred_set else 0.0
+    near_recall = len(gold_set & near_pred_set) / len(gold_set)
+    near_f1 = 2 * near_precision * near_recall / (near_precision + near_recall) if near_precision + near_recall else 0.0
+    min_delta = min((abs(gold_page - pred_page) for gold_page in gold_set for pred_page in pred_set), default=None)
+    return {
+        "page_hit": hit,
+        "page_precision": precision,
+        "page_recall": recall,
+        "page_f1": f1,
+        "page_hit_near": near_hit,
+        "page_precision_near": near_precision,
+        "page_recall_near": near_recall,
+        "page_f1_near": near_f1,
+        "page_min_abs_delta": min_delta,
+    }
+
+
+def _expand_pages(pages: set[int], tolerance: int) -> set[int]:
+    expanded = set()
+    for page in pages:
+        expanded.update(range(max(1, page - tolerance), page + tolerance + 1))
+    return expanded
 
 
 def _extract_pages(pred: dict) -> set[int]:
@@ -129,6 +163,11 @@ def _aggregate(rows: list[dict]) -> dict:
         "page_precision": _mean(rows, "page_precision"),
         "page_recall": _mean(rows, "page_recall"),
         "page_f1": _mean(rows, "page_f1"),
+        "page_hit_near": _mean(rows, "page_hit_near"),
+        "page_precision_near": _mean(rows, "page_precision_near"),
+        "page_recall_near": _mean(rows, "page_recall_near"),
+        "page_f1_near": _mean(rows, "page_f1_near"),
+        "page_min_abs_delta": _mean(rows, "page_min_abs_delta"),
         "missing_workspace_rate": sum(1 for row in rows if row.get("trace_error")) / len(rows) if rows else 0.0,
     }
 
