@@ -10,6 +10,7 @@ from .schema import MMMedia, dataclass_to_dict
 COLLECTION_NAME = "evidence_collection"
 
 
+# 可选媒体证据向量库：将图片/表格的文本摘要单独建索引，便于未来做媒体级召回。
 def build_evidence_vector_store(
     media_items: list[MMMedia],
     working_dir: str,
@@ -24,6 +25,7 @@ def build_evidence_vector_store(
     write_json(records, working / "evidence_records.json")
     if not records:
         return
+    # embedding 结果同时写入 Milvus；如果 Milvus 不可用，则退化保存为本地 JSON 向量。
     vectors = np.asarray(embedding_func([record["text"] for record in records]), dtype=float)
     if vectors.ndim == 1:
         vectors = vectors.reshape(1, -1)
@@ -67,6 +69,7 @@ def search_evidence(
     working = Path(working_dir)
     db_path = working / "evidence_milvus.db"
     if db_path.exists():
+        # 优先走 Milvus Lite；查询失败时继续使用本地 JSON 兜底。
         try:
             from pymilvus import MilvusClient
 
@@ -90,6 +93,7 @@ def search_evidence(
     vector_path = working / "evidence_vectors.json"
     if not vector_path.exists():
         return []
+    # 本地 JSON 兜底检索：逐条计算 cosine，适合小规模或调试场景。
     records = [record for record in read_json(vector_path) if not doc_id or record.get("doc_id") == doc_id]
     query = np.asarray(query_embedding, dtype=float)
     if query.ndim == 2:
@@ -108,6 +112,7 @@ def search_evidence(
 
 
 def _media_record(item: MMMedia) -> dict:
+    # 保留原始媒体字段，并额外拼出可嵌入检索的 text 字段。
     record = dataclass_to_dict(item)
     record["text"] = _media_text(item)
     return record

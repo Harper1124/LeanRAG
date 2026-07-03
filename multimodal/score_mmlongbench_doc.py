@@ -14,6 +14,7 @@ from .docbench_loader import load_docbench
 from .io_utils import read_jsonl, write_json
 
 
+# 对预测文件进行离线评分，同时评估答案正确性和证据页召回情况。
 def score_mmlongbench_doc(dataset_dir: str, predictions_file: str, output_file: str) -> dict:
     gold = {(row["doc_id"], row["question_id"]): row for row in load_docbench(dataset_dir) if row.get("question")}
     predictions = read_jsonl(predictions_file)
@@ -22,6 +23,7 @@ def score_mmlongbench_doc(dataset_dir: str, predictions_file: str, output_file: 
         key = (str(pred.get("doc_id", "")), str(pred.get("question_id", "")))
         sample = gold.get(key)
         if sample is None:
+            # 某些历史预测 question_id 可能自动生成，兜底用 doc_id + question 匹配。
             sample = _match_gold_by_question(gold, pred)
         rows.append(_score_row(sample, pred))
 
@@ -39,6 +41,7 @@ def score_mmlongbench_doc(dataset_dir: str, predictions_file: str, output_file: 
 
 
 def _score_row(sample: dict | None, pred: dict) -> dict:
+    # 单条样本评分：先解析元数据，再分别计算答案指标和证据页指标。
     metadata = (sample or {}).get("metadata", {})
     gold_answer = (sample or {}).get("answer", pred.get("gold_answer", ""))
     prediction = pred.get("prediction", "")
@@ -66,10 +69,12 @@ def _score_row(sample: dict | None, pred: dict) -> dict:
 
 
 def _answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
+    # 根据 MMLongBench-Doc 的答案格式选择最合适的指标。
     gold_text = _stringify_answer(gold)
     pred_text = _stringify_answer(pred)
     is_unanswerable = _normalize(gold_text) in {"not answerable", "none", "nan", ""}
     if is_unanswerable:
+        # 不可答题要求模型明确拒答；长解释会被严格视为错误。
         score = 1.0 if _normalize(pred_text) in {"not answerable", "none", "unknown", "unanswerable", ""} else 0.0
         return {"answer_score": score, "exact_match": score, "token_f1": score, "numeric_match": None, "list_f1": None}
 
@@ -87,6 +92,7 @@ def _answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
 
 
 def _evidence_metrics(gold_pages: list[int], pred_pages: list[int]) -> dict:
+    # 同时保留严格页码命中和 ±1 页近邻命中，用于诊断 PDF 页码偏移。
     if not gold_pages:
         return {
             "page_hit": None,
@@ -133,6 +139,7 @@ def _expand_pages(pages: set[int], tolerance: int) -> set[int]:
 
 
 def _extract_pages(pred: dict) -> set[int]:
+    # 从顶层证据和 trace 中提取 page/page_start/page_end，去重后作为检索页集合。
     pages = set()
     evidence_groups = [pred.get("text_evidence", []), pred.get("visual_evidence", []), pred.get("table_evidence", [])]
     trace = pred.get("trace") or {}
@@ -152,6 +159,7 @@ def _extract_pages(pred: dict) -> set[int]:
 
 
 def _aggregate(rows: list[dict]) -> dict:
+    # 所有指标都按非 None 值取平均，避免不可答或无 evidence_pages 样本污染证据页指标。
     return {
         "count": len(rows),
         "answer_score": _mean(rows, "answer_score"),
@@ -266,6 +274,7 @@ def _token_f1(gold: str, pred: str) -> float:
 
 
 def _numeric_match(gold: str, pred: str) -> float:
+    # 数值题只要预测中出现与 gold 足够接近的数字即可命中。
     gold_nums = _numbers(gold)
     pred_nums = _numbers(pred)
     if not gold_nums or not pred_nums:
@@ -290,6 +299,7 @@ def _close_number(left: float, right: float) -> bool:
 
 
 def _list_f1(gold: Any, pred: str) -> float:
+    # 列表题用粗粒度 item 匹配，支持逗号、分号、换行和 and 分隔。
     gold_items = [_normalize(_stringify_answer(item)) for item in _parse_list(gold)]
     pred_items = [_normalize(item) for item in re.split(r"[,;\n]|\band\b", pred) if _normalize(item)]
     if not gold_items:

@@ -11,6 +11,7 @@ from .io_utils import write_json
 from .schema import MMChunk, MMMedia
 
 
+# 将图片/表格与文本 chunk 建立弱关联，方便查询时从文本证据带出相关媒体证据。
 def link_media_to_chunks(
     chunks: list[MMChunk],
     media_items: list[MMMedia],
@@ -26,6 +27,7 @@ def link_media_to_chunks(
     for media_index, media in enumerate(media_items):
         scored = []
         for chunk_index, chunk in enumerate(text_chunks):
+            # 综合页码邻近、语义相似、文档顺序和显式提及四类信号打分。
             page_score = _page_window_score(media.page, chunk.page_start, page_window)
             if page_score <= 0 and media.page is not None and chunk.page_start is not None:
                 continue
@@ -63,9 +65,11 @@ def link_media_to_entities(
     working = Path(working_dir)
     entity_path = working / "entity.jsonl"
     if not entity_path.exists():
+        # 没有实体文件时仍写空索引，查询侧可以用文件存在性判断构建完成。
         write_json({}, working / "entity_media.json")
         return media_items
 
+    # entity.source_id 通常指向 chunk.hash_code；据此把实体和 chunk 附带媒体连接起来。
     chunks_by_hash = {chunk.hash_code: chunk for chunk in chunks}
     media_by_chunk = {}
     for chunk in chunks:
@@ -97,6 +101,7 @@ def link_media_to_entities(
 
 
 def _embed_texts(embedding_func: Callable | None, texts: list[str]) -> np.ndarray | None:
+    # embedding 不是强依赖；失败时返回 None，主流程会退化为页码/顺序等启发式关联。
     if not embedding_func or not texts:
         return None
     try:
@@ -118,6 +123,7 @@ def _media_text(media: MMMedia) -> str:
 
 
 def _page_window_score(media_page: int | None, chunk_page: int | None, page_window: int) -> float:
+    # 页码缺失时给一个中性分，避免直接丢弃可能相关的媒体。
     if media_page is None or chunk_page is None:
         return 0.5
     distance = abs(media_page - chunk_page)
@@ -134,6 +140,7 @@ def _nearby_order_score(media_index: int, chunk_order: int, chunk_count: int) ->
 
 
 def _explicit_mention_score(text: str, media: MMMedia) -> float:
+    # 如果文本显式出现 figure/table 等词，或与媒体摘要有词重合，则提高关联分。
     haystack = text.lower()
     keywords = ["figure", "fig.", "image", "table"] if media.modality == "image" else ["table", "tab."]
     score = 1.0 if any(keyword in haystack for keyword in keywords) else 0.0

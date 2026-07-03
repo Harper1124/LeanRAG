@@ -17,6 +17,7 @@ GITHUB_API_TREE = "https://api.github.com/repos/{repo}/git/trees/main?recursive=
 GITHUB_RAW = "https://raw.githubusercontent.com/{repo}/main/{path}"
 
 
+# 准备 MMLongBench-Doc 数据：下载/复制元数据和 PDF，并统一生成本项目使用的 qa.jsonl。
 def prepare_mmlongbench_doc(
     output_dir: str,
     source: str = "github",
@@ -41,10 +42,12 @@ def prepare_mmlongbench_doc(
     pdf_dir.mkdir(parents=True, exist_ok=True)
 
     if local_data_file:
+        # 离线模式：直接复制用户提供的 samples/parquet 元数据文件。
         metadata_path = root / Path(local_data_file).name
         if Path(local_data_file).resolve() != metadata_path.resolve():
             shutil.copy2(local_data_file, metadata_path)
     elif source == "github":
+        # GitHub 源默认读取仓库中的 data/samples.json。
         metadata_path = root / "samples.json"
         _download_github(github_repo, "data/samples.json", metadata_path, skip_existing=skip_existing)
     else:
@@ -57,6 +60,7 @@ def prepare_mmlongbench_doc(
 
     rows = _read_records(metadata_path)
     if max_docs is not None:
+        # 按文档数截断，而不是按问题数截断，方便小规模调试完整文档。
         selected_doc_ids = []
         selected = []
         for row in rows:
@@ -70,6 +74,7 @@ def prepare_mmlongbench_doc(
 
     doc_ids = sorted({str(row["doc_id"]) for row in rows if row.get("doc_id")})
     if local_documents_dir:
+        # 离线模式：从本地 PDF 目录复制文档。
         remote_docs = _copy_local_documents(local_documents_dir, pdf_dir, skip_existing=skip_existing)
     elif source == "github":
         remote_docs = {Path(path).name: path for path in _list_github_files(github_repo, "data/documents")}
@@ -89,6 +94,7 @@ def prepare_mmlongbench_doc(
 
     qa_rows = []
     for idx, row in enumerate(rows):
+        # 将原始 benchmark 字段压平为 docbench_loader 能稳定读取的 qa.jsonl。
         doc_id = str(row.get("doc_id", ""))
         qa_rows.append(
             {
@@ -121,6 +127,7 @@ def prepare_mmlongbench_doc(
 
 
 def _list_hf_files(repo_id: str, path: str) -> list[dict]:
+    # 通过 HuggingFace dataset tree API 列出远端文件。
     url = HF_API_TREE.format(repo=repo_id, path=quote(path))
     response = requests.get(url, timeout=60)
     response.raise_for_status()
@@ -128,6 +135,7 @@ def _list_hf_files(repo_id: str, path: str) -> list[dict]:
 
 
 def _list_github_files(github_repo: str, path_prefix: str) -> list[str]:
+    # GitHub tree API 一次性列出仓库文件，再按目录前缀过滤。
     url = GITHUB_API_TREE.format(repo=github_repo)
     response = requests.get(url, timeout=60)
     response.raise_for_status()
@@ -156,6 +164,7 @@ def _download_github(github_repo: str, remote_path: str, output_path: Path, skip
 
 
 def _download_url(url: str, output_path: Path) -> None:
+    # 先写临时文件再替换，避免下载中断留下半截目标文件。
     tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
     with requests.get(url, stream=True, timeout=120) as response:
         response.raise_for_status()
@@ -178,6 +187,7 @@ def _copy_local_documents(local_documents_dir: str, pdf_dir: Path, skip_existing
 
 
 def _read_records(path: Path) -> list[dict]:
+    # 原始元数据可能是 JSON/JSONL/Parquet，统一读取成 dict 列表。
     suffix = path.suffix.lower()
     if suffix == ".json":
         with path.open("r", encoding="utf-8-sig") as f:
@@ -204,6 +214,7 @@ def _read_records(path: Path) -> list[dict]:
 
 
 def _jsonable(value):
+    # 处理 pandas/numpy 类型和 NaN，保证后续 JSONL 可序列化。
     if hasattr(value, "tolist"):
         return value.tolist()
     if isinstance(value, float) and value != value:

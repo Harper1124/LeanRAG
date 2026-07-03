@@ -10,6 +10,7 @@ from typing import Any
 from .docbench_loader import load_docbench
 
 
+# 周期性打印 MMLongBench-Doc 构建/预测进度，interval=0 时只输出一次快照。
 def monitor_progress(
     dataset_dir: str,
     working_root: str,
@@ -31,6 +32,7 @@ def collect_progress(
     output_dir: str | None = None,
     predictions_file: str | None = None,
 ) -> dict[str, Any]:
+    # 先从数据集统计每个文档对应的问题数，再对照 working_root 中的构建产物。
     samples = load_docbench(dataset_dir)
     docs = defaultdict(int)
     for sample in samples:
@@ -51,6 +53,7 @@ def collect_progress(
     pred_path = _resolve_predictions_file(output_dir, predictions_file)
     pred_count, pred_docs = _prediction_counts(pred_path)
 
+    # 返回结构化快照，既可打印，也可供其它脚本消费。
     return {
         "dataset_dir": dataset_dir,
         "working_root": working_root,
@@ -66,6 +69,7 @@ def collect_progress(
 
 
 def _doc_status(doc_dir: Path) -> dict[str, Any]:
+    # 根据关键文件是否存在推断当前文档构建到哪个阶段。
     if not doc_dir.exists():
         return {"stage": "not_started", "graph_status": None, "updated_at": None}
 
@@ -85,6 +89,7 @@ def _doc_status(doc_dir: Path) -> dict[str, Any]:
     manifest_mtime = _file_mtime(doc_dir / "manifest.json")
     latest_mtime = _latest_mtime_value(doc_dir)
     if manifest and latest_mtime and manifest_mtime and latest_mtime > manifest_mtime + 2:
+        # manifest 之后又有文件更新，说明可能正在重建或刚经历中断。
         stage = "rebuilding_after_manifest"
     elif manifest:
         stage = "built"
@@ -114,6 +119,7 @@ def _doc_status(doc_dir: Path) -> dict[str, Any]:
 
 
 def _prediction_counts(path: Path | None) -> tuple[int, Counter]:
+    # 统计预测行数和每个 doc_id 已完成的问题数，用于判断回答阶段进度。
     if not path or not path.exists():
         return 0, Counter()
     count = 0
@@ -155,6 +161,7 @@ def _latest_mtime(path: Path) -> str | None:
 
 
 def _latest_mtime_value(path: Path) -> float | None:
+    # 递归取工作区中最新修改时间，用来推断最近活跃文档。
     latest = None
     for item in path.rglob("*"):
         try:
@@ -177,6 +184,7 @@ def _format_mtime(value: float | None) -> str | None:
 
 
 def format_snapshot(snapshot: dict[str, Any]) -> str:
+    # 将结构化快照格式化成适合终端滚动查看的摘要文本。
     total_docs = snapshot["total_docs"]
     total_questions = snapshot["total_questions"]
     status_counts = snapshot["status_counts"]
@@ -206,6 +214,7 @@ def format_snapshot(snapshot: dict[str, Any]) -> str:
 
 
 def _recent_docs(doc_statuses: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    # 优先展示还没完成的活跃文档，其次展示最近完成的文档。
     active = [item for item in doc_statuses if item["stage"] not in {"not_started", "built"}]
     built = [item for item in doc_statuses if item["stage"] == "built"]
     active.sort(key=lambda item: item.get("updated_at") or "", reverse=True)
