@@ -73,15 +73,43 @@ def _find_pdfs(root: Path) -> dict[str, Path]:
 
 
 def _find_qa_rows(root: Path) -> list[dict[str, Any]]:
-    candidates = [path for path in root.rglob("*") if path.suffix.lower() in {".jsonl", ".json", ".csv", ".parquet"}]
+    candidates = _qa_candidates(root)
     rows = []
     for path in sorted(candidates):
-        if path.name.endswith(("_chunk.json", "mm_chunk.json", "mm_media.json", "leanrag_chunk.json")):
-            continue
         loaded = _load_records(path)
         if any(_has_qa_shape(row) for row in loaded):
             rows.extend(row for row in loaded if isinstance(row, dict))
     return rows
+
+
+def _qa_candidates(root: Path) -> list[Path]:
+    preferred_names = (
+        "qa.jsonl",
+        "qa.json",
+        "qa.csv",
+        "qa.parquet",
+        "questions.jsonl",
+        "questions.json",
+        "samples.jsonl",
+        "samples.parquet",
+    )
+    for name in preferred_names:
+        path = root / name
+        if path.exists():
+            return [path]
+
+    excluded_names = {"manifest.json", "mmlongbench_doc_scores.json"}
+    excluded_suffixes = ("_chunk.json", "mm_chunk.json", "mm_media.json", "leanrag_chunk.json")
+    candidates = []
+    for path in root.rglob("*"):
+        if path.suffix.lower() not in {".jsonl", ".json", ".csv", ".parquet"}:
+            continue
+        if path.name in excluded_names or path.name.endswith(excluded_suffixes):
+            continue
+        if "result" in {part.lower() for part in path.parts}:
+            continue
+        candidates.append(path)
+    return candidates
 
 
 def _load_records(path: Path) -> list[dict[str, Any]]:

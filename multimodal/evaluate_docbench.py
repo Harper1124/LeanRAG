@@ -20,6 +20,9 @@ def run_docbench_eval(
         samples = samples[:limit]
     full_config = _load_config(config_file)
     mm_defaults = full_config.get("multimodal", {})
+    output_path = Path(output_file)
+    if output_path.exists():
+        output_path.unlink()
     rows = []
     for sample in samples:
         working_dir = Path(working_root) / sample["doc_id"]
@@ -52,7 +55,7 @@ def run_docbench_eval(
                 "trace": trace,
             }
         )
-    write_jsonl(rows, output_file)
+    write_jsonl(rows, output_path)
 
 
 def _missing_workspace_row(sample: dict, working_dir: Path) -> dict:
