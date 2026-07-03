@@ -3,8 +3,8 @@
     "media_id": "LeanRAG_image_000000",
     "doc_id": "LeanRAG",
     "modality": "image",
-    "page": 1,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/3d6a62ed1bc276e8211609f1fc3e98166317bbdacab639b18c1fbab2a5351079.jpg",
+    "page": 2,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\3d6a62ed1bc276e8211609f1fc3e98166317bbdacab639b18c1fbab2a5351079.jpg",
     "caption": "Figure 1: Comparison of typical LLM retrieval-augmented generation frameworks.",
     "ocr_text": "",
     "summary": "Caption: Figure 1: Comparison of typical LLM retrieval-augmented generation frameworks.",
@@ -17,9 +17,9 @@
       371.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000007",
-      "LeanRAG_chunk_000004",
-      "LeanRAG_chunk_000006"
+      "LeanRAG_chunk_000022",
+      "LeanRAG_chunk_000015",
+      "LeanRAG_chunk_000021"
     ],
     "attached_entity_names": [
       "LeanRAG",
@@ -42,17 +42,17 @@
       "Hi-RAG"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000007": 0.691617,
-      "LeanRAG_chunk_000004": 0.61021,
-      "LeanRAG_chunk_000006": 0.607814
+      "LeanRAG_chunk_000022": 0.594419,
+      "LeanRAG_chunk_000015": 0.587558,
+      "LeanRAG_chunk_000021": 0.585581
     }
   },
   {
     "media_id": "LeanRAG_image_000001",
     "doc_id": "LeanRAG",
     "modality": "image",
-    "page": 3,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/7262ace407621a750ccd949a0fb15ada4213701af304af7f7da2420dff531419.jpg",
+    "page": 4,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\7262ace407621a750ccd949a0fb15ada4213701af304af7f7da2420dff531419.jpg",
     "caption": "Figure 2: Overview of the LeanRAG framework.",
     "ocr_text": "",
     "summary": "Caption: Figure 2: Overview of the LeanRAG framework.",
@@ -65,9 +65,9 @@
       267.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000041",
-      "LeanRAG_chunk_000044",
-      "LeanRAG_chunk_000040"
+      "LeanRAG_chunk_000045",
+      "LeanRAG_chunk_000048",
+      "LeanRAG_chunk_000044"
     ],
     "attached_entity_names": [
       "LeanRAG",
@@ -82,17 +82,17 @@
       "C"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000041": 0.567096,
-      "LeanRAG_chunk_000044": 0.563503,
-      "LeanRAG_chunk_000040": 0.563293
+      "LeanRAG_chunk_000045": 0.563837,
+      "LeanRAG_chunk_000048": 0.560349,
+      "LeanRAG_chunk_000044": 0.56
     }
   },
   {
     "media_id": "LeanRAG_table_000002",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 6,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/6864b8b5ae56d0c20eb05296c54631ff65ebb9e76c75523e7b26c498007c848e.jpg",
+    "page": 7,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\6864b8b5ae56d0c20eb05296c54631ff65ebb9e76c75523e7b26c498007c848e.jpg",
     "caption": "",
     "ocr_text": "",
     "summary": "<table><tr><td>Dataset</td><td>Metric ↑</td><td>LeanRAG</td><td>HiRAG</td><td>Naive</td><td>GraphRAG</td><td>LightRAG</td><td>FastGraphRAG</td><td>KAG</td></tr><tr><td rowspan=\"4\">Mix</td><td>Comprehensiveness</td><td>8.89±0.01</td><td>8.72±0.02</td><td>8.20±0.01</td><td>8.52±0.01</td><td>8.19±0.02</td><td>6.56±0.02</td><td>7.90±0.03</td></tr><tr><td>Empowerment</td><td>8.16±0.02</td><td>7.86±0.03</td><td>7.52±0.03</td><td>7.73±0.02</td><td>7.56±0.03</td><td>5.82±0.03</td><td>7.41±0.04</td></tr><tr><td>Diversity</td><td>7.73±0.01</td><td>7.21±0.02</td><td>6.65±0.03</td><td>7.04±0.02</td><td>6.69±0.04</td><td>4.88±0.03</td><td>6.42±0.04</td></tr><tr><td>Overall</td><td>8.59±0.01</td><td>8.08±0.02</td><td>7.47±0.02</td><td>7.87±0.01</td><td>7.61±0.04</td><td>5.76±0.02</td><td>7.25±0.03</td></tr><tr><td rowspan=\"4\">CS</td><td>Comprehensiveness</td><td>8.92±0.01</td><td>8.92±0.01</td><td>8.94±0.01</td><td>8.55±0.02</td><td>8.76±0.02</td><td>6.79±0.01</td><td>8.22±0.02</td></tr><tr><td>E...",
@@ -105,9 +105,9 @@
       313.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000099",
-      "LeanRAG_chunk_000101",
-      "LeanRAG_chunk_000100"
+      "LeanRAG_chunk_000103",
+      "LeanRAG_chunk_000105",
+      "LeanRAG_chunk_000104"
     ],
     "attached_entity_names": [
       "LeanRAG",
@@ -125,17 +125,17 @@
       "Extensive"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000099": 0.498832,
-      "LeanRAG_chunk_000101": 0.486437,
-      "LeanRAG_chunk_000100": 0.482635
+      "LeanRAG_chunk_000103": 0.497558,
+      "LeanRAG_chunk_000105": 0.485233,
+      "LeanRAG_chunk_000104": 0.481395
     }
   },
   {
     "media_id": "LeanRAG_table_000003",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 6,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/539729e55a493f79a1c2c75a016d5e2f636aad1b4c7cc1e19b420c5441810d3f.jpg",
+    "page": 7,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\539729e55a493f79a1c2c75a016d5e2f636aad1b4c7cc1e19b420c5441810d3f.jpg",
     "caption": "Table 1: Evaluation scores (1–10 scale) of LeanRAG compared to baseline methods, assessed by an LLM\nTable 2: Win rates (%) between LeanRAG and LeanRAG w/o Relation (Left: LeanRAG; Right: w/o Relation)",
     "ocr_text": "",
     "summary": "Caption: Table 1: Evaluation scores (1–10 scale) of LeanRAG compared to baseline methods, assessed by an LLM Table 2: Win rates (%) between LeanRAG and LeanRAG w/o Relation (Left: LeanRAG; Right: w/o Relation) <table><tr><td></td><td colspan=\"2\">Mix</td><td colspan=\"2\">CS</td><td colspan=\"2\">Legal</td><td colspan=\"2\">Agriculture</td></tr><tr><td>Comprehensiveness</td><td>51.5%</td><td>48.6%</td><td>54.5%</td><td>45.5%</td><td>55.5%</td><td>44.5%</td><td>54.0%</td><td>46.0%</td></tr><tr><td>Empowerment</td><td>55.0%</td><td>45.0%</td><td>55.5%</td><td>44.5%</td><td>56.5%</td><td>43.5%</td><td>59.5%</td><td>40.5%</td></tr><tr><td>Diversity</td><td>59.6%</td><td>40.4%</td><td>66.0%</td><td>34.0%</td><td>57.0%</td><td>43.0%</td><td>63.0%</td><td>37.0%</td></tr><tr><td>Overall</td><td>53.8%</td><td>46.2%</td><td>58.5%</td><td>41.5%</td><td>56.5%</td><td>43.5%</td><td>58.0%</td><td>42.0%</td></tr></table>",
@@ -148,9 +148,9 @@
       431.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000099",
-      "LeanRAG_chunk_000101",
-      "LeanRAG_chunk_000103"
+      "LeanRAG_chunk_000103",
+      "LeanRAG_chunk_000105",
+      "LeanRAG_chunk_000107"
     ],
     "attached_entity_names": [
       "LeanRAG",
@@ -171,17 +171,17 @@
       "China"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000099": 0.53503,
-      "LeanRAG_chunk_000101": 0.512635,
-      "LeanRAG_chunk_000103": 0.49024
+      "LeanRAG_chunk_000103": 0.533721,
+      "LeanRAG_chunk_000105": 0.511395,
+      "LeanRAG_chunk_000107": 0.48907
     }
   },
   {
     "media_id": "LeanRAG_table_000004",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 6,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/91c524f18860f3a6f1e95cd99de24007c4c788e5ccfee61016e1e7114ea0cd79.jpg",
+    "page": 7,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\91c524f18860f3a6f1e95cd99de24007c4c788e5ccfee61016e1e7114ea0cd79.jpg",
     "caption": "Table 3: Necessity analysis of textual context",
     "ocr_text": "",
     "summary": "Caption: Table 3: Necessity analysis of textual context <table><tr><td>Dataset</td><td>Metric ↑</td><td>LeanRAG</td><td>LeanRAG w/o Context</td></tr><tr><td rowspan=\"4\">Mix</td><td>Comprehensiveness</td><td>8.89±0.01</td><td>8.15±0.02↓</td></tr><tr><td>Empowerment</td><td>8.16±0.02</td><td>7.80±0.01↓</td></tr><tr><td>Diversity</td><td>7.73±0.01</td><td>7.26±0.02 ↓</td></tr><tr><td>Overall</td><td>8.59±0.01</td><td>7.93±0.01↓</td></tr><tr><td rowspan=\"4\">CS</td><td>Comprehensiveness</td><td>8.92±0.01</td><td>8.66±0.02↓</td></tr><tr><td>Empowerment</td><td>8.68±0.02</td><td>8.19±0.03 ↓</td></tr><tr><td>Diversity</td><td>7.87±0.02</td><td>7.57±0.02↓</td></tr><tr><td>Overall</td><td>8.82±0.02</td><td>8.34±0.02↓</td></tr><tr><td rowspan=\"4\">Legal</td><td>Comprehensiveness</td><td>8.88±0.02</td><td>8.49±0.01 ↓</td></tr><tr><td>Empowerment</td><td>8.42±0.03</td><td>8.11±0.04↓</td></tr><tr><td>Diversity</td><td>7.49±0.03</td><td>7.09±0.04↓</td></tr><tr><td>Overall</td><td>8.49±0.04</td><td>...",
@@ -194,9 +194,9 @@
       717.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000099",
-      "LeanRAG_chunk_000101",
-      "LeanRAG_chunk_000103"
+      "LeanRAG_chunk_000103",
+      "LeanRAG_chunk_000105",
+      "LeanRAG_chunk_000107"
     ],
     "attached_entity_names": [
       "LeanRAG",
@@ -217,17 +217,17 @@
       "China"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000099": 0.511228,
-      "LeanRAG_chunk_000101": 0.503832,
-      "LeanRAG_chunk_000103": 0.486437
+      "LeanRAG_chunk_000103": 0.509884,
+      "LeanRAG_chunk_000105": 0.502558,
+      "LeanRAG_chunk_000107": 0.485233
     }
   },
   {
     "media_id": "LeanRAG_table_000005",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 9,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/7f635fa288bca4943f1f398efac5b19c6d008c4b4769cb2723060f45ae5ba99c.jpg",
+    "page": 10,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\7f635fa288bca4943f1f398efac5b19c6d008c4b4769cb2723060f45ae5ba99c.jpg",
     "caption": "Table 4: Win rates (%) of LeanRAG, its two variants (for ablation study), and baseline methods on QFS tasks.",
     "ocr_text": "",
     "summary": "Caption: Table 4: Win rates (%) of LeanRAG, its two variants (for ablation study), and baseline methods on QFS tasks. <table><tr><td></td><td colspan=\"2\">Mix</td><td colspan=\"2\">CS</td><td colspan=\"2\">Legal</td><td colspan=\"2\">Agriculture</td></tr><tr><td></td><td>NaiveRAG</td><td>LeanRAG</td><td>NaiveRAG</td><td>LeanRAG</td><td>NaiveRAG</td><td>LeanRAG</td><td>NaiveRAG</td><td>LeanRAG</td></tr><tr><td>Comprehensiveness</td><td>11.9%</td><td>88.1%</td><td>41.0%</td><td>59.0%</td><td>30.0%</td><td>70.0%</td><td>34.0%</td><td>66.0%</td></tr><tr><td>Empowerment</td><td>1.5%</td><td>98.5%</td><td>40.5%</td><td>59.5%</td><td>24.5%</td><td>75.5%</td><td>15.5%</td><td>84.5%</td></tr><tr><td>Diversity</td><td>3.1%</td><td>96.9%</td><td>28.0%</td><td>72.0%</td><td>9.0%</td><td>91.0%</td><td>10.0%</td><td>90.0%</td></tr><tr><td>Overall</td><td>2.7%</td><td>97.3%</td><td>39.5%</td><td>60.5%</td><td>23.5%</td><td>76.5%</td><td>16.0%</td><td>84.0%</td></tr></table>",
@@ -240,9 +240,9 @@
       198.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000123",
-      "LeanRAG_chunk_000124",
-      "LeanRAG_chunk_000126"
+      "LeanRAG_chunk_000128",
+      "LeanRAG_chunk_000129",
+      "LeanRAG_chunk_000131"
     ],
     "attached_entity_names": [
       "To",
@@ -260,17 +260,17 @@
       "N"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000123": 0.498683,
-      "LeanRAG_chunk_000124": 0.467485,
-      "LeanRAG_chunk_000126": 0.46509
+      "LeanRAG_chunk_000128": 0.496977,
+      "LeanRAG_chunk_000129": 0.465814,
+      "LeanRAG_chunk_000131": 0.463488
     }
   },
   {
     "media_id": "LeanRAG_table_000006",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 9,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/df04c487279079b57bc20e69d342793e510a1b365f444ed631069f49892dd31b.jpg",
+    "page": 10,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\df04c487279079b57bc20e69d342793e510a1b365f444ed631069f49892dd31b.jpg",
     "caption": "",
     "ocr_text": "",
     "summary": "<table><tr><td></td><td>GraphRAG</td><td>LeanRAG</td><td>GraphRAG</td><td>LeanRAG</td><td>GraphRAG</td><td>LeanRAG</td><td>GraphRAG</td><td>LeanRAG</td></tr><tr><td>Comprehensiveness</td><td>35.0%</td><td>65.0%</td><td>41.0%</td><td>59.0%</td><td>49.0%</td><td>51.0%</td><td>45.5%</td><td>54.5%</td></tr><tr><td>Empowerment</td><td>20.0%</td><td>80.0%</td><td>33.5%</td><td>66.5%</td><td>44.0%</td><td>56.0%</td><td>27.0%</td><td>73.0%</td></tr><tr><td>Diversity</td><td>16.5%</td><td>83.5%</td><td>34.0%</td><td>66.0%</td><td>44.0%</td><td>56.0%</td><td>22.0%</td><td>78.0%</td></tr><tr><td>Overall</td><td>21.9%</td><td>78.1%</td><td>37.5%</td><td>62.5%</td><td>47.0%</td><td>53.0%</td><td>28.5%</td><td>71.5%</td></tr></table>",
@@ -283,9 +283,9 @@
       282.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000123",
-      "LeanRAG_chunk_000122",
-      "LeanRAG_chunk_000124"
+      "LeanRAG_chunk_000128",
+      "LeanRAG_chunk_000127",
+      "LeanRAG_chunk_000129"
     ],
     "attached_entity_names": [
       "GraphRAG",
@@ -302,17 +302,17 @@
       "Naive RAG"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000123": 0.46988,
-      "LeanRAG_chunk_000122": 0.461078,
-      "LeanRAG_chunk_000124": 0.458683
+      "LeanRAG_chunk_000128": 0.46814,
+      "LeanRAG_chunk_000127": 0.459302,
+      "LeanRAG_chunk_000129": 0.456977
     }
   },
   {
     "media_id": "LeanRAG_table_000007",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 9,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/e95a886c9582053282253e3a2696784e8b2224b2195ffc0a8929069e50751712.jpg",
+    "page": 10,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\e95a886c9582053282253e3a2696784e8b2224b2195ffc0a8929069e50751712.jpg",
     "caption": "",
     "ocr_text": "",
     "summary": "<table><tr><td></td><td>LightRAG</td><td>LeanRAG</td><td>LightRAG</td><td>LeanRAG</td><td>LightRAG</td><td>LeanRAG</td><td>LightRAG</td><td>LeanRAG</td></tr><tr><td>Comprehensiveness</td><td>28.8%</td><td>71.2%</td><td>44.5%</td><td>55.5%</td><td>25.0%</td><td>75.0%</td><td>38.0%</td><td>62.0%</td></tr><tr><td>Empowerment</td><td>16.5%</td><td>83.5%</td><td>35.5%</td><td>64.5%</td><td>12.0%</td><td>88.0%</td><td>17.0%</td><td>83.0%</td></tr><tr><td>Diversity</td><td>13.1%</td><td>86.9%</td><td>34.0%</td><td>66.0%</td><td>40.5%</td><td>59.5%</td><td>16.5%</td><td>83.5%</td></tr><tr><td>Overall</td><td>18.8%</td><td>81.2%</td><td>38.5%</td><td>61.5%</td><td>21.0%</td><td>79.0%</td><td>18.5%</td><td>81.5%</td></tr></table>",
@@ -325,9 +325,9 @@
       367.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000123",
-      "LeanRAG_chunk_000122",
-      "LeanRAG_chunk_000124"
+      "LeanRAG_chunk_000128",
+      "LeanRAG_chunk_000127",
+      "LeanRAG_chunk_000129"
     ],
     "attached_entity_names": [
       "GraphRAG",
@@ -343,17 +343,17 @@
       "Naive RAG"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000123": 0.466078,
-      "LeanRAG_chunk_000122": 0.462275,
-      "LeanRAG_chunk_000124": 0.45988
+      "LeanRAG_chunk_000128": 0.464302,
+      "LeanRAG_chunk_000127": 0.460465,
+      "LeanRAG_chunk_000129": 0.45814
     }
   },
   {
     "media_id": "LeanRAG_table_000008",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 9,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/6eea68df9d6bae488a116e7eece1e3f8c3740ee96fd7550e07efb26d4ac4d746.jpg",
+    "page": 10,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\6eea68df9d6bae488a116e7eece1e3f8c3740ee96fd7550e07efb26d4ac4d746.jpg",
     "caption": "",
     "ocr_text": "",
     "summary": "<table><tr><td></td><td>FastGraphRAG</td><td>LeanRAG</td><td>FastGraphRAG</td><td>LeanRAG</td><td>FastGraphRAG</td><td>LeanRAG</td><td>FastGraphRAG</td><td>LeanRAG</td></tr><tr><td>Comprehensiveness</td><td>0%</td><td>100%</td><td>0.5%</td><td>99.5%</td><td>1.0%</td><td>99.0%</td><td>0.5%</td><td>99.5%</td></tr><tr><td>Empowerment</td><td>0%</td><td>100%</td><td>0.0%</td><td>100.0%</td><td>0.5%</td><td>99.5%</td><td>0.0%</td><td>100.0%</td></tr><tr><td>Diversity</td><td>0%</td><td>100%</td><td>0.8%</td><td>99.2%</td><td>2.5%</td><td>97.5%</td><td>0.0%</td><td>100.0%</td></tr><tr><td>Overall</td><td>0%</td><td>100%</td><td>0.0%</td><td>100.0%</td><td>4.5%</td><td>95.5%</td><td>0.0%</td><td>100.0%</td></tr></table>",
@@ -366,9 +366,9 @@
       452.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000123",
-      "LeanRAG_chunk_000125",
-      "LeanRAG_chunk_000122"
+      "LeanRAG_chunk_000128",
+      "LeanRAG_chunk_000130",
+      "LeanRAG_chunk_000127"
     ],
     "attached_entity_names": [
       "GraphRAG",
@@ -380,17 +380,17 @@
       "Experiment Settings"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000123": 0.472275,
-      "LeanRAG_chunk_000125": 0.46488,
-      "LeanRAG_chunk_000122": 0.463473
+      "LeanRAG_chunk_000128": 0.470465,
+      "LeanRAG_chunk_000130": 0.46314,
+      "LeanRAG_chunk_000127": 0.461628
     }
   },
   {
     "media_id": "LeanRAG_table_000009",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 9,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/77700f7b413417f0673ec0a4608a0cb8a105553c3471688719440a71e547f791.jpg",
+    "page": 10,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\77700f7b413417f0673ec0a4608a0cb8a105553c3471688719440a71e547f791.jpg",
     "caption": "",
     "ocr_text": "",
     "summary": "<table><tr><td></td><td>KAG</td><td>LeanRAG</td><td>KAG</td><td>LeanRAG</td><td>KAG</td><td>LeanRAG</td><td>KAG</td><td>LeanRAG</td></tr><tr><td>Comprehensiveness</td><td>1.5%</td><td>98.5%</td><td>5.0%</td><td>95.0%</td><td>5.0%</td><td>95.0%</td><td>2.5%</td><td>97.5%</td></tr><tr><td>Empowerment</td><td>1.9%</td><td>98.1%</td><td>3.0%</td><td>97.0%</td><td>4.5%</td><td>95.5%</td><td>2.5%</td><td>97.5%</td></tr><tr><td>Diversity</td><td>1.2%</td><td>98.8%</td><td>4.0%</td><td>96.0%</td><td>2.5%</td><td>97.5%</td><td>1.0%</td><td>99.0%</td></tr><tr><td>Overall</td><td>1.2%</td><td>98.8%</td><td>3.5%</td><td>96.5%</td><td>4.5%</td><td>95.5%</td><td>1.0%</td><td>99.0%</td></tr></table>",
@@ -403,9 +403,9 @@
       536.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000123",
-      "LeanRAG_chunk_000122",
-      "LeanRAG_chunk_000125"
+      "LeanRAG_chunk_000128",
+      "LeanRAG_chunk_000127",
+      "LeanRAG_chunk_000130"
     ],
     "attached_entity_names": [
       "B",
@@ -415,17 +415,17 @@
       "Experiment Settings"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000123": 0.478473,
-      "LeanRAG_chunk_000122": 0.469671,
-      "LeanRAG_chunk_000125": 0.466078
+      "LeanRAG_chunk_000128": 0.476628,
+      "LeanRAG_chunk_000127": 0.467791,
+      "LeanRAG_chunk_000130": 0.464302
     }
   },
   {
     "media_id": "LeanRAG_table_000010",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 9,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/9d873acef588474463d68c7aef6514a2d2a85b792b319801fbf6db374f08491f.jpg",
+    "page": 10,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\9d873acef588474463d68c7aef6514a2d2a85b792b319801fbf6db374f08491f.jpg",
     "caption": "",
     "ocr_text": "",
     "summary": "<table><tr><td></td><td>HiRAG</td><td>LeanRAG</td><td>HiRAG</td><td>LeanRAG</td><td>HiRAG</td><td>LeanRAG</td><td>HiRAG</td><td>LeanRAG</td></tr><tr><td>Comprehensiveness</td><td>43.8%</td><td>56.2%</td><td>46.5%</td><td>53.5%</td><td>29.5%</td><td>70.5%</td><td>49.5%</td><td>50.5%</td></tr><tr><td>Empowerment</td><td>26.5%</td><td>73.5%</td><td>43.5%</td><td>56.5%</td><td>16.5%</td><td>83.5%</td><td>26.5%</td><td>73.5%</td></tr><tr><td>Diversity</td><td>20.4%</td><td>79.6%</td><td>44.5%</td><td>55.5%</td><td>23.5%</td><td>76.5%</td><td>23.5%</td><td>76.5%</td></tr><tr><td>Overall</td><td>28.1%</td><td>71.9%</td><td>45.0%</td><td>55.0%</td><td>21.5%</td><td>78.5%</td><td>28.0%</td><td>72%</td></tr></table>",
@@ -438,9 +438,9 @@
       621.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000123",
-      "LeanRAG_chunk_000122",
-      "LeanRAG_chunk_000124"
+      "LeanRAG_chunk_000128",
+      "LeanRAG_chunk_000127",
+      "LeanRAG_chunk_000129"
     ],
     "attached_entity_names": [
       "We",
@@ -452,17 +452,17 @@
       "Naive RAG"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000123": 0.469671,
-      "LeanRAG_chunk_000122": 0.465868,
-      "LeanRAG_chunk_000124": 0.463473
+      "LeanRAG_chunk_000128": 0.467791,
+      "LeanRAG_chunk_000127": 0.463953,
+      "LeanRAG_chunk_000129": 0.461628
     }
   },
   {
     "media_id": "LeanRAG_table_000011",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 9,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/3f2becb35fdfb2c5721c91d47162fb9cfae440f41674effc8ac1bd1968906438.jpg",
+    "page": 10,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\3f2becb35fdfb2c5721c91d47162fb9cfae440f41674effc8ac1bd1968906438.jpg",
     "caption": "Table 5: Statistics of task datasets.",
     "ocr_text": "",
     "summary": "Caption: Table 5: Statistics of task datasets. <table><tr><td>Dataset</td><td>Mix</td><td>CS</td><td>Legal</td><td>Agriculture</td></tr><tr><td># of Documents</td><td>61</td><td>10</td><td>94</td><td>12</td></tr><tr><td># of Tokens</td><td>625,948</td><td>2,210,894</td><td>5,279,400</td><td>2,028,496</td></tr></table>",
@@ -475,9 +475,9 @@
       717.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000123",
-      "LeanRAG_chunk_000124",
-      "LeanRAG_chunk_000126"
+      "LeanRAG_chunk_000128",
+      "LeanRAG_chunk_000129",
+      "LeanRAG_chunk_000131"
     ],
     "attached_entity_names": [
       "We",
@@ -488,17 +488,17 @@
       "N"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000123": 0.470868,
-      "LeanRAG_chunk_000124": 0.469671,
-      "LeanRAG_chunk_000126": 0.467275
+      "LeanRAG_chunk_000128": 0.468953,
+      "LeanRAG_chunk_000129": 0.467791,
+      "LeanRAG_chunk_000131": 0.465465
     }
   },
   {
     "media_id": "LeanRAG_table_000012",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 10,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/39ddeb5fff1a2fcdff0c12a7746e6dd448deb602254fb972423ff4c4b7267e46.jpg",
+    "page": 11,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\39ddeb5fff1a2fcdff0c12a7746e6dd448deb602254fb972423ff4c4b7267e46.jpg",
     "caption": "Table 6: Setting of task datasets.",
     "ocr_text": "",
     "summary": "Caption: Table 6: Setting of task datasets. <table><tr><td>Dataset</td><td>Mix</td><td>CS</td><td>Legal</td><td>Agriculture</td></tr><tr><td>clustersize</td><td>20</td><td>20</td><td>20</td><td>20</td></tr><tr><td>N</td><td>10</td><td>10</td><td>15</td><td>10</td></tr><tr><td>C</td><td>5</td><td>10</td><td>10</td><td>5</td></tr></table>",
@@ -511,9 +511,9 @@
       167.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000132",
-      "LeanRAG_chunk_000140",
-      "LeanRAG_chunk_000142"
+      "LeanRAG_chunk_000137",
+      "LeanRAG_chunk_000145",
+      "LeanRAG_chunk_000147"
     ],
     "attached_entity_names": [
       "Hi-RAG",
@@ -530,17 +530,17 @@
       "The LLM"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000132": 0.556287,
-      "LeanRAG_chunk_000140": 0.546707,
-      "LeanRAG_chunk_000142": 0.544311
+      "LeanRAG_chunk_000137": 0.554651,
+      "LeanRAG_chunk_000145": 0.545349,
+      "LeanRAG_chunk_000147": 0.543023
     }
   },
   {
     "media_id": "LeanRAG_table_000013",
     "doc_id": "LeanRAG",
     "modality": "table",
-    "page": 11,
-    "path": "exp/mm_leanrag_leanrag_pdf/LeanRAG/mineru_output/LeanRAG/auto/images/2f4c32d3d6e930cc39d5e95e43415766fb283e9ae982b1f024cfabb00d910918.jpg",
+    "page": 12,
+    "path": "exp\\mm_leanrag_leanrag_pdf\\LeanRAG\\mineru_output\\LeanRAG\\auto\\images\\2f4c32d3d6e930cc39d5e95e43415766fb283e9ae982b1f024cfabb00d910918.jpg",
     "caption": "Table 7: Example question, answers, and LLM-generated assessments for the Mix dataset.",
     "ocr_text": "",
     "summary": "Caption: Table 7: Example question, answers, and LLM-generated assessments for the Mix dataset. <table><tr><td>Question</td><td>What is the significance of studying puns in the context of human-computer interaction and machine translation?</td></tr><tr><td>LeanRAG</td><td>The study of puns in the context of human-computer interaction (HCI) and machine translation (MT) holds significant importance for several reasons, as evidenced by the provided data tables and related research. 1. Enhancing Natural Language Understanding [...] 2. Improving Machine Translation Systems [...] 3. Benchmarking and Model Evaluation [...] 4. Cross-Disciplinary Applications [...] 5. Challenges and Future Directions [...] In summary, studying puns contributes to deeper language understanding, better translation systems, and more sophisticated human-computer interactions by addressing ambiguity, humor, and cultural context—key hurdles in NLP.</td></tr><tr><td>HiRAG</td><td>Significance of Studying Puns in Hu...",
@@ -553,9 +553,9 @@
       704.0
     ],
     "nearby_chunk_ids": [
-      "LeanRAG_chunk_000132",
-      "LeanRAG_chunk_000136",
-      "LeanRAG_chunk_000134"
+      "LeanRAG_chunk_000137",
+      "LeanRAG_chunk_000141",
+      "LeanRAG_chunk_000139"
     ],
     "attached_entity_names": [
       "These",
@@ -576,9 +576,9 @@
       "Win Rate Evaluation Prompt"
     ],
     "attach_scores": {
-      "LeanRAG_chunk_000132": 0.357485,
-      "LeanRAG_chunk_000136": 0.352695,
-      "LeanRAG_chunk_000134": 0.35009
+      "LeanRAG_chunk_000137": 0.355814,
+      "LeanRAG_chunk_000141": 0.351163,
+      "LeanRAG_chunk_000139": 0.348488
     }
   }
 ]
