@@ -8,6 +8,7 @@ milvus-lite>=2.5.1
 numpy>=1.26
 openai>=1.0
 pandas>=2.0
+Pillow>=10.0
 pyarrow>=14.0
 pyahocorasick>=2.0
 pymilvus>=2.4
