@@ -23,8 +23,9 @@ def build_phase1_mm_graph(
     chunks = load_dataclasses(working / "mm_chunk.json", MMChunk)
     media_items = load_dataclasses(working / "mm_media.json", MMMedia) if (working / "mm_media.json").exists() else []
     entities = read_jsonl(working / "entity.jsonl") if (working / "entity.jsonl").exists() else []
+    extra_pages = _collect_mineru_pages(working)
 
-    nodes, indexes = build_mm_nodes(chunks, media_items, entities)
+    nodes, indexes = build_mm_nodes(chunks, media_items, entities, extra_pages=extra_pages)
     edges = build_mm_edges(chunks, media_items, nodes, indexes)
 
     node_path = working / node_file
@@ -58,6 +59,7 @@ def build_mm_nodes(
     chunks: list[MMChunk],
     media_items: list[MMMedia],
     entities: list[dict[str, Any]] | None = None,
+    extra_pages: list[int] | None = None,
 ) -> tuple[list[MMNode], dict[str, dict[Any, str]]]:
     entities = entities or []
     doc_id = _infer_doc_id(chunks, media_items, entities)
@@ -73,7 +75,7 @@ def build_mm_nodes(
         "entity": {},
     }
 
-    for page in _collect_pages(chunks, media_items):
+    for page in _collect_pages(chunks, media_items, extra_pages=extra_pages):
         page_node = _build_page_node(doc_id, page, chunks, media_items)
         nodes.append(page_node)
         indexes["page"][page] = page_node.node_id
@@ -232,7 +234,7 @@ def validate_phase1_outputs(
     media_nodes_by_id = {node.get("raw_ref", {}).get("media_id"): node for node in by_type["media"]}
     text_nodes_by_chunk_id = {node.get("raw_ref", {}).get("chunk_id"): node for node in by_type["text"]}
     entity_nodes_by_name = {node.get("raw_ref", {}).get("entity_name"): node for node in by_type["entity"]}
-    pages = _collect_pages(chunks, media_items)
+    pages = _collect_pages(chunks, media_items, extra_pages=_collect_mineru_pages(working))
     edge_types = {edge.get("edge_type") for edge in edges}
 
     errors = []
@@ -399,7 +401,11 @@ def _build_entity_node(entity: dict[str, Any], doc_id: str, chunk_by_hash: dict[
     )
 
 
-def _collect_pages(chunks: list[MMChunk], media_items: list[MMMedia]) -> list[int]:
+def _collect_pages(
+    chunks: list[MMChunk],
+    media_items: list[MMMedia],
+    extra_pages: list[int] | None = None,
+) -> list[int]:
     pages = set()
     for chunk in chunks:
         if chunk.page_start is None:
@@ -407,7 +413,35 @@ def _collect_pages(chunks: list[MMChunk], media_items: list[MMMedia]) -> list[in
         end = chunk.page_end or chunk.page_start
         pages.update(range(chunk.page_start, end + 1))
     pages.update(item.page for item in media_items if item.page is not None)
+    pages.update(extra_pages or [])
     return sorted(page for page in pages if isinstance(page, int) and page > 0)
+
+
+def _collect_mineru_pages(working_dir: Path) -> list[int]:
+    pages = set()
+    for path in sorted((working_dir / "mineru_output").rglob("*content_list*.json")):
+        try:
+            with path.open("r", encoding="utf-8-sig") as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        items = data if isinstance(data, list) else []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            if item.get("page_idx") not in (None, ""):
+                try:
+                    pages.add(int(item["page_idx"]) + 1)
+                except (TypeError, ValueError):
+                    pass
+            else:
+                value = item.get("page") if item.get("page") not in (None, "") else item.get("page_no")
+                try:
+                    if value not in (None, ""):
+                        pages.add(int(value))
+                except (TypeError, ValueError):
+                    pass
+    return sorted(page for page in pages if page > 0)
 
 
 def _attached_text_chunks(media_id: str, chunks: list[MMChunk]) -> list[str]:

@@ -197,15 +197,16 @@ def _item_type(item: dict[str, Any]) -> str:
 
 
 def _extract_page(item: dict[str, Any]) -> int | None:
-    # MinerU 有时使用 0 基页码；这里统一为更常见的 1 基页码。
-    value = _first(item, ["page_idx", "page", "page_no"], None)
+    # MinerU page_idx is 0-based; page/page_no are usually already 1-based.
+    has_page_idx = item.get("page_idx") not in (None, "")
+    value = item.get("page_idx") if has_page_idx else _first(item, ["page", "page_no"], None)
     if value in (None, ""):
         return None
     try:
         page = int(value)
     except (TypeError, ValueError):
         return None
-    return page + 1 if page == 0 else page
+    return page + 1 if has_page_idx else page
 
 
 def _extract_bbox(item: dict[str, Any]) -> list[float] | None:
