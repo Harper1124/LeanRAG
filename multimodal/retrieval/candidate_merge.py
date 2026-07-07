@@ -3,6 +3,9 @@ from __future__ import annotations
 from typing import Any
 
 
+OPTIONAL_FIELDS = ("text_for_embedding", "caption", "ocr_text", "summary")
+
+
 def merge_candidates(candidates: list[dict[str, Any]], multi_hit_bonus: float = 0.10) -> list[dict[str, Any]]:
     merged: dict[str, dict[str, Any]] = {}
     for item in candidates:
@@ -12,6 +15,9 @@ def merge_candidates(candidates: list[dict[str, Any]], multi_hit_bonus: float = 
         retriever = item.get("retriever", "unknown")
         score = float(item.get("score") or 0.0)
         if node_id not in merged:
+            debug = {"original_scores": {retriever: score}, "ranks": {retriever: item.get("rank")}}
+            if isinstance(item.get("debug"), dict):
+                debug.update(item["debug"])
             merged[node_id] = {
                 "node_id": node_id,
                 "node_type": item.get("node_type"),
@@ -22,8 +28,11 @@ def merge_candidates(candidates: list[dict[str, Any]], multi_hit_bonus: float = 
                 "source": item.get("source", "direct_recall"),
                 "raw_ref": item.get("raw_ref") or {},
                 "metadata": item.get("metadata") or {},
-                "debug": {"original_scores": {retriever: score}, "ranks": {retriever: item.get("rank")}},
+                "debug": debug,
             }
+            for field in OPTIONAL_FIELDS:
+                if item.get(field):
+                    merged[node_id][field] = item.get(field)
             continue
         current = merged[node_id]
         if retriever not in current["retrievers"]:
@@ -37,6 +46,13 @@ def merge_candidates(candidates: list[dict[str, Any]], multi_hit_bonus: float = 
             current["score"] = score
             current["metadata"] = item.get("metadata") or current["metadata"]
             current["raw_ref"] = item.get("raw_ref") or current["raw_ref"]
+            for field in OPTIONAL_FIELDS:
+                if item.get(field):
+                    current[field] = item.get(field)
+        if isinstance(item.get("debug"), dict):
+            for key, value in item["debug"].items():
+                if key not in {"original_scores", "ranks"}:
+                    current["debug"][key] = value
 
     for item in merged.values():
         original_scores = item["debug"]["original_scores"]

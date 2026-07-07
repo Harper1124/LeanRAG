@@ -4,6 +4,8 @@ import re
 from collections import Counter
 from typing import Any
 
+from .media_ref import extract_media_refs
+
 
 IMAGE_TERMS = {
     "figure",
@@ -34,6 +36,7 @@ def analyze_query(query: str) -> dict[str, Any]:
     table_hits = _hits(token_counts, TABLE_TERMS)
     is_counting = any(re.search(pattern, lowered) for pattern in COUNTING_PATTERNS)
     page_hints = _extract_page_hints(lowered)
+    media_refs = extract_media_refs(text)
 
     query_type = "text"
     if table_hits:
@@ -73,6 +76,7 @@ def analyze_query(query: str) -> dict[str, Any]:
         "expected_answer_type": _expected_answer_type(lowered),
         "modality_prior": prior,
         "page_hints": page_hints,
+        "media_refs": media_refs,
         "media_hints": sorted((IMAGE_TERMS | CHART_TERMS | TABLE_TERMS).intersection(tokens)),
         "keywords": tokens,
     }

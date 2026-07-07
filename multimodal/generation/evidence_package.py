@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from multimodal.retrieval.media_ref import matching_media_refs
+
 
 DEFAULT_BUDGET = {
     "max_text_nodes": 6,
@@ -19,7 +21,7 @@ def build_evidence_package(
     query_info: dict[str, Any] | None = None,
     config: dict[str, Any] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    del query_info
+    media_refs = (query_info or {}).get("media_refs", [])
     budget = _budget(config)
     package = {
         "text_evidence": [],
@@ -44,6 +46,11 @@ def build_evidence_package(
             package["page_evidence"].append(slim)
             added = True
         elif node_type == "media":
+            matched_refs = matching_media_refs(candidate, media_refs)
+            if media_refs and not matched_refs:
+                continue
+            if matched_refs:
+                slim.setdefault("debug", {})["matched_media_refs"] = matched_refs
             is_table = _is_table(candidate)
             is_visual = _is_visual(candidate)
             if is_table and len(package["table_evidence"]) < budget["max_table_nodes"]:
@@ -71,7 +78,7 @@ def _is_visual(candidate: dict[str, Any]) -> bool:
 
 
 def _slim_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
-    return {
+    slim = {
         "node_id": candidate.get("node_id"),
         "node_type": candidate.get("node_type"),
         "doc_id": candidate.get("doc_id"),
@@ -83,6 +90,10 @@ def _slim_candidate(candidate: dict[str, Any]) -> dict[str, Any]:
         "metadata": candidate.get("metadata") or {},
         "debug": candidate.get("debug") or {},
     }
+    for field in ("text_for_embedding", "caption", "ocr_text", "summary"):
+        if candidate.get(field):
+            slim[field] = candidate.get(field)
+    return slim
 
 
 def _budget(config: dict[str, Any] | None) -> dict[str, int]:
