@@ -80,7 +80,7 @@ def query_mm_graph(
     del db
     working_dir = global_config["working_dir"]
     chunks, media_items = _load_mm_artifacts(working_dir)
-    mm_retrieval_trace = _run_phase2_direct_recall(global_config, query, doc_id)
+    mm_retrieval_trace = _run_phase2_direct_recall(global_config, query, doc_id) if _use_mm_hybrid(global_config) else _empty_direct_trace()
     # 优先走 LeanRAG 的图/向量检索；检索失败时再退回关键词检索。
     text_evidence, graph_evidence, selected_entities = _retrieve_text_evidence(global_config, query, chunks)
     if not text_evidence:
@@ -95,7 +95,10 @@ def query_mm_graph(
     table_evidence = _merge_evidence(direct_tables, table_evidence, "media_id")[: _media_limit(global_config, query, "table")]
     context = _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence, global_config)
 
-    if visual_evidence and global_config.get("answer_with_vlm_when_media", True):
+    phase3_answer, phase3_trace = _run_phase3_answer_pipeline(global_config, query, mm_retrieval_trace)
+    if phase3_answer is not None:
+        answer = phase3_answer
+    elif visual_evidence and global_config.get("answer_with_vlm_when_media", True):
         # 有图片证据时优先使用 VLM；不可用时自动降级到普通 LLM。
         answer = _call_vlm(global_config.get("use_vlm_func"), query, context, [item["path"] for item in visual_evidence])
         if answer is None:
@@ -113,7 +116,25 @@ def query_mm_graph(
         "selected_entities": selected_entities,
     }
     trace.update(mm_retrieval_trace)
+    trace.update(phase3_trace)
     return str(answer), trace
+
+
+def _use_mm_hybrid(global_config: dict) -> bool:
+    retrieval = global_config.get("retrieval")
+    if isinstance(retrieval, dict):
+        return retrieval.get("mode", "mm_hybrid") == "mm_hybrid"
+    return global_config.get("retrieval_mode", "mm_hybrid") == "mm_hybrid"
+
+
+def _empty_direct_trace() -> dict:
+    return {
+        "query_info": {},
+        "retrieved_nodes_by_type": {"text": [], "entity": [], "media": [], "page": [], "aggregate": []},
+        "direct_recall": {"text": [], "entity": [], "media": [], "page": []},
+        "merged_candidates": [],
+        "failure_stage": None,
+    }
 
 
 def _run_phase2_direct_recall(global_config: dict, query: str, doc_id: str | None) -> dict:
@@ -131,6 +152,85 @@ def _run_phase2_direct_recall(global_config: dict, query: str, doc_id: str | Non
             "failure_stage": "direct_recall_failed",
             "direct_recall_error": str(exc),
         }
+
+
+def _run_phase3_answer_pipeline(global_config: dict, query: str, retrieval_trace: dict) -> tuple[str | None, dict]:
+    if not _use_mm_hybrid(global_config):
+        return None, {}
+    merged_candidates = retrieval_trace.get("merged_candidates") or []
+    if not merged_candidates:
+        return None, {}
+    try:
+        from .generation.answer_planner import plan_answer
+        from .generation.evidence_package import build_evidence_package
+        from .generation.final_generator import generate_final_answer
+        from .generation.table_reasoner import run_table_reasoner
+        from .generation.vlm_reasoner import run_vlm_reasoner
+
+        query_info = retrieval_trace.get("query_info") or {}
+        evidence_package = build_evidence_package(merged_candidates, query_info, global_config)
+        answer_plan = plan_answer(query, evidence_package, query_info, global_config)
+        max_vlm_images = int((global_config.get("evidence_budget") or {}).get("max_vlm_images", 4))
+        vlm_calls = (
+            run_vlm_reasoner(query, answer_plan.get("selected_visual_nodes", []), global_config.get("use_vlm_func"), max_vlm_images)
+            if answer_plan.get("use_vlm")
+            else []
+        )
+        table_calls = (
+            run_table_reasoner(
+                query,
+                answer_plan.get("selected_table_nodes", []),
+                global_config.get("use_llm_func"),
+                max_context_chars=int((global_config.get("generation") or {}).get("max_prompt_chars", 24000)) // 2,
+            )
+            if answer_plan.get("use_table_reasoner")
+            else []
+        )
+        answer, final_generation = generate_final_answer(
+            query,
+            evidence_package,
+            answer_plan,
+            vlm_calls,
+            table_calls,
+            global_config,
+        )
+        trace = {
+            "evidence_package": evidence_package,
+            "answer_plan": answer_plan,
+            "vlm_calls": vlm_calls,
+            "table_reasoner_calls": table_calls,
+            "selected_evidence_nodes": evidence_package.get("all_selected_nodes", []),
+            "final_generation": final_generation,
+            "failure_stage": _phase3_failure_stage(evidence_package, vlm_calls, table_calls),
+        }
+        return answer, trace
+    except Exception as exc:
+        return None, {
+            "evidence_package": {
+                "text_evidence": [],
+                "entity_evidence": [],
+                "page_evidence": [],
+                "visual_evidence": [],
+                "table_evidence": [],
+                "all_selected_nodes": [],
+            },
+            "answer_plan": {},
+            "vlm_calls": [],
+            "table_reasoner_calls": [],
+            "selected_evidence_nodes": [],
+            "failure_stage": "generation_failed",
+            "generation_error": str(exc),
+        }
+
+
+def _phase3_failure_stage(evidence_package: dict, vlm_calls: list[dict], table_calls: list[dict]) -> str | None:
+    if not evidence_package.get("all_selected_nodes"):
+        return "not_enough_evidence"
+    if any(call.get("error") and not call.get("vlm_answer") for call in vlm_calls):
+        return "vlm_failed"
+    if any(call.get("error") and not call.get("table_answer") for call in table_calls):
+        return "table_reasoner_failed"
+    return None
 
 
 def _retrieve_text_evidence(global_config: dict, query: str, chunks: list[MMChunk]):
