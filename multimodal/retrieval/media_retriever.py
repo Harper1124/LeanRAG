@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..io_utils import read_jsonl
+from .media_ref import matching_media_refs
 
 
 class MediaRetriever:
@@ -24,10 +25,16 @@ class MediaRetriever:
         query_terms = _terms(query)
         page_hints = {hint.get("page") for hint in query_info.get("page_hints", []) if hint.get("page")}
         media_hints = set(query_info.get("media_hints", []))
+        media_refs = query_info.get("media_refs", [])
         scored = []
         for node in self.nodes:
+            matched_refs = matching_media_refs(node, media_refs)
+            if media_refs and not matched_refs:
+                continue
             score = _bm25_like_score(query_terms, node.get("text_for_embedding", ""), self._doc_freq, len(self.nodes))
             media_type = str((node.get("metadata") or {}).get("media_type") or "unknown").lower()
+            if matched_refs:
+                score += 5.0 + (0.25 * len(matched_refs))
             if node.get("page_id") in page_hints:
                 score += 0.35
             if media_type == "table" and media_hints.intersection({"table", "row", "column", "cell", "header", "metric", "f1"}):
@@ -38,15 +45,15 @@ class MediaRetriever:
                 score += 0.20
             if query_terms and score <= 0:
                 continue
-            scored.append((score, node))
+            scored.append((score, node, matched_refs))
 
-        if not scored and self.nodes:
-            scored = [(0.01, node) for node in self.nodes]
+        if not scored and self.nodes and not media_refs:
+            scored = [(0.01, node, []) for node in self.nodes]
         scored.sort(key=lambda item: (item[0], -(item[1].get("page_id") or 0)), reverse=True)
-        return [_candidate(node, score, rank) for rank, (score, node) in enumerate(scored[:topk], start=1)]
+        return [_candidate(node, score, rank, matched_refs) for rank, (score, node, matched_refs) in enumerate(scored[:topk], start=1)]
 
 
-def _candidate(node: dict[str, Any], score: float, rank: int) -> dict[str, Any]:
+def _candidate(node: dict[str, Any], score: float, rank: int, matched_refs: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     return {
         "node_id": node.get("node_id"),
         "node_type": "media",
@@ -58,6 +65,11 @@ def _candidate(node: dict[str, Any], score: float, rank: int) -> dict[str, Any]:
         "source": "direct_recall",
         "raw_ref": node.get("raw_ref") or {},
         "metadata": node.get("metadata") or {},
+        "text_for_embedding": node.get("text_for_embedding", ""),
+        "caption": node.get("caption", ""),
+        "ocr_text": node.get("ocr_text", ""),
+        "summary": node.get("summary", ""),
+        "debug": {"matched_media_refs": matched_refs or []},
     }
 
 
