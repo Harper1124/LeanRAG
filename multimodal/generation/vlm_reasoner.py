@@ -15,7 +15,8 @@ def run_vlm_reasoner(
         return []
     node_ids = [node.get("node_id") for node in selected]
     image_paths = [str((node.get("raw_ref") or {}).get("path") or "") for node in selected]
-    valid_paths = [path for path in image_paths if path]
+    valid_paths = [_resolve_image_path(path) for path in image_paths if path]
+    valid_paths = [path for path in valid_paths if path]
     context = _visual_context(selected)
     call = {
         "node_ids": node_ids,
@@ -64,3 +65,19 @@ def _visual_context(nodes: list[dict[str, Any]]) -> str:
             )
         )
     return "\n\n".join(parts)
+
+
+def _resolve_image_path(path: str) -> str:
+    # Phase 1 artifacts may be generated on Windows and consumed on Linux.
+    # Try the original path first, then a forward-slash normalized variant.
+    raw = str(path or "").strip()
+    if not raw:
+        return ""
+    candidates = [raw]
+    normalized = raw.replace("\\", "/")
+    if normalized != raw:
+        candidates.append(normalized)
+    for candidate in candidates:
+        if Path(candidate).exists():
+            return candidate
+    return normalized
