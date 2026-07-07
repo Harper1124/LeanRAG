@@ -340,7 +340,7 @@ def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode
 
     raw_ref = {
         "media_id": media.media_id,
-        "path": media.path,
+        "path": _portable_path(media.path),
         "table_html": media.table_html,
         "table_markdown": media.table_markdown,
     }
@@ -499,6 +499,12 @@ def _page_node_id(doc_id: str, page: int) -> str:
 def _safe_id(value: Any) -> str:
     text = str(value or "").strip()
     return text.replace("/", "_").replace("\\", "_").replace(" ", "_")
+
+
+def _portable_path(value: Any) -> str:
+    # Store JSON paths with forward slashes so artifacts survive Windows/Linux moves.
+    text = str(value or "").strip()
+    return text.replace("\\", "/")
 
 
 def _normalize_entity_id(name: str) -> str:
