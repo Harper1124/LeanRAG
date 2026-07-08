@@ -84,18 +84,12 @@ def load_mm_graph(
     edge_seed_file: str = "mm_edges_seed.jsonl",
 ) -> MMGraph:
     working = Path(working_dir)
-    node_path = Path(node_file)
-    if not node_path.is_absolute():
-        node_path = working / node_path
+    node_path = _resolve_artifact_path(working, node_file)
     if not node_path.exists():
         return MMGraph([], [])
 
-    edge_path = Path(edge_file)
-    if not edge_path.is_absolute():
-        edge_path = working / edge_path
-    seed_path = Path(edge_seed_file)
-    if not seed_path.is_absolute():
-        seed_path = working / seed_path
+    edge_path = _resolve_artifact_path(working, edge_file)
+    seed_path = _resolve_artifact_path(working, edge_seed_file)
     selected_edge_path = edge_path if edge_path.exists() else seed_path
 
     nodes = read_jsonl(node_path)
@@ -108,6 +102,15 @@ def _filter_edges(edges: list[dict[str, Any]], edge_types: set[str] | list[str] 
         return list(edges)
     allowed = set(edge_types)
     return [edge for edge in edges if edge.get("edge_type") in allowed]
+
+
+def _resolve_artifact_path(working_dir: Path, value: str | Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    if path.exists():
+        return path
+    return working_dir / path
 
 
 def _ensure_document_nodes(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
