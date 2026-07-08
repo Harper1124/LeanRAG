@@ -81,6 +81,7 @@ def query_mm_graph(
     working_dir = global_config["working_dir"]
     chunks, media_items = _load_mm_artifacts(working_dir)
     mm_retrieval_trace = _run_phase2_direct_recall(global_config, query, doc_id) if _use_mm_hybrid(global_config) else _empty_direct_trace()
+    mm_retrieval_trace = _run_phase4_graph_expansion(global_config, mm_retrieval_trace, doc_id)
     # 优先走 LeanRAG 的图/向量检索；检索失败时再退回关键词检索。
     text_evidence, graph_evidence, selected_entities = _retrieve_text_evidence(global_config, query, chunks)
     if not text_evidence:
@@ -152,6 +153,95 @@ def _run_phase2_direct_recall(global_config: dict, query: str, doc_id: str | Non
             "failure_stage": "direct_recall_failed",
             "direct_recall_error": str(exc),
         }
+
+
+def _run_phase4_graph_expansion(global_config: dict, retrieval_trace: dict, doc_id: str | None) -> dict:
+    graph_trace = {
+        "enabled": _graph_expansion_enabled(global_config),
+        "expanded_nodes": [],
+        "expanded_edges": [],
+        "num_expanded_nodes": 0,
+        "num_expanded_edges": 0,
+        "errors": [],
+    }
+    retrieval_trace["graph_expansion"] = graph_trace
+    if not graph_trace["enabled"]:
+        return retrieval_trace
+    anchors = retrieval_trace.get("merged_candidates") or []
+    if not anchors:
+        return retrieval_trace
+    try:
+        from .graph.graph_expander import expand_graph
+        from .graph.mm_graph_loader import load_mm_graph
+        from .retrieval.candidate_merge import merge_candidates
+
+        working_dir = global_config["working_dir"]
+        graph_config = global_config.get("graph_expansion") or {}
+        graph = load_mm_graph(
+            working_dir,
+            node_file=global_config.get("nodes_file") or global_config.get("node_file") or "mm_nodes.jsonl",
+            edge_file=graph_config.get("edge_file", "mm_edges.jsonl"),
+            edge_seed_file=graph_config.get("edge_seed_file", "mm_edges_seed.jsonl"),
+        )
+        expanded_candidates, expanded_edges = expand_graph(
+            anchors=anchors,
+            graph=graph,
+            query_info=retrieval_trace.get("query_info") or {},
+            config=global_config,
+            doc_id=doc_id,
+        )
+        fusion_config = global_config.get("fusion") or {}
+        merged = merge_candidates(
+            list(anchors) + list(expanded_candidates),
+            multi_hit_bonus=float(fusion_config.get("multi_hit_bonus", 0.10)),
+        )
+        retrieval_trace["merged_candidates"] = merged
+        retrieval_trace["retrieved_nodes_by_type"] = _retrieved_nodes_by_type(merged, global_config)
+        graph_trace["expanded_nodes"] = [_slim_expanded_node(item) for item in expanded_candidates]
+        graph_trace["expanded_edges"] = expanded_edges
+        graph_trace["num_expanded_nodes"] = len(expanded_candidates)
+        graph_trace["num_expanded_edges"] = len(expanded_edges)
+        if getattr(graph, "warnings", None):
+            graph_trace["warnings"] = graph.warnings
+    except Exception as exc:
+        graph_trace["errors"].append(str(exc))
+        retrieval_trace["failure_stage"] = "graph_expansion_failed"
+    return retrieval_trace
+
+
+def _graph_expansion_enabled(global_config: dict) -> bool:
+    section = global_config.get("graph_expansion")
+    if isinstance(section, dict):
+        return bool(section.get("enabled", True))
+    return False
+
+
+def _slim_expanded_node(item: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "node_id": item.get("node_id"),
+        "node_type": item.get("node_type"),
+        "page_id": item.get("page_id"),
+        "score": float(item.get("score") or 0.0),
+        "source": item.get("source", "graph_expansion"),
+        "debug": item.get("debug") or {},
+    }
+
+
+def _retrieved_nodes_by_type(merged_candidates: list[dict[str, Any]], global_config: dict) -> dict[str, list[dict[str, Any]]]:
+    budget = global_config.get("evidence_budget") or {}
+    retrieved = {"text": [], "entity": [], "media": [], "page": [], "aggregate": []}
+    for item in merged_candidates:
+        node_type = item.get("node_type")
+        if node_type in retrieved:
+            retrieved[node_type].append(item)
+    limits = {
+        "text": int(budget.get("max_text_nodes", 6)),
+        "entity": int(budget.get("max_entity_nodes", 12)),
+        "media": int(budget.get("max_media_nodes", 6)),
+        "page": int(budget.get("max_page_nodes", 4)),
+        "aggregate": 12,
+    }
+    return {key: value[: limits[key]] for key, value in retrieved.items()}
 
 
 def _run_phase3_answer_pipeline(global_config: dict, query: str, retrieval_trace: dict) -> tuple[str | None, dict]:

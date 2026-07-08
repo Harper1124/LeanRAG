@@ -47,7 +47,7 @@ def build_evidence_package(
             added = True
         elif node_type == "media":
             matched_refs = matching_media_refs(candidate, media_refs)
-            if media_refs and not matched_refs:
+            if media_refs and not matched_refs and candidate.get("source") != "graph_expansion":
                 continue
             if matched_refs:
                 slim.setdefault("debug", {})["matched_media_refs"] = matched_refs
