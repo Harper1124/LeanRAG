@@ -11,6 +11,13 @@ from typing import Any
 from multimodal.io_utils import read_json, read_jsonl, write_jsonl
 
 
+EN_STOPWORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "he", "in", "is", "it",
+    "its", "of", "on", "or", "that", "the", "this", "to", "was", "were", "with", "we", "you",
+}
+NEARBY_ENTITY_LINK_LIMIT_PER_MEDIA = 10
+
+
 CAPTION_PAT = re.compile(r"\b(Figure|Fig\.|Table|Chart|Exhibit)\b|[图表]")
 REF_PAT = re.compile(
     r"as shown in|shown in Figure|shown in Fig\.|shown in Table|see Figure|see Table|"
@@ -42,6 +49,7 @@ def enhance_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], work
         by_type[node.get("node_type")].append(node)
     chunks_by_id = _chunks_by_id(working_dir)
     entity_media = _entity_media(working_dir)
+    nearby_link_counts: dict[str, int] = defaultdict(int)
 
     for text in by_type["text"]:
         text_body = _node_text(text)
@@ -54,7 +62,7 @@ def enhance_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], work
     media_by_id = {(media.get("raw_ref") or {}).get("media_id"): media for media in by_type["media"]}
     for entity in by_type["entity"]:
         entity_name = str((entity.get("raw_ref") or {}).get("entity_name") or entity.get("text_for_embedding") or "").split("\n")[0].strip()
-        if not entity_name:
+        if not entity_name or not _is_allowed_entity_name(entity_name, entity):
             continue
         for media_id in entity_media.get(entity_name, []):
             media = media_by_id.get(media_id)
@@ -65,6 +73,10 @@ def enhance_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], work
             if _contains_name(haystack, entity_name):
                 _add_edge(edge_list, seen, entity, media, "entity_link_media", 0.9, "entity name in media text")
             elif _entity_in_nearby_text(entity_name, media, chunks_by_id):
+                media_node_id = str(media.get("node_id") or "")
+                if nearby_link_counts[media_node_id] >= NEARBY_ENTITY_LINK_LIMIT_PER_MEDIA:
+                    continue
+                nearby_link_counts[media_node_id] += 1
                 _add_edge(edge_list, seen, entity, media, "entity_link_media", 0.6, "entity name in nearby text")
 
     media_by_page = defaultdict(list)
@@ -158,12 +170,38 @@ def _overlap(a: str, b: str) -> float:
 
 
 def _contains_name(text: str, name: str) -> bool:
-    return name.lower() in text.lower()
+    if _is_ascii_word(name):
+        return re.search(rf"(?<![A-Za-z0-9_]){re.escape(name.lower())}(?![A-Za-z0-9_])", text.lower()) is not None
+    return name in text
 
 
 def _entity_in_nearby_text(name: str, media: dict[str, Any], chunks_by_id: dict[str, str]) -> bool:
     nearby = (media.get("metadata") or {}).get("nearby_chunk_ids") or []
     return any(_contains_name(chunks_by_id.get(chunk_id, ""), name) for chunk_id in nearby)
+
+
+def _is_allowed_entity_name(name: str, entity: dict[str, Any]) -> bool:
+    clean = name.strip()
+    if not clean:
+        return False
+    if _is_formula_entity(entity):
+        return True
+    if _is_ascii_word(clean):
+        lowered = clean.lower()
+        if lowered in EN_STOPWORDS:
+            return False
+        if len(lowered) < 2:
+            return False
+    return True
+
+
+def _is_formula_entity(entity: dict[str, Any]) -> bool:
+    entity_type = str((entity.get("metadata") or {}).get("entity_type") or entity.get("entity_type") or "").lower()
+    return any(term in entity_type for term in ("formula", "symbol", "variable", "math"))
+
+
+def _is_ascii_word(value: str) -> bool:
+    return re.fullmatch(r"[A-Za-z]+", value.strip()) is not None
 
 
 def _chunks_by_id(working_dir: str | Path | None) -> dict[str, str]:

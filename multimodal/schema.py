@@ -44,7 +44,7 @@ class MMMedia:
 class MMNode:
     node_id: str
     doc_id: str
-    node_type: Literal["text", "entity", "media", "page", "aggregate"]
+    node_type: Literal["document", "text", "entity", "media", "page", "aggregate"]
     page_id: int | None
     text_for_embedding: str
     raw_ref: dict[str, Any] = field(default_factory=dict)
