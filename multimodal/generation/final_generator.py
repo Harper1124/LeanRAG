@@ -155,6 +155,11 @@ def _looks_not_answerable(lowered_answer: str) -> bool:
 
 
 def _extract_int(text: str) -> str | None:
+    answer_tail = _answer_tail(text)
+    if answer_tail:
+        value = _first_int_like(answer_tail)
+        if value is not None:
+            return value
     direct = _extract_direct_int_phrase(text)
     if direct is not None:
         return direct
@@ -166,6 +171,43 @@ def _extract_int(text: str) -> str | None:
     if words:
         return str(words[-1])
     return None
+
+
+def _answer_tail(text: str) -> str:
+    patterns = (
+        r"(?:therefore,?\s*)?(?:the\s+)?(?:final\s+)?answer(?:\s+to[\s\S]{0,240}?)?\s*(?:is|:)\s*[:\-]?\s*",
+        r"(?:therefore,?\s*)?we\s+can\s+conclude\s+that\s+",
+    )
+    matches = []
+    for pattern in patterns:
+        matches.extend(re.finditer(pattern, text, re.IGNORECASE))
+    if not matches:
+        return ""
+    match = max(matches, key=lambda item: item.start())
+    return text[match.end() :]
+
+
+def _first_int_like(text: str) -> str | None:
+    token_pattern = re.compile(
+        r"\b(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+        r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty)\b|"
+        r"(?<![A-Za-z0-9])-?\d+(?:,\d{3})*(?![A-Za-z0-9-])",
+        re.IGNORECASE,
+    )
+    for match in token_pattern.finditer(text):
+        if _is_labeled_number(text, match.start()):
+            continue
+        raw = match.group(0)
+        word_value = _number_word_to_int(raw)
+        if word_value is not None:
+            return str(word_value)
+        return str(int(raw.replace(",", "")))
+    return None
+
+
+def _is_labeled_number(text: str, start: int) -> bool:
+    prefix = text[max(0, start - 16) : start].lower()
+    return bool(re.search(r"\b(fig(?:ure)?|table|page|p\.|eq(?:uation)?|section)\s*$", prefix))
 
 
 def _extract_direct_int_phrase(text: str) -> str | None:
