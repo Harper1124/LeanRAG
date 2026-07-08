@@ -1,0 +1,866 @@
+ python -m multimodal.graph.graph_expander \
+  --nodes exp/mm_leanrag_leanrag_pdf/LeanRAG/mm_nodes.jsonl \
+  --edges exp/mm_leanrag_leanrag_pdf/LeanRAG/mm_edges.jsonl \
+  --anchor_node_id LeanRAG::media::LeanRAG_image_000001 \
+  --doc_id LeanRAG
+{
+  "expanded_nodes": [
+    {
+      "node_id": "LeanRAG::page::4",
+      "node_type": "page",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.85,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "page": 4
+      },
+      "metadata": {
+        "text_chunk_count": 16,
+        "media_count": 1
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 1,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_3b71d51ca5e4e866",
+        "edge_weight": 1.0,
+        "expansion_paths": [
+          {
+            "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+            "hop": 2,
+            "edge_type": "page_contains_node",
+            "edge_id": "edge_8abe883a73c628d3",
+            "edge_weight": 1.0
+          },
+          {
+            "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+            "hop": 2,
+            "edge_type": "page_contains_node",
+            "edge_id": "edge_ee3d1f8c138234e6",
+            "edge_weight": 1.0
+          },
+          {
+            "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+            "hop": 2,
+            "edge_type": "page_contains_node",
+            "edge_id": "edge_25d1d39645eadadd",
+            "edge_weight": 1.0
+          }
+        ]
+      },
+      "text_for_embedding": "This clustering provides a principled grouping of finegrained entities, setting the stage for conceptual abstraction. Generation of Aggregated Entities and Relations. A key limitation of prior hierarchical methods is that they often only cluster entities, losing the rich relational information in the process. LeanRAG overcomes this by using LLMs to intelligently generate both new entities and new relations for the subsequent layer $\\mathcal { G } _ { i }$ Aggregated Entity Generation. For each cluster $C _ { j } ~ \\in$ $\\mathcal { C } _ { i - 1 }$ , we generate a single, more abstract aggregated entity $\\alpha _ { j }$ that represents the cluster’s collective semantics. This abstraction is achieved via a generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ , which synthesizes a new concept by considering both the entities within the cluster and the relations that exist among them. Let $R _ { C _ { i } }$ be the set of relations in $\\mathcal { G } _ { i - 1 }$ among entities within cluster $\\mathbf { \\bar { \\mathit { C } } } _ { j }$ $$\n( \\alpha _ { j } , d _ { \\alpha _ { j } } ) = \\mathcal { F } _ { \\mathrm { e n t i t y } } ( C _ { j } , R _ { C _ { j } } )\\tag{4}\n$$ The new entity set $V _ { i } = \\{ \\alpha _ { j } \\} _ { j = 1 } ^ { m }$ and their associated descriptions $D _ { V _ { i } } \\{ d _ { \\alpha _ { j } } \\} _ { j = 1 } ^ { m }$ are defined as the parent nodes of $\\{ C _ { 1 } , C _ { 2 } , \\ldots , C _ { m } \\}$ in the hierarchy, i.e., the nodes located at the immediate higher level in the hierarchical structure. In practice, the generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ is implemented by LLMs guided by a carefully designed prompt $\\mathcal { P } _ { \\mathrm { e n t i t y } }$ . We prompt LLMs to produce a concise name for the new entity $\\alpha _ { j }$ and a comprehensive description $d _ { \\alpha _ { i } }$ that summarizes its components. Each entity $v \\in C _ { j }$ is then linked to its new parent entity $\\alpha _ { j }$ , forming the parent-child connections in the hierarchy. Aggregated Relation Generation. To prevent the formation of “semantic islands” at higher layers, we explicitly create new relations between the aggregated entities in $V _ { i } .$ . This ensures that the graph remains connected and navigable at all levels of abstraction. For any pair of aggregated entities $( \\alpha _ { j } , \\alpha _ { k } )$ , we confirm the inter-cluster relations $R _ { < C _ { j } , C _ { k } > }$ that contains the relations between nodes that belong to the $C _ { j }$ and $C _ { k }$ , respectively. Then, we constitute the inter-cluster aggregated relation $r _ { < C _ { i } , C _ { k } > }$ by $R _ { < C _ { j } , C _ { k } > }$ . This paper defines the number of $R _ { < \\dot { C } _ { j } , C _ { k } > }$ as the connectivity strength, $\\lambda _ { j , k }$ . If $\\lambda _ { j , k }$ exceeds a dynamically defined threshold τ , we infer that a meaningful high-level relationship exists, which is summarized by the LLM-driven function $\\mathcal { F } _ { \\mathrm { r e l } }$ . Otherwise, the inter-cluster aggregated relation is simply regarded as the text concatenation of $R _ { < C _ { j } , C _ { k } > }$"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000045",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000045",
+        "hash_code": "ea60710c9059db8a8411d1d8a0cd0eb4"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 45,
+        "attached_media_ids": [
+          "LeanRAG_image_000001"
+        ]
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_8abe883a73c628d3",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "Generation of Aggregated Entities and Relations. A key limitation of prior hierarchical methods is that they often only cluster entities, losing the rich relational information in the process. LeanRAG overcomes this by using LLMs to intelligently generate both new entities and new relations for the subsequent layer $\\mathcal { G } _ { i }$"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000048",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000048",
+        "hash_code": "cec036b712fa42c89b8c905857271a84"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 48,
+        "attached_media_ids": [
+          "LeanRAG_image_000001"
+        ]
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_ee3d1f8c138234e6",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "The new entity set $V _ { i } = \\{ \\alpha _ { j } \\} _ { j = 1 } ^ { m }$ and their associated descriptions $D _ { V _ { i } } \\{ d _ { \\alpha _ { j } } \\} _ { j = 1 } ^ { m }$ are defined as the parent nodes of $\\{ C _ { 1 } , C _ { 2 } , \\ldots , C _ { m } \\}$ in the hierarchy, i.e., the nodes located at the immediate higher level in the hierarchical structure."
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000044",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000044",
+        "hash_code": "6451c46fca1cb45d51f1755ddf42f151"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 44,
+        "attached_media_ids": [
+          "LeanRAG_image_000001"
+        ]
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_25d1d39645eadadd",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "This clustering provides a principled grouping of finegrained entities, setting the stage for conceptual abstraction."
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000046",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000046",
+        "hash_code": "842a8c323ef406aaac7fbdd9c177e141"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 46,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_fb90d4f5ed217c29",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "Aggregated Entity Generation. For each cluster $C _ { j } ~ \\in$ $\\mathcal { C } _ { i - 1 }$ , we generate a single, more abstract aggregated entity $\\alpha _ { j }$ that represents the cluster’s collective semantics. This abstraction is achieved via a generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ , which synthesizes a new concept by considering both the entities within the cluster and the relations that exist among them. Let $R _ { C _ { i } }$ be the set of relations in $\\mathcal { G } _ { i - 1 }$ among entities within cluster $\\mathbf { \\bar { \\mathit { C } } } _ { j }$"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000047",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000047",
+        "hash_code": "8f5a53870303ffe19ce3d021ebd9a6be"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 47,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_846f8f4f2c9e8bfc",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "$$\n( \\alpha _ { j } , d _ { \\alpha _ { j } } ) = \\mathcal { F } _ { \\mathrm { e n t i t y } } ( C _ { j } , R _ { C _ { j } } )\\tag{4}\n$$"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000049",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000049",
+        "hash_code": "3d75b11f77f4de6c1c879ee315c21dc1"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 49,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_b34e0e9547a01f02",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "In practice, the generation function $\\mathcal { F } _ { \\mathrm { e n t i t y } }$ is implemented by LLMs guided by a carefully designed prompt $\\mathcal { P } _ { \\mathrm { e n t i t y } }$ . We prompt LLMs to produce a concise name for the new entity $\\alpha _ { j }$ and a comprehensive description $d _ { \\alpha _ { i } }$ that summarizes its components. Each entity $v \\in C _ { j }$ is then linked to its new parent entity $\\alpha _ { j }$ , forming the parent-child connections in the hierarchy."
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000050",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000050",
+        "hash_code": "4f1ad1e58e9919c50fc252d79db05ef0"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 50,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_ae344fa2dc915929",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "Aggregated Relation Generation. To prevent the formation of “semantic islands” at higher layers, we explicitly create new relations between the aggregated entities in $V _ { i } .$ . This ensures that the graph remains connected and navigable at all levels of abstraction. For any pair of aggregated entities $( \\alpha _ { j } , \\alpha _ { k } )$ , we confirm the inter-cluster relations $R _ { < C _ { j } , C _ { k } > }$ that contains the relations between nodes that belong to the"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000051",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000051",
+        "hash_code": "7e600822ca0cdefdd88dd16d0ac06dca"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 51,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_35e1159e3850c149",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "$C _ { j }$ and $C _ { k }$ , respectively. Then, we constitute the inter-cluster aggregated relation $r _ { < C _ { i } , C _ { k } > }$ by $R _ { < C _ { j } , C _ { k } > }$ . This paper defines the number of $R _ { < \\dot { C } _ { j } , C _ { k } > }$ as the connectivity strength, $\\lambda _ { j , k }$ . If $\\lambda _ { j , k }$ exceeds a dynamically defined threshold τ , we infer that a meaningful high-level relationship exists, which is summarized by the LLM-driven function $\\mathcal { F } _ { \\mathrm { r e l } }$ . Otherwise, the inter-cluster aggregated relation is simply regarded as the text concatenation of $R _ { < C _ { j } , C _ { k } > }$"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000052",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000052",
+        "hash_code": "0aa2c5a8c25c9e79c40bb805ac9e7058"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 52,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_09e9ee05c5c81de1",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "$$\nr _ { < \\alpha _ { j } , \\alpha _ { k } > } = \\left\\{ \\begin{array} { l l } { \\mathcal { F } _ { ( \\mathrm { r e l } ) } ( \\alpha _ { j } , \\alpha _ { k } , R _ { < C _ { j } , C _ { k } > } ) , } & { \\mathrm { i f ~ } \\lambda _ { j , k } > \\tau } \\\\ { C o n c a t e ( R _ { < C _ { j } , C _ { k } > } ) , } & { \\mathrm { o t h e r w i s e } } \\end{array} \\right.\\tag{5}\n$$"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000053",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000053",
+        "hash_code": "b07ce427732e5c022ac033dca922ab94"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 53,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_f3623cfb327942d5",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "In practice, the generation function $\\mathcal { F } _ { \\mathrm { r e l } }$ is implemented by LLMs guided by a specific prompt $\\mathcal { P } _ { \\mathrm { r e l } }$"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000054",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000054",
+        "hash_code": "261d7a563bd95d278ef82a77cec582c6"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 54,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_24ca346daeedc665",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "The threshold τ is a data-dependent hyper-parameter that may vary with the layer index to reflect the knowledge graph’s density at different abstraction levels, ensuring only salient, well-supported relations are propagated."
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000055",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000055",
+        "hash_code": "fc4f83ec93af13494f43e092d455ec52"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 55,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_a744d88cbccdbdf5",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "By recursively applying this process of clustering and generation, we construct a rich, multi-layered KG where each layer provides a progressively more abstract, yet semantically coherent, view of the original information."
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000056",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000056",
+        "hash_code": "728c11a12e9bfb4772bb6a47ad6ab7aa"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 56,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_ad290b26590d2d4f",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "Structured Retrieval via Lowest Common Ancestor"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000057",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000057",
+        "hash_code": "6a66d7e175257884d9dff2858c25f6aa"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 57,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_dcba4d72c2b74077",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "The hierarchical knowledge graph H enables a retrieval strategy that is fundamentally more structured and efficient than searching over a flat graph. Our approach moves beyond simple similarity-based retrieval by leveraging the graph’s topology to construct a compact and contextually coherent subgraph. This process consists of two main phases: initial entity anchoring at the base layer, followed by a structured traversal of the hierarchy to gather context."
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000058",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000058",
+        "hash_code": "358bb64bd41ed90c4a14879befa2ed66"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 58,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_5a3c9d8a70428ef2",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "Initial Entity Anchoring. Given a user query $q ,$ the first step is to ground the query in the most specific, fine-grained facts available. We achieve this by performing a dense retrieval search exclusively over the entities of the original graph, including the initial entities, that ${ \\mathrm { i s } } ,$ the base-layer graph $\\mathcal { G } _ { 0 }$ . We identify the top n entities whose textual descriptions are most semantically similar to the query:"
+    },
+    {
+      "node_id": "LeanRAG::text::LeanRAG_chunk_000059",
+      "node_type": "text",
+      "doc_id": "LeanRAG",
+      "page_id": 4,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "chunk_id": "LeanRAG_chunk_000059",
+        "hash_code": "f81746ec33ece52cb5c3637f2903a0c9"
+      },
+      "metadata": {
+        "page_start": 4,
+        "page_end": 4,
+        "section_title": null,
+        "source_path": "datasets/test/pdfs/LeanRAG.pdf",
+        "order": 59,
+        "attached_media_ids": []
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_contains_node",
+        "edge_id": "edge_5c85b86988fd9e9b",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "$$\nV _ { \\mathrm { s e e d } } = \\mathrm { T o p } { \\cdot } \\mathsf { n } _ { v \\in V _ { 0 } } ( \\sin ( q , d _ { v } ) )\\tag{6}\n$$"
+    },
+    {
+      "node_id": "LeanRAG::page::5",
+      "node_type": "page",
+      "doc_id": "LeanRAG",
+      "page_id": 5,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "page": 5
+      },
+      "metadata": {
+        "text_chunk_count": 30,
+        "media_count": 0
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_next_page",
+        "edge_id": "edge_1b2e65003b159441",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "This set of “seed entities”, $V _ { \\mathrm { s e e d } }$ , serves as the starting point for structured traversal, ensuring our retrieval process is anchored in the most relevant parts of the knowledge base. Contextualization via LCA Path Traversal. Graph retrieval methods in the prior KG-based RAG would typically find all paths between entities in $V _ { \\mathrm { s e e d } }$ on the flat graph $\\mathcal { G } _ { 0 }$ This approach often retrieves a large number of intermediate nodes that add noise and redundancy. In contrast, LeanRAG utilizes the entire hierarchy H to define a much more focused and meaningful context. Our core idea is to construct a minimal subgraph that connects the seed entities through their most immediate shared concepts in the hierarchy. We achieve this using the principle of the LCA. For two seed entities in $V _ { \\mathrm { s e e d } }$ , their lowest common ancestor $\\left( \\mathrm { L C A } \\right) v _ { \\mathrm { l c a } }$ is defined as the common ancestor with the minimum depth in the hierarchy H among all their ancestors. This ensures that the combined path length from the two seed entities to $v _ { \\mathrm { l c a } }$ is minimized to avoid information redundancy. The retrieval path $\\mathcal { P } _ { \\mathrm { l c a } }$ is then defined as the union of all shortest paths in the hierarchy from each seed entity $v \\in$ $V _ { \\mathrm { s e e d } }$ to the common ancestor $v _ { \\mathrm { l c a } } \\mathrm { . }$ $$\n\\mathcal { P } _ { \\mathrm { l c a } } ( V _ { \\mathrm { s e e d } } , \\mathcal { H } ) = \\bigcup _ { v \\in V _ { \\mathrm { s e e d } } } \\mathrm { S h o r t e s t P a t h } _ { \\mathcal { H } } ( v , v _ { \\mathrm { l c a } } )\\tag{7}\n$$ where ShortestPath $ _ { \\cdot \\mathcal { H } } ( \\cdot , \\cdot )$ denotes the shortest path between two nodes within the hierarchical graph H. Since our hierarchy is tree-like, this path consists of the direct chain of from child nodes to parent nodes. Finally, the retrieved subgraph for RAG context $\\mathcal { G } _ { \\mathrm { r e t } }$ is composed of all entities and relations that lie on these LCA paths: $$\n\\mathcal { G } _ { \\mathrm { r e t } } = ( V _ { \\mathrm { r e t } } , R _ { \\mathrm { r e t } } )\\tag{8}\n$$ $$\nV _ { \\mathrm { r e t } } = \\{ v \\mid v \\in \\mathcal { P } _ { \\mathrm { l c a } } \\}\\tag{9}\n$$ $$\nR _ { \\mathrm { { r e t } } } = R _ { \\mathrm { { l c a } } } \\cup R _ { \\mathrm { { i n t e r - c l u s t e r } } }\\tag{10}\n$$"
+    },
+    {
+      "node_id": "LeanRAG::page::3",
+      "node_type": "page",
+      "doc_id": "LeanRAG",
+      "page_id": 3,
+      "score": 0.7,
+      "retrievers": [
+        "graph_expansion"
+      ],
+      "source": "graph_expansion",
+      "raw_ref": {
+        "page": 3
+      },
+      "metadata": {
+        "text_chunk_count": 20,
+        "media_count": 0
+      },
+      "debug": {
+        "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+        "hop": 2,
+        "edge_type": "page_next_page",
+        "edge_id": "edge_02a70142da462a70",
+        "edge_weight": 1.0
+      },
+      "text_for_embedding": "Knowledge Graph Based Retrieval-Augmented Generation To better capture the relational nature of information, KGbased RAG has emerged as a prominent research direction. By representing knowledge as a graph of entities and relations, these methods aim to provide a more structured and semantically rich context for the LLM (Peng et al. 2024). Early approaches in this domain focused on leveraging graph structures for improved retrieval. For instance, GraphRAG (Edge et al. 2024) organizes documents into community-based KGs to preserve local context, while other methods like FastGraphRAG utilize graph-centrality metrics such as PageRank (Page et al. 1999) to prioritize more important nodes during retrieval. This subgraph retrieval approach has also proven effective in industrial applications like customer service, where KGs are constructed from historical support tickets to provide structured context (Xu et al. 2024). These methods marked a significant step forward by imposing a macro-structure onto the knowledge base, moving beyond disconnected text chunks. Recognizing the need for more fine-grained control and abstraction, subsequent works have explored more sophisticated hierarchical structures. HiRAG, the current stateof-the-art, clusters entities to form multi-level summaries (Huang et al. 2025a), while LightRAG (Guo et al. 2024) proposes a dual-level framework to balance global and local information retrieval. While these hierarchical methods have progressively improved retrieval quality, a critical gap persists in how the constructed graph structures are leveraged at query time. The retrieval process is often decoupled from the indexing structure; for instance, an initial search may be performed over a “flattened” list of all nodes, rather than being directly guided by the indexed community or hierarchical relations. This decoupling means the rich structural information is primarily used for post-retrieval context expansion, rather than for guiding the initial, crucial step of identifying relevant information. This can limit performance on complex queries r than for guiding the initial, crucial step of identifying relevant information. This can limit performance on complex queries where the relations between entities are paramount, highlighting the need for a new paradigm where the retrieval process is natively co-designed with the knowledge structure. Preliminary In this section, we will introduce and give a formal definition of a RAG system with a specific knowledge graph. Given a rich knowledge graph with the description of vertexes and relations $\\mathcal { G } \\ = \\ \\mathsf { \\bar { ( } } V , R , D _ { ( v e r ) } , D _ { ( r e l ) } \\mathsf { \\bar { ) } }$ , where V and R denote the set of entities and relations, $D _ { ( v e r ) }$ represents the collection of entity descriptions and $D _ { ( r e l ) }$ represents the collection of relationship descriptions. The goal of KG-based RAG is to leverage existing information to build a query-relevant sub-graph that helps LLMs generate highquality responses. Given a query $q ,$ the searching process can be formulated as: $$\n\\tilde { V } = \\mathrm { T o p } { \\cdot } \\mathrm { n } _ { v \\in V } ( \\mathrm { S i m } ( q , d _ { v } ) )\\tag{1}\n$$"
+    }
+  ],
+  "expanded_edges": [
+    {
+      "edge_id": "edge_018786cf328a410c",
+      "src": "LeanRAG::media::LeanRAG_image_000001",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000045",
+      "edge_type": "media_near_text",
+      "weight": 0.563837,
+      "hop": 1,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_789fd8b8b4c0caa4",
+      "src": "LeanRAG::media::LeanRAG_image_000001",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000048",
+      "edge_type": "media_near_text",
+      "weight": 0.560349,
+      "hop": 1,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_07a42083a30bea65",
+      "src": "LeanRAG::media::LeanRAG_image_000001",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000044",
+      "edge_type": "media_near_text",
+      "weight": 0.56,
+      "hop": 1,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_3b71d51ca5e4e866",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::media::LeanRAG_image_000001",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 1,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_84f92fa7b342967a",
+      "src": "LeanRAG::text::LeanRAG_chunk_000045",
+      "dst": "LeanRAG::media::LeanRAG_image_000001",
+      "edge_type": "media_near_text",
+      "weight": 0.563837,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_8abe883a73c628d3",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000045",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_54f3f1269ef6b81b",
+      "src": "LeanRAG::text::LeanRAG_chunk_000048",
+      "dst": "LeanRAG::media::LeanRAG_image_000001",
+      "edge_type": "media_near_text",
+      "weight": 0.560349,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_ee3d1f8c138234e6",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000048",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_984948fc036fd158",
+      "src": "LeanRAG::text::LeanRAG_chunk_000044",
+      "dst": "LeanRAG::media::LeanRAG_image_000001",
+      "edge_type": "media_near_text",
+      "weight": 0.56,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_25d1d39645eadadd",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000044",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_fb90d4f5ed217c29",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000046",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_846f8f4f2c9e8bfc",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000047",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_b34e0e9547a01f02",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000049",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_ae344fa2dc915929",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000050",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_35e1159e3850c149",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000051",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_09e9ee05c5c81de1",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000052",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_f3623cfb327942d5",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000053",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_24ca346daeedc665",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000054",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_a744d88cbccdbdf5",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000055",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_ad290b26590d2d4f",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000056",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_dcba4d72c2b74077",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000057",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_5a3c9d8a70428ef2",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000058",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_5c85b86988fd9e9b",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::text::LeanRAG_chunk_000059",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_3b71d51ca5e4e866",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::media::LeanRAG_image_000001",
+      "edge_type": "page_contains_node",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_1b2e65003b159441",
+      "src": "LeanRAG::page::4",
+      "dst": "LeanRAG::page::5",
+      "edge_type": "page_next_page",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    },
+    {
+      "edge_id": "edge_02a70142da462a70",
+      "src": "LeanRAG::page::3",
+      "dst": "LeanRAG::page::4",
+      "edge_type": "page_next_page",
+      "weight": 1.0,
+      "hop": 2,
+      "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
+    }
+  ],
+  "warnings": [
+    "skip edge edge_057bae0bb37b6afd: missing node LeanRAG::document",
+    "skip edge edge_57e447ae2db2b9ed: missing node LeanRAG::document",
+    "skip edge edge_c7e1ef3de62fde2b: missing node LeanRAG::document",
+    "skip edge edge_2b47fbde9461725e: missing node LeanRAG::document",
+    "skip edge edge_277fb36e31b7454d: missing node LeanRAG::document",
+    "skip edge edge_271ec0de5e599e6f: missing node LeanRAG::document",
+    "skip edge edge_ab01d4e5dff94468: missing node LeanRAG::document",
+    "skip edge edge_fa912e3af71b417d: missing node LeanRAG::document",
+    "skip edge edge_2f55e62b9985fd32: missing node LeanRAG::document",
+    "skip edge edge_4d9823b4e3b573f6: missing node LeanRAG::document",
+    "skip edge edge_d8a0573171bdf26c: missing node LeanRAG::document",
+    "skip edge edge_62a1d2a9dda27c5d: missing node LeanRAG::document",
+    "skip edge edge_84540f0f950c8001: missing node LeanRAG::document",
+    "skip edge edge_8c97c94f299967a8: missing node LeanRAG::document",
+    "skip edge edge_fea80dd9ee0ab859: missing node LeanRAG::document",
+    "skip edge edge_6f92a7b0e47bd229: missing node LeanRAG::document"
+  ]
+}
