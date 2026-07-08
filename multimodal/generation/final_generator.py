@@ -17,6 +17,9 @@ Entity Evidence:
 Page Evidence:
 {page_evidence}
 
+Aggregation Context:
+{aggregation_context}
+
 Visual Evidence:
 {visual_evidence}
 
@@ -334,6 +337,7 @@ def _build_prompt(
         text_evidence=_dump_nodes(evidence_package.get("text_evidence", []), include_raw=False),
         entity_evidence=_dump_nodes(evidence_package.get("entity_evidence", []), include_raw=False),
         page_evidence=_dump_nodes(evidence_package.get("page_evidence", []), include_raw=False),
+        aggregation_context=str(evidence_package.get("aggregation_context") or ""),
         visual_evidence=_visual_text(evidence_package.get("visual_evidence", []), vlm_calls),
         table_evidence=_table_text(evidence_package.get("table_evidence", []), table_reasoner_calls),
     )
