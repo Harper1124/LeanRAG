@@ -250,6 +250,7 @@ def main() -> None:
     parser.add_argument("--edges", required=True)
     parser.add_argument("--anchor_node_id", required=True)
     parser.add_argument("--doc_id", default=None)
+    parser.add_argument("--output_file", default=None, help="Optional JSONL output path for expanded nodes/edges.")
     args = parser.parse_args()
     nodes_path = Path(args.nodes)
     graph = load_mm_graph(nodes_path.parent, node_file=nodes_path.name, edge_file=str(Path(args.edges)))
@@ -259,7 +260,28 @@ def main() -> None:
     anchor = dict(anchor_node)
     anchor.update({"score": 1.0, "retrievers": ["manual_anchor"], "source": "direct_recall"})
     expanded, edges = expand_graph([anchor], graph, {}, {"graph_expansion": {"enabled": True}}, doc_id=args.doc_id)
-    print(json.dumps({"expanded_nodes": expanded, "expanded_edges": edges, "warnings": graph.warnings}, ensure_ascii=False, indent=2))
+    payload = {"expanded_nodes": expanded, "expanded_edges": edges, "warnings": graph.warnings}
+    if args.output_file:
+        _write_expansion_jsonl(Path(args.output_file), expanded, edges, graph.warnings)
+        print(json.dumps({"output_file": args.output_file, "num_expanded_nodes": len(expanded), "num_expanded_edges": len(edges)}, ensure_ascii=False, indent=2))
+    else:
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def _write_expansion_jsonl(
+    output_file: Path,
+    expanded_nodes: list[dict[str, Any]],
+    expanded_edges: list[dict[str, Any]],
+    warnings: list[str],
+) -> None:
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with output_file.open("w", encoding="utf-8") as f:
+        for node in expanded_nodes:
+            f.write(json.dumps({"record_type": "expanded_node", **node}, ensure_ascii=False) + "\n")
+        for edge in expanded_edges:
+            f.write(json.dumps({"record_type": "expanded_edge", **edge}, ensure_ascii=False) + "\n")
+        for warning in warnings:
+            f.write(json.dumps({"record_type": "warning", "message": warning}, ensure_ascii=False) + "\n")
 
 
 if __name__ == "__main__":
