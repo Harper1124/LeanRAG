@@ -38,6 +38,7 @@ def run_docbench_eval(
             # 这些是评测时的查询侧默认值，不会触发重新 build 图。
             "working_dir": str(working_dir),
             "chunks_file": str(working_dir / "leanrag_chunk.json"),
+            "answer_format": (sample.get("metadata") or {}).get("answer_format"),
             "topk": 10,
             "level_mode": 2,
             "text_topk": 5,
