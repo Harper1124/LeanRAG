@@ -66,6 +66,24 @@ multimodal:
     multi_hit_bonus: 0.10
     page_hint_bonus: 0.20
     modality_bonus: 0.15
+    hop_decay:
+      hop_1: 0.85
+      hop_2: 0.70
+
+  graph_expansion:
+    enabled: true
+    edge_file: "mm_edges.jsonl"
+    edge_seed_file: "mm_edges_seed.jsonl"
+    max_graph_hops: 2
+    max_neighbors_per_edge_type:
+      text_caption_of_media: 3
+      text_refers_to_media: 5
+      entity_link_media: 8
+      media_near_text: 5
+      page_contains_node: 20
+      media_same_page_media: 5
+      page_next_page: 2
+      page_prev_page: 2
 
   evidence_budget:
     max_text_nodes: 6

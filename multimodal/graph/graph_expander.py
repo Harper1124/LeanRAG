@@ -1,0 +1,218 @@
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
+
+from multimodal.graph.mm_graph_loader import MMGraph, load_mm_graph
+
+
+ALLOWED_EDGE_TYPES = {
+    "text_caption_of_media",
+    "text_refers_to_media",
+    "entity_link_media",
+    "media_near_text",
+    "media_same_page_media",
+    "page_contains_node",
+    "page_next_page",
+    "page_prev_page",
+}
+EDGE_PRIORITY = [
+    "text_caption_of_media",
+    "text_refers_to_media",
+    "entity_link_media",
+    "media_near_text",
+    "page_contains_node",
+    "media_same_page_media",
+    "page_next_page",
+    "page_prev_page",
+]
+DEFAULT_GRAPH_EXPANSION = {
+    "enabled": True,
+    "max_graph_hops": 2,
+    "max_neighbors_per_edge_type": {
+        "text_caption_of_media": 3,
+        "text_refers_to_media": 5,
+        "entity_link_media": 8,
+        "media_near_text": 5,
+        "page_contains_node": 20,
+        "media_same_page_media": 5,
+        "page_next_page": 2,
+        "page_prev_page": 2,
+    },
+}
+DEFAULT_HOP_DECAY = {"hop_1": 0.85, "hop_2": 0.70}
+
+
+def expand_graph(
+    anchors: list[dict[str, Any]],
+    graph: MMGraph,
+    query_info: dict[str, Any] | None,
+    config: dict[str, Any] | None,
+    doc_id: str | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    del query_info
+    graph_config = _graph_expansion_config(config)
+    if not graph_config.get("enabled", True):
+        return [], []
+
+    max_hops = max(0, int(graph_config.get("max_graph_hops", 2)))
+    limits = graph_config.get("max_neighbors_per_edge_type") or {}
+    hop_decay = _hop_decay(config)
+    anchor_ids = {item.get("node_id") for item in anchors if item.get("node_id")}
+    frontier = [(item, item, 0) for item in anchors if item.get("node_id")]
+    expanded_by_id: dict[str, dict[str, Any]] = {}
+    expanded_edges: list[dict[str, Any]] = []
+    seen_paths: set[tuple[str, str, str, int]] = set()
+    seen_expanded_edges: set[tuple[str, str, int]] = set()
+
+    for hop in range(1, max_hops + 1):
+        next_frontier: list[tuple[dict[str, Any], dict[str, Any], int]] = []
+        for current, anchor, _ in frontier:
+            current_id = current.get("node_id")
+            if not current_id:
+                continue
+            grouped = _group_neighbor_edges(graph, current_id)
+            for edge_type in EDGE_PRIORITY:
+                edge_pairs = grouped.get(edge_type, [])
+                if not edge_pairs:
+                    continue
+                limit = int(limits.get(edge_type, 0))
+                if limit <= 0:
+                    continue
+                edge_pairs.sort(key=lambda pair: float(pair[0].get("weight", 1.0) or 1.0), reverse=True)
+                for edge, neighbor_id in edge_pairs[:limit]:
+                    neighbor = graph.get_node(neighbor_id)
+                    if not neighbor:
+                        continue
+                    if doc_id is not None and neighbor.get("doc_id") != doc_id:
+                        continue
+                    path_key = (anchor.get("node_id"), current_id, neighbor_id, hop)
+                    if path_key in seen_paths:
+                        continue
+                    seen_paths.add(path_key)
+                    edge_weight = float(edge.get("weight", 1.0) or 1.0)
+                    score = float(anchor.get("score") or current.get("score") or 0.0)
+                    score *= float(hop_decay.get(f"hop_{hop}", hop_decay.get("hop_2", 0.70)))
+                    score *= edge_weight
+                    expanded_edge = {
+                        "edge_id": edge.get("edge_id"),
+                        "src": edge.get("src"),
+                        "dst": edge.get("dst"),
+                        "edge_type": edge_type,
+                        "weight": edge_weight,
+                        "hop": hop,
+                        "from_anchor": anchor.get("node_id"),
+                    }
+                    expanded_edge_key = (anchor.get("node_id"), edge.get("edge_id"), hop)
+                    if expanded_edge_key not in seen_expanded_edges:
+                        seen_expanded_edges.add(expanded_edge_key)
+                        expanded_edges.append(expanded_edge)
+                    if neighbor_id not in anchor_ids:
+                        candidate = _candidate_from_node(neighbor, score, anchor, hop, edge, edge_type)
+                        previous = expanded_by_id.get(neighbor_id)
+                        if previous is None or candidate["score"] > previous["score"]:
+                            expanded_by_id[neighbor_id] = candidate
+                        else:
+                            previous.setdefault("debug", {}).setdefault("expansion_paths", []).append(candidate["debug"])
+                        next_frontier.append((candidate, anchor, hop))
+        frontier = next_frontier
+
+    return sorted(expanded_by_id.values(), key=lambda item: item["score"], reverse=True), expanded_edges
+
+
+def _candidate_from_node(
+    node: dict[str, Any],
+    score: float,
+    anchor: dict[str, Any],
+    hop: int,
+    edge: dict[str, Any],
+    edge_type: str,
+) -> dict[str, Any]:
+    debug = {
+        "from_anchor": anchor.get("node_id"),
+        "hop": hop,
+        "edge_type": edge_type,
+        "edge_id": edge.get("edge_id"),
+        "edge_weight": float(edge.get("weight", 1.0) or 1.0),
+    }
+    candidate = {
+        "node_id": node.get("node_id"),
+        "node_type": node.get("node_type"),
+        "doc_id": node.get("doc_id"),
+        "page_id": node.get("page_id"),
+        "score": float(score),
+        "retrievers": ["graph_expansion"],
+        "source": "graph_expansion",
+        "raw_ref": node.get("raw_ref") or {},
+        "metadata": node.get("metadata") or {},
+        "debug": debug,
+    }
+    for field in ("text_for_embedding", "caption", "ocr_text", "summary"):
+        if node.get(field):
+            candidate[field] = node.get(field)
+    return candidate
+
+
+def _group_neighbor_edges(graph: MMGraph, node_id: str) -> dict[str, list[tuple[dict[str, Any], str]]]:
+    grouped: dict[str, list[tuple[dict[str, Any], str]]] = defaultdict(list)
+    for edge, neighbor_id in graph.get_neighbor_edges(node_id, edge_types=ALLOWED_EDGE_TYPES, direction="both"):
+        edge_type = edge.get("edge_type")
+        if edge_type == "node_semantic_similar_node":
+            continue
+        grouped[edge_type].append((edge, neighbor_id))
+    return grouped
+
+
+def _graph_expansion_config(config: dict[str, Any] | None) -> dict[str, Any]:
+    section = dict(DEFAULT_GRAPH_EXPANSION)
+    section["max_neighbors_per_edge_type"] = dict(DEFAULT_GRAPH_EXPANSION["max_neighbors_per_edge_type"])
+    value = _multimodal_section(config).get("graph_expansion", {}) if isinstance(_multimodal_section(config), dict) else {}
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key == "max_neighbors_per_edge_type" and isinstance(item, dict):
+                section[key].update(item)
+            else:
+                section[key] = item
+    return section
+
+
+def _hop_decay(config: dict[str, Any] | None) -> dict[str, float]:
+    value = dict(DEFAULT_HOP_DECAY)
+    fusion = _multimodal_section(config).get("fusion", {}) if isinstance(_multimodal_section(config), dict) else {}
+    if isinstance(fusion, dict) and isinstance(fusion.get("hop_decay"), dict):
+        value.update(fusion["hop_decay"])
+    return {key: float(item) for key, item in value.items()}
+
+
+def _multimodal_section(config: dict[str, Any] | None) -> dict[str, Any]:
+    if not isinstance(config, dict):
+        return {}
+    return config.get("multimodal") if isinstance(config.get("multimodal"), dict) else config
+
+
+def main() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    parser = argparse.ArgumentParser(description="Run Phase 4 typed graph expansion for one anchor node.")
+    parser.add_argument("--nodes", required=True)
+    parser.add_argument("--edges", required=True)
+    parser.add_argument("--anchor_node_id", required=True)
+    parser.add_argument("--doc_id", default=None)
+    args = parser.parse_args()
+    nodes_path = Path(args.nodes)
+    graph = load_mm_graph(nodes_path.parent, node_file=nodes_path.name, edge_file=str(Path(args.edges)))
+    anchor_node = graph.get_node(args.anchor_node_id)
+    if not anchor_node:
+        raise SystemExit(f"anchor not found: {args.anchor_node_id}")
+    anchor = dict(anchor_node)
+    anchor.update({"score": 1.0, "retrievers": ["manual_anchor"], "source": "direct_recall"})
+    expanded, edges = expand_graph([anchor], graph, {}, {"graph_expansion": {"enabled": True}}, doc_id=args.doc_id)
+    print(json.dumps({"expanded_nodes": expanded, "expanded_edges": edges, "warnings": graph.warnings}, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()
