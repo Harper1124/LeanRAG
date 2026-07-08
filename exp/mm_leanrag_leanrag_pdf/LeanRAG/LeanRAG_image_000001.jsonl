@@ -1,8 +1,3 @@
- python -m multimodal.graph.graph_expander \
-  --nodes exp/mm_leanrag_leanrag_pdf/LeanRAG/mm_nodes.jsonl \
-  --edges exp/mm_leanrag_leanrag_pdf/LeanRAG/mm_edges.jsonl \
-  --anchor_node_id LeanRAG::media::LeanRAG_image_000001 \
-  --doc_id LeanRAG
 {
   "expanded_nodes": [
     {
@@ -80,10 +75,19 @@
       },
       "debug": {
         "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
-        "hop": 2,
-        "edge_type": "page_contains_node",
-        "edge_id": "edge_8abe883a73c628d3",
-        "edge_weight": 1.0
+        "hop": 1,
+        "edge_type": "media_near_text",
+        "edge_id": "edge_018786cf328a410c",
+        "edge_weight": 0.563837,
+        "expansion_paths": [
+          {
+            "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+            "hop": 2,
+            "edge_type": "page_contains_node",
+            "edge_id": "edge_8abe883a73c628d3",
+            "edge_weight": 1.0
+          }
+        ]
       },
       "text_for_embedding": "Generation of Aggregated Entities and Relations. A key limitation of prior hierarchical methods is that they often only cluster entities, losing the rich relational information in the process. LeanRAG overcomes this by using LLMs to intelligently generate both new entities and new relations for the subsequent layer $\\mathcal { G } _ { i }$"
     },
@@ -113,10 +117,19 @@
       },
       "debug": {
         "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
-        "hop": 2,
-        "edge_type": "page_contains_node",
-        "edge_id": "edge_ee3d1f8c138234e6",
-        "edge_weight": 1.0
+        "hop": 1,
+        "edge_type": "media_near_text",
+        "edge_id": "edge_789fd8b8b4c0caa4",
+        "edge_weight": 0.560349,
+        "expansion_paths": [
+          {
+            "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+            "hop": 2,
+            "edge_type": "page_contains_node",
+            "edge_id": "edge_ee3d1f8c138234e6",
+            "edge_weight": 1.0
+          }
+        ]
       },
       "text_for_embedding": "The new entity set $V _ { i } = \\{ \\alpha _ { j } \\} _ { j = 1 } ^ { m }$ and their associated descriptions $D _ { V _ { i } } \\{ d _ { \\alpha _ { j } } \\} _ { j = 1 } ^ { m }$ are defined as the parent nodes of $\\{ C _ { 1 } , C _ { 2 } , \\ldots , C _ { m } \\}$ in the hierarchy, i.e., the nodes located at the immediate higher level in the hierarchical structure."
     },
@@ -146,10 +159,19 @@
       },
       "debug": {
         "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
-        "hop": 2,
-        "edge_type": "page_contains_node",
-        "edge_id": "edge_25d1d39645eadadd",
-        "edge_weight": 1.0
+        "hop": 1,
+        "edge_type": "media_near_text",
+        "edge_id": "edge_07a42083a30bea65",
+        "edge_weight": 0.56,
+        "expansion_paths": [
+          {
+            "from_anchor": "LeanRAG::media::LeanRAG_image_000001",
+            "hop": 2,
+            "edge_type": "page_contains_node",
+            "edge_id": "edge_25d1d39645eadadd",
+            "edge_weight": 1.0
+          }
+        ]
       },
       "text_for_embedding": "This clustering provides a principled grouping of finegrained entities, setting the stage for conceptual abstraction."
     },
@@ -845,22 +867,5 @@
       "from_anchor": "LeanRAG::media::LeanRAG_image_000001"
     }
   ],
-  "warnings": [
-    "skip edge edge_057bae0bb37b6afd: missing node LeanRAG::document",
-    "skip edge edge_57e447ae2db2b9ed: missing node LeanRAG::document",
-    "skip edge edge_c7e1ef3de62fde2b: missing node LeanRAG::document",
-    "skip edge edge_2b47fbde9461725e: missing node LeanRAG::document",
-    "skip edge edge_277fb36e31b7454d: missing node LeanRAG::document",
-    "skip edge edge_271ec0de5e599e6f: missing node LeanRAG::document",
-    "skip edge edge_ab01d4e5dff94468: missing node LeanRAG::document",
-    "skip edge edge_fa912e3af71b417d: missing node LeanRAG::document",
-    "skip edge edge_2f55e62b9985fd32: missing node LeanRAG::document",
-    "skip edge edge_4d9823b4e3b573f6: missing node LeanRAG::document",
-    "skip edge edge_d8a0573171bdf26c: missing node LeanRAG::document",
-    "skip edge edge_62a1d2a9dda27c5d: missing node LeanRAG::document",
-    "skip edge edge_84540f0f950c8001: missing node LeanRAG::document",
-    "skip edge edge_8c97c94f299967a8: missing node LeanRAG::document",
-    "skip edge edge_fea80dd9ee0ab859: missing node LeanRAG::document",
-    "skip edge edge_6f92a7b0e47bd229: missing node LeanRAG::document"
-  ]
+  "warnings": []
 }
