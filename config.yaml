@@ -85,6 +85,24 @@ multimodal:
       page_next_page: 2
       page_prev_page: 2
 
+  context_aggregation:
+    enabled: true
+    mode: "media_projection_lca"
+    max_media_projection_entities: 8
+    max_text_projection_entities: 8
+    max_lca_input_entities: 16
+    max_page_context_nodes: 8
+    max_aggregation_context_chars: 12000
+    allow_single_letter_entities_for_projection: false
+    filter_stopword_entities: true
+    page_context:
+      use_neighbor_pages: false
+      allow_hop2_pages_as_background: true
+      max_neighbor_page_context_nodes: 2
+    lca:
+      method: "query_graph_describe_reuse"
+      fallback_to_page_context: true
+
   evidence_budget:
     max_text_nodes: 6
     max_entity_nodes: 12

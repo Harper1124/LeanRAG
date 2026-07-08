@@ -77,7 +77,6 @@ def query_mm_graph(
     Text retrieval is delegated to existing LeanRAG graph search when available.
     Returned text chunk ids are used to backfill attached images/tables.
     """
-    del db
     working_dir = global_config["working_dir"]
     chunks, media_items = _load_mm_artifacts(working_dir)
     mm_retrieval_trace = _run_phase2_direct_recall(global_config, query, doc_id) if _use_mm_hybrid(global_config) else _empty_direct_trace()
@@ -96,7 +95,7 @@ def query_mm_graph(
     table_evidence = _merge_evidence(direct_tables, table_evidence, "media_id")[: _media_limit(global_config, query, "table")]
     context = _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence, global_config)
 
-    phase3_answer, phase3_trace = _run_phase3_answer_pipeline(global_config, query, mm_retrieval_trace)
+    phase3_answer, phase3_trace = _run_phase3_answer_pipeline(global_config, db, query, mm_retrieval_trace)
     if phase3_answer is not None:
         answer = phase3_answer
     elif visual_evidence and global_config.get("answer_with_vlm_when_media", True):
@@ -244,7 +243,7 @@ def _retrieved_nodes_by_type(merged_candidates: list[dict[str, Any]], global_con
     return {key: value[: limits[key]] for key, value in retrieved.items()}
 
 
-def _run_phase3_answer_pipeline(global_config: dict, query: str, retrieval_trace: dict) -> tuple[str | None, dict]:
+def _run_phase3_answer_pipeline(global_config: dict, db, query: str, retrieval_trace: dict) -> tuple[str | None, dict]:
     if not _use_mm_hybrid(global_config):
         return None, {}
     merged_candidates = retrieval_trace.get("merged_candidates") or []
@@ -256,9 +255,45 @@ def _run_phase3_answer_pipeline(global_config: dict, query: str, retrieval_trace
         from .generation.final_generator import generate_final_answer
         from .generation.table_reasoner import run_table_reasoner
         from .generation.vlm_reasoner import run_vlm_reasoner
+        from .graph.context_aggregation import merge_aggregation_context, multimodal_context_aggregation
+        from .graph.mm_graph_loader import load_mm_graph
 
         query_info = retrieval_trace.get("query_info") or {}
         evidence_package = build_evidence_package(merged_candidates, query_info, global_config)
+        context_agg = {"enabled": False}
+        if _context_aggregation_enabled(global_config):
+            try:
+                graph_config = global_config.get("graph_expansion") or {}
+                graph = load_mm_graph(
+                    global_config["working_dir"],
+                    node_file=global_config.get("nodes_file") or global_config.get("node_file") or "mm_nodes.jsonl",
+                    edge_file=graph_config.get("edge_file", "mm_edges.jsonl"),
+                    edge_seed_file=graph_config.get("edge_seed_file", "mm_edges_seed.jsonl"),
+                )
+                context_agg = multimodal_context_aggregation(
+                    question=query,
+                    evidence_package=evidence_package,
+                    merged_candidates=merged_candidates,
+                    graph=graph,
+                    db=db,
+                    global_config=global_config,
+                    query_info=query_info,
+                )
+                evidence_package = merge_aggregation_context(evidence_package, context_agg, global_config)
+            except Exception as exc:
+                context_agg = {
+                    "enabled": True,
+                    "mode": "media_projection_lca",
+                    "anchor_nodes": [],
+                    "projected_nodes": [],
+                    "filtered_projection_candidates": [],
+                    "lca_input_entities": [],
+                    "lca_result": {},
+                    "page_context_nodes": [],
+                    "kept_media_nodes": [],
+                    "aggregation_context_added": False,
+                    "errors": [str(exc)],
+                }
         answer_plan = plan_answer(query, evidence_package, query_info, global_config)
         max_vlm_images = int((global_config.get("evidence_budget") or {}).get("max_vlm_images", 4))
         vlm_calls = (
@@ -290,6 +325,7 @@ def _run_phase3_answer_pipeline(global_config: dict, query: str, retrieval_trace
             "vlm_calls": vlm_calls,
             "table_reasoner_calls": table_calls,
             "selected_evidence_nodes": evidence_package.get("all_selected_nodes", []),
+            "context_aggregation": context_agg,
             "final_generation": final_generation,
             "failure_stage": _phase3_failure_stage(evidence_package, vlm_calls, table_calls),
         }
@@ -308,6 +344,7 @@ def _run_phase3_answer_pipeline(global_config: dict, query: str, retrieval_trace
             "vlm_calls": [],
             "table_reasoner_calls": [],
             "selected_evidence_nodes": [],
+            "context_aggregation": {"enabled": _context_aggregation_enabled(global_config), "errors": [str(exc)]},
             "failure_stage": "generation_failed",
             "generation_error": str(exc),
         }
@@ -321,6 +358,13 @@ def _phase3_failure_stage(evidence_package: dict, vlm_calls: list[dict], table_c
     if any(call.get("error") and not call.get("table_answer") for call in table_calls):
         return "table_reasoner_failed"
     return None
+
+
+def _context_aggregation_enabled(global_config: dict) -> bool:
+    section = global_config.get("context_aggregation")
+    if isinstance(section, dict):
+        return bool(section.get("enabled", False))
+    return False
 
 
 def _retrieve_text_evidence(global_config: dict, query: str, chunks: list[MMChunk]):
