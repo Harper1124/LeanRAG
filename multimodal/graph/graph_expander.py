@@ -30,6 +30,7 @@ EDGE_PRIORITY = [
     "page_next_page",
     "page_prev_page",
 ]
+EDGE_PRIORITY_RANK = {edge_type: idx for idx, edge_type in enumerate(EDGE_PRIORITY)}
 DEFAULT_GRAPH_EXPANSION = {
     "enabled": True,
     "max_graph_hops": 2,
@@ -114,10 +115,10 @@ def expand_graph(
                     if neighbor_id not in anchor_ids:
                         candidate = _candidate_from_node(neighbor, score, anchor, hop, edge, edge_type)
                         previous = expanded_by_id.get(neighbor_id)
-                        if previous is None or candidate["score"] > previous["score"]:
+                        if previous is None:
                             expanded_by_id[neighbor_id] = candidate
                         else:
-                            previous.setdefault("debug", {}).setdefault("expansion_paths", []).append(candidate["debug"])
+                            expanded_by_id[neighbor_id] = _merge_expanded_candidate(previous, candidate)
                         next_frontier.append((candidate, anchor, hop))
         frontier = next_frontier
 
@@ -155,6 +156,53 @@ def _candidate_from_node(
         if node.get(field):
             candidate[field] = node.get(field)
     return candidate
+
+
+def _merge_expanded_candidate(previous: dict[str, Any], candidate: dict[str, Any]) -> dict[str, Any]:
+    previous_paths = _all_paths(previous)
+    candidate_paths = _all_paths(candidate)
+    all_paths = previous_paths + [path for path in candidate_paths if path not in previous_paths]
+    best_path = min(all_paths, key=_path_sort_key)
+    winner = candidate if _path_sort_key(candidate.get("debug") or {}) == _path_sort_key(best_path) else previous
+    merged = dict(winner)
+    merged["score"] = max(float(previous.get("score") or 0.0), float(candidate.get("score") or 0.0))
+    debug = dict(best_path)
+    debug["expansion_paths"] = [path for path in all_paths if path != best_path]
+    merged["debug"] = debug
+    return merged
+
+
+def _all_paths(candidate: dict[str, Any]) -> list[dict[str, Any]]:
+    debug = candidate.get("debug") or {}
+    paths = [
+        {
+            "from_anchor": debug.get("from_anchor"),
+            "hop": debug.get("hop"),
+            "edge_type": debug.get("edge_type"),
+            "edge_id": debug.get("edge_id"),
+            "edge_weight": debug.get("edge_weight"),
+        }
+    ]
+    for path in debug.get("expansion_paths") or []:
+        if isinstance(path, dict):
+            paths.append(
+                {
+                    "from_anchor": path.get("from_anchor"),
+                    "hop": path.get("hop"),
+                    "edge_type": path.get("edge_type"),
+                    "edge_id": path.get("edge_id"),
+                    "edge_weight": path.get("edge_weight"),
+                }
+            )
+    return [path for path in paths if path.get("edge_type")]
+
+
+def _path_sort_key(path: dict[str, Any]) -> tuple[int, int, float]:
+    hop = int(path.get("hop") or 999)
+    edge_type = path.get("edge_type")
+    priority = EDGE_PRIORITY_RANK.get(edge_type, len(EDGE_PRIORITY))
+    weight = float(path.get("edge_weight", 1.0) or 1.0)
+    return hop, priority, -weight
 
 
 def _group_neighbor_edges(graph: MMGraph, node_id: str) -> dict[str, list[tuple[dict[str, Any], str]]]:

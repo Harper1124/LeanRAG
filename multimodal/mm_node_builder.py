@@ -68,12 +68,17 @@ def build_mm_nodes(
 
     nodes: list[MMNode] = []
     indexes: dict[str, dict[Any, str]] = {
+        "document": {},
         "page": {},
         "text_by_chunk_id": {},
         "text_by_hash": {},
         "media": {},
         "entity": {},
     }
+
+    document_node = _build_document_node(doc_id, chunks, media_items)
+    nodes.append(document_node)
+    indexes["document"][doc_id] = document_node.node_id
 
     for page in _collect_pages(chunks, media_items, extra_pages=extra_pages):
         page_node = _build_page_node(doc_id, page, chunks, media_items)
@@ -113,7 +118,7 @@ def build_mm_edges(
     seen: set[tuple[str, str, str]] = set()
     node_by_id = {node.node_id: node for node in nodes}
     doc_id = _infer_doc_id(chunks, media_items, [])
-    document_id = f"{doc_id}::document"
+    document_id = indexes.get("document", {}).get(doc_id, f"{doc_id}::document")
 
     for page, page_node_id in sorted(indexes["page"].items()):
         _add_edge(
@@ -283,6 +288,19 @@ def validate_phase1_outputs(
     if errors:
         raise ValueError(json.dumps(report, ensure_ascii=False, indent=2))
     return report
+
+
+def _build_document_node(doc_id: str, chunks: list[MMChunk], media_items: list[MMMedia]) -> MMNode:
+    return MMNode(
+        node_id=f"{doc_id}::document",
+        doc_id=doc_id,
+        node_type="document",
+        page_id=None,
+        text_for_embedding=doc_id,
+        raw_ref={"doc_id": doc_id},
+        metadata={"text_chunk_count": len(chunks), "media_count": len(media_items)},
+        source="mineru",
+    )
 
 
 def _build_page_node(doc_id: str, page: int, chunks: list[MMChunk], media_items: list[MMMedia]) -> MMNode:

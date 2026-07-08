@@ -9,7 +9,9 @@ from multimodal.io_utils import read_jsonl
 
 class MMGraph:
     def __init__(self, nodes: list[dict[str, Any]] | None = None, edges: list[dict[str, Any]] | None = None):
-        self.nodes = {node.get("node_id"): node for node in nodes or [] if node.get("node_id")}
+        nodes = list(nodes or [])
+        _ensure_document_nodes(nodes, edges or [])
+        self.nodes = {node.get("node_id"): node for node in nodes if node.get("node_id")}
         self.out_edges: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.in_edges: dict[str, list[dict[str, Any]]] = defaultdict(list)
         self.warnings: list[str] = []
@@ -107,3 +109,24 @@ def _filter_edges(edges: list[dict[str, Any]], edge_types: set[str] | list[str] 
     allowed = set(edge_types)
     return [edge for edge in edges if edge.get("edge_type") in allowed]
 
+
+def _ensure_document_nodes(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> None:
+    existing = {node.get("node_id") for node in nodes}
+    doc_ids = {
+        edge.get("src")
+        for edge in edges
+        if edge.get("edge_type") == "document_contains_page" and edge.get("src") not in existing
+    }
+    for node_id in sorted(doc_id for doc_id in doc_ids if doc_id):
+        doc_id = str(node_id).removesuffix("::document")
+        nodes.append(
+            {
+                "node_id": node_id,
+                "doc_id": doc_id,
+                "node_type": "document",
+                "page_id": None,
+                "text_for_embedding": doc_id,
+                "raw_ref": {"doc_id": doc_id},
+                "metadata": {"synthesized_by": "graph_loader"},
+            }
+        )
