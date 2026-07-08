@@ -251,6 +251,7 @@ def main() -> None:
     parser.add_argument("--anchor_node_id", required=True)
     parser.add_argument("--doc_id", default=None)
     parser.add_argument("--output_file", default=None, help="Optional JSONL output path for expanded nodes/edges.")
+    parser.add_argument("--print_full", action="store_true", help="Print full expanded nodes/edges JSON to the terminal.")
     args = parser.parse_args()
     nodes_path = Path(args.nodes)
     graph = load_mm_graph(nodes_path.parent, node_file=nodes_path.name, edge_file=str(Path(args.edges)))
@@ -264,6 +265,22 @@ def main() -> None:
     if args.output_file:
         _write_expansion_jsonl(Path(args.output_file), expanded, edges, graph.warnings)
         print(json.dumps({"output_file": args.output_file, "num_expanded_nodes": len(expanded), "num_expanded_edges": len(edges)}, ensure_ascii=False, indent=2))
+    elif not args.print_full:
+        print(
+            json.dumps(
+                {
+                    "num_expanded_nodes": len(expanded),
+                    "num_expanded_edges": len(edges),
+                    "expanded_node_types": _count_by_key(expanded, "node_type"),
+                    "expanded_edge_types": _count_by_key(edges, "edge_type"),
+                    "sample_expanded_nodes": [_slim_cli_node(item) for item in expanded[:10]],
+                    "sample_expanded_edges": edges[:10],
+                    "warnings": graph.warnings,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     else:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
 
@@ -282,6 +299,25 @@ def _write_expansion_jsonl(
             f.write(json.dumps({"record_type": "expanded_edge", **edge}, ensure_ascii=False) + "\n")
         for warning in warnings:
             f.write(json.dumps({"record_type": "warning", "message": warning}, ensure_ascii=False) + "\n")
+
+
+def _count_by_key(rows: list[dict[str, Any]], key: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        value = str(row.get(key))
+        counts[value] = counts.get(value, 0) + 1
+    return counts
+
+
+def _slim_cli_node(node: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "node_id": node.get("node_id"),
+        "node_type": node.get("node_type"),
+        "page_id": node.get("page_id"),
+        "score": node.get("score"),
+        "source": node.get("source"),
+        "debug": node.get("debug"),
+    }
 
 
 if __name__ == "__main__":
