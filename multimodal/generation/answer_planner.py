@@ -24,7 +24,8 @@ def plan_answer(
     query_info: dict[str, Any] | None = None,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    del question, query_info
+    del question
+    query_info = query_info or {}
     generation = _generation_config(config)
     budget = _budget(config)
     visual_nodes = evidence_package.get("visual_evidence", [])[: budget["max_vlm_images"]]
@@ -56,6 +57,7 @@ def plan_answer(
         "use_table_reasoner": use_table_reasoner,
         "use_text_llm": answer_mode != "not_enough_evidence",
         "answer_mode": answer_mode,
+        "expected_answer_type": query_info.get("expected_answer_type", "unknown"),
         "selected_visual_nodes": visual_nodes,
         "selected_table_nodes": table_nodes,
         "selected_text_nodes": text_nodes,

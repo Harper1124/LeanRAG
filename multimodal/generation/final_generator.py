@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Callable
 
 
@@ -44,27 +45,239 @@ def generate_final_answer(
     llm_func = global_config.get("use_llm_func")
     if llm_func:
         try:
-            return str(llm_func(prompt)), {"prompt_preview": prompt[:1000], "used_llm": True, "error": None}
+            answer = str(llm_func(prompt))
+            return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None)
         except TypeError:
             try:
-                return str(llm_func(question, system_prompt=prompt)), {"prompt_preview": prompt[:1000], "used_llm": True, "error": None}
+                answer = str(llm_func(question, system_prompt=prompt))
+                return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None)
             except Exception as exc:
-                return _fallback_answer(vlm_calls, table_reasoner_calls, generation), {
-                    "prompt_preview": prompt[:1000],
-                    "used_llm": False,
-                    "error": str(exc),
-                }
+                answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
+                return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc))
         except Exception as exc:
-            return _fallback_answer(vlm_calls, table_reasoner_calls, generation), {
-                "prompt_preview": prompt[:1000],
-                "used_llm": False,
-                "error": str(exc),
-            }
-    return _fallback_answer(vlm_calls, table_reasoner_calls, generation), {
+            answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
+            return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc))
+    answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
+    return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, "llm_func_missing")
+
+
+def _with_postprocess(
+    raw_answer: str,
+    question: str,
+    answer_plan: dict[str, Any],
+    global_config: dict[str, Any],
+    prompt: str,
+    used_llm: bool,
+    error: str | None,
+) -> tuple[str, dict[str, Any]]:
+    processed, postprocess = postprocess_final_answer(raw_answer, question, answer_plan, global_config)
+    return processed, {
         "prompt_preview": prompt[:1000],
-        "used_llm": False,
-        "error": "llm_func_missing",
+        "used_llm": used_llm,
+        "error": error,
+        "raw_answer": raw_answer,
+        "postprocess": postprocess,
     }
+
+
+def postprocess_final_answer(
+    answer: str,
+    question: str = "",
+    answer_plan: dict[str, Any] | None = None,
+    global_config: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    raw = str(answer or "").strip()
+    answer_plan = answer_plan or {}
+    global_config = global_config or {}
+    target = _target_answer_type(question, answer_plan, global_config)
+    not_answerable = str(_generation_config(global_config)["answer_not_enough_evidence"])
+    lowered = raw.lower()
+
+    if target == "unknown" and _looks_not_answerable(lowered):
+        return not_answerable, {"target": target, "changed": raw != not_answerable, "rule": "not_answerable"}
+    if target == "int":
+        value = _extract_int(raw)
+        if value is not None:
+            return value, {"target": target, "changed": value != raw, "rule": "extract_int"}
+    if target == "float":
+        value = _extract_float(raw)
+        if value is not None:
+            return value, {"target": target, "changed": value != raw, "rule": "extract_float"}
+    if target == "list":
+        value = _extract_list(raw)
+        if value is not None:
+            return value, {"target": target, "changed": value != raw, "rule": "extract_list"}
+    return raw, {"target": target, "changed": False, "rule": "none"}
+
+
+def _target_answer_type(question: str, answer_plan: dict[str, Any], global_config: dict[str, Any]) -> str:
+    answer_format = str(global_config.get("answer_format") or "").strip().lower()
+    if answer_format in {"int", "integer"}:
+        return "int"
+    if answer_format in {"float", "number"}:
+        return "float"
+    if answer_format in {"list", "array"}:
+        return "list"
+    if answer_format in {"str", "string"}:
+        return "str"
+    if answer_format in {"unknown", "not answerable", "unanswerable"}:
+        return "unknown"
+
+    expected = str(answer_plan.get("expected_answer_type") or "").strip().lower()
+    if expected in {"int", "float", "list"}:
+        return expected
+    text = question.lower()
+    if re.search(r"\b(how many|number of|count)\b", text):
+        return "int"
+    if re.search(r"\b(percentage|ratio|float|average|gap|score|rate|difference)\b", text):
+        return "float"
+    if re.search(r"\b(list|what are|which two|all the)\b", text):
+        return "list"
+    return "unknown"
+
+
+def _looks_not_answerable(lowered_answer: str) -> bool:
+    patterns = (
+        "not answerable",
+        "not specified",
+        "not provided",
+        "not mentioned",
+        "no explicit mention",
+        "no direct statement",
+        "insufficient evidence",
+        "cannot be determined",
+        "can't be determined",
+        "cannot determine",
+        "do not contain enough",
+        "does not contain enough",
+    )
+    return any(pattern in lowered_answer for pattern in patterns)
+
+
+def _extract_int(text: str) -> str | None:
+    direct = _extract_direct_int_phrase(text)
+    if direct is not None:
+        return direct
+    numbers = _numeric_matches(text)
+    integer_like = [raw for raw in numbers if not re.search(r"[.%/]", raw)]
+    if integer_like:
+        return str(int(integer_like[-1].replace(",", "")))
+    words = _number_word_matches(text)
+    if words:
+        return str(words[-1])
+    return None
+
+
+def _extract_direct_int_phrase(text: str) -> str | None:
+    number_word = (
+        r"zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|"
+        r"thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty"
+    )
+    number = rf"-?\d+(?:,\d{{3}})*|{number_word}"
+    patterns = (
+        rf"\bthere\s+(?:are|is)\s+(?:about\s+|approximately\s+|at\s+least\s+|exactly\s+)?(?P<num>{number})\b",
+        rf"\banswer\s+(?:is|:)\s*(?:about\s+|approximately\s+|at\s+least\s+|exactly\s+)?[*_`]*(?P<num>{number})\b",
+        rf"\btherefore[^.\n]*?\bis\s+[*_`]*(?P<num>{number})\b",
+    )
+    matches = []
+    for pattern in patterns:
+        matches.extend(re.finditer(pattern, text, re.IGNORECASE))
+    if not matches:
+        return None
+    raw = matches[-1].group("num")
+    word_value = _number_word_to_int(raw)
+    if word_value is not None:
+        return str(word_value)
+    return str(int(raw.replace(",", "")))
+
+
+def _extract_float(text: str) -> str | None:
+    numbers = _numeric_matches(text)
+    if not numbers:
+        words = _number_word_matches(text)
+        return str(float(words[-1])).rstrip("0").rstrip(".") if words else None
+    raw = numbers[-1].replace(",", "")
+    if raw.endswith("%"):
+        return raw
+    if "/" in raw:
+        left, right = raw.split("/", 1)
+        try:
+            denom = float(right)
+            if denom:
+                return _format_float(float(left) / denom)
+        except ValueError:
+            return raw
+    return raw
+
+
+def _extract_list(text: str) -> str | None:
+    bracket = re.search(r"\[[^\]]+\]", text, re.DOTALL)
+    if bracket:
+        return " ".join(bracket.group(0).split())
+    lines = [line.strip(" -\t") for line in text.splitlines() if line.strip()]
+    bullet_items = []
+    for line in lines:
+        cleaned = re.sub(r"^\d+[\.)]\s*", "", line).strip()
+        if cleaned and cleaned != line:
+            bullet_items.append(cleaned)
+    if len(bullet_items) >= 2:
+        return ", ".join(_strip_formatting(item) for item in bullet_items)
+    answer_match = re.search(r"(?:answer is|answer:|are:)\s*(.+)$", text, re.IGNORECASE | re.DOTALL)
+    if answer_match:
+        value = _strip_formatting(answer_match.group(1).strip())
+        if "," in value or ";" in value or " and " in value.lower():
+            return value
+    return None
+
+
+def _numeric_matches(text: str) -> list[str]:
+    return re.findall(
+        r"(?<![A-Za-z0-9])-?\d+(?:,\d{3})*/\d+(?:,\d{3})*(?![A-Za-z0-9-])|"
+        r"(?<![A-Za-z0-9])-?\d+(?:,\d{3})*(?:\.\d+)?%?(?![A-Za-z0-9-])",
+        text,
+    )
+
+
+def _number_word_matches(text: str) -> list[int]:
+    values = {
+        "zero": 0,
+        "one": 1,
+        "two": 2,
+        "three": 3,
+        "four": 4,
+        "five": 5,
+        "six": 6,
+        "seven": 7,
+        "eight": 8,
+        "nine": 9,
+        "ten": 10,
+        "eleven": 11,
+        "twelve": 12,
+        "thirteen": 13,
+        "fourteen": 14,
+        "fifteen": 15,
+        "sixteen": 16,
+        "seventeen": 17,
+        "eighteen": 18,
+        "nineteen": 19,
+        "twenty": 20,
+    }
+    return [values[word] for word in re.findall(r"\b[a-z]+\b", text.lower()) if word in values]
+
+
+def _number_word_to_int(text: str) -> int | None:
+    matches = _number_word_matches(text)
+    return matches[-1] if matches else None
+
+
+def _format_float(value: float) -> str:
+    return f"{value:.6f}".rstrip("0").rstrip(".")
+
+
+def _strip_formatting(text: str) -> str:
+    text = re.sub(r"[*_`]+", "", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip(" .")
 
 
 def _build_prompt(
