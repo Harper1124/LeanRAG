@@ -20,6 +20,14 @@ mysql:
   user: "root"
   password: "B507b507@"
   charset: "utf8mb4"
+  base_url: "http://127.0.0.1:11434/v1"
+
+mysql:
+  host: "127.0.0.1"
+  port: 4321
+  user: "root"
+  password: "B507b507@"
+  charset: "utf8mb4"
 
 # Model Parameters
 model_params:
