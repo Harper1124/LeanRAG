@@ -50,6 +50,14 @@ def generate_final_answer(
     global_config: dict[str, Any],
 ) -> tuple[str, dict[str, Any]]:
     generation = _generation_config(global_config)
+    if _target_answer_type(question, answer_plan, global_config) == "unknown" and _has_explicit_unknown_format(global_config):
+        return generation["answer_not_enough_evidence"], {
+            "prompt_preview": "",
+            "used_llm": False,
+            "error": None,
+            "raw_answer": "",
+            "postprocess": {"target": "unknown", "changed": True, "rule": "answer_format_unknown"},
+        }
     if answer_plan.get("answer_mode") == "not_enough_evidence":
         return generation["answer_not_enough_evidence"], {"prompt_preview": "", "used_llm": False, "error": None}
     answer_type = _target_answer_type(question, answer_plan, global_config)
@@ -112,6 +120,8 @@ def postprocess_final_answer(
     not_answerable = str(_generation_config(global_config)["answer_not_enough_evidence"])
     lowered = raw.lower()
 
+    if target == "unknown" and _has_explicit_unknown_format(global_config):
+        return not_answerable, {"target": target, "changed": raw != not_answerable, "rule": "answer_format_unknown"}
     if _looks_not_answerable(lowered) and not _has_confident_answer_tail(raw):
         return not_answerable, {"target": target, "changed": raw != not_answerable, "rule": "not_answerable"}
     if target == "int":
@@ -139,7 +149,7 @@ def _target_answer_type(question: str, answer_plan: dict[str, Any], global_confi
         return "list"
     if answer_format in {"str", "string"}:
         return "str"
-    if answer_format in {"unknown", "not answerable", "unanswerable"}:
+    if answer_format in {"unknown", "none", "null", "not answerable", "unanswerable"}:
         return "unknown"
 
     expected = str(answer_plan.get("expected_answer_type") or "").strip().lower()
@@ -153,6 +163,11 @@ def _target_answer_type(question: str, answer_plan: dict[str, Any], global_confi
     if re.search(r"\b(list|what are|which two|list all|name all)\b", text):
         return "list"
     return "unknown"
+
+
+def _has_explicit_unknown_format(global_config: dict[str, Any]) -> bool:
+    answer_format = str(global_config.get("answer_format") or "").strip().lower()
+    return answer_format in {"unknown", "none", "null", "not answerable", "unanswerable"}
 
 
 def _looks_not_answerable(lowered_answer: str) -> bool:

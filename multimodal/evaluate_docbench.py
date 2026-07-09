@@ -55,8 +55,15 @@ def run_docbench_eval(
                 "question_id": sample["question_id"],
                 "question": sample["question"],
                 "gold_answer": sample.get("answer", ""),
-                "answer_format": (sample.get("metadata") or {}).get("answer_format"),
-                "evidence_source": (sample.get("metadata") or {}).get("evidence_source"),
+                "answer_format": _metadata_first(sample, "answer_format", "answer_type"),
+                "evidence_source": _metadata_first(
+                    sample,
+                    "evidence_source",
+                    "evidence_sources",
+                    "source",
+                    "source_type",
+                    "evidence_type",
+                ),
                 "prediction": prediction,
                 "text_evidence": trace.get("text_evidence", []),
                 "visual_evidence": trace.get("visual_evidence", []),
@@ -80,6 +87,15 @@ def _missing_workspace_row(sample: dict, working_dir: Path) -> dict:
         "table_evidence": [],
         "trace": {"error": f"working_dir not found: {working_dir}"},
     }
+
+
+def _metadata_first(sample: dict, *keys: str) -> object:
+    metadata = sample.get("metadata") or {}
+    for key in keys:
+        value = metadata.get(key)
+        if value not in (None, ""):
+            return value
+    return None
 
 
 def main() -> None:
