@@ -55,6 +55,8 @@ def run_docbench_eval(
                 "question_id": sample["question_id"],
                 "question": sample["question"],
                 "gold_answer": sample.get("answer", ""),
+                "answer_format": (sample.get("metadata") or {}).get("answer_format"),
+                "evidence_source": (sample.get("metadata") or {}).get("evidence_source"),
                 "prediction": prediction,
                 "text_evidence": trace.get("text_evidence", []),
                 "visual_evidence": trace.get("visual_evidence", []),

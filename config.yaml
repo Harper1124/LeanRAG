@@ -74,25 +74,25 @@ multimodal:
     enabled: true
     edge_file: "mm_edges.jsonl"
     edge_seed_file: "mm_edges_seed.jsonl"
-    max_graph_hops: 2
+    max_graph_hops: 1
     max_neighbors_per_edge_type:
-      text_caption_of_media: 3
-      text_refers_to_media: 5
-      entity_link_media: 8
-      media_near_text: 5
-      page_contains_node: 20
-      media_same_page_media: 5
-      page_next_page: 2
-      page_prev_page: 2
+      text_caption_of_media: 2
+      text_refers_to_media: 3
+      entity_link_media: 4
+      media_near_text: 3
+      page_contains_node: 8
+      media_same_page_media: 2
+      page_next_page: 1
+      page_prev_page: 1
 
   context_aggregation:
     enabled: true
     mode: "media_projection_lca"
-    max_media_projection_entities: 8
-    max_text_projection_entities: 8
-    max_lca_input_entities: 16
-    max_page_context_nodes: 8
-    max_aggregation_context_chars: 12000
+    max_media_projection_entities: 4
+    max_text_projection_entities: 4
+    max_lca_input_entities: 8
+    max_page_context_nodes: 4
+    max_aggregation_context_chars: 6000
     allow_single_letter_entities_for_projection: false
     filter_stopword_entities: true
     page_context:
@@ -104,12 +104,12 @@ multimodal:
       fallback_to_page_context: true
 
   evidence_budget:
-    max_text_nodes: 6
-    max_entity_nodes: 12
-    max_media_nodes: 6
-    max_table_nodes: 4
-    max_page_nodes: 4
-    max_vlm_images: 4
+    max_text_nodes: 5
+    max_entity_nodes: 8
+    max_media_nodes: 4
+    max_table_nodes: 3
+    max_page_nodes: 3
+    max_vlm_images: 3
 
   generation:
     use_vlm: true

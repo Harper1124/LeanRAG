@@ -8,6 +8,9 @@ from typing import Any, Callable
 FINAL_PROMPT = """Question:
 {question}
 
+Expected Answer Type:
+{answer_type}
+
 Text Evidence:
 {text_evidence}
 
@@ -28,8 +31,13 @@ Table Evidence:
 
 Instruction:
 Answer using only the evidence above.
-If the evidence is insufficient, answer "Not answerable".
-For numeric/list questions, answer concisely.
+Before answering, silently check whether the evidence directly supports the requested value.
+If the evidence is insufficient or only related to a nearby topic, answer exactly: "Not answerable".
+Return only the final answer, with no explanation, citations, markdown, or reasoning.
+For integer questions, return only an integer such as 3.
+For float questions, return only the number or percent.
+For list questions, return only a comma-separated list of answer items.
+For string questions, return only the shortest answer span.
 """
 
 
@@ -44,7 +52,15 @@ def generate_final_answer(
     generation = _generation_config(global_config)
     if answer_plan.get("answer_mode") == "not_enough_evidence":
         return generation["answer_not_enough_evidence"], {"prompt_preview": "", "used_llm": False, "error": None}
-    prompt = _build_prompt(question, evidence_package, vlm_calls, table_reasoner_calls, int(generation["max_prompt_chars"]))
+    answer_type = _target_answer_type(question, answer_plan, global_config)
+    prompt = _build_prompt(
+        question,
+        evidence_package,
+        vlm_calls,
+        table_reasoner_calls,
+        int(generation["max_prompt_chars"]),
+        answer_type,
+    )
     llm_func = global_config.get("use_llm_func")
     if llm_func:
         try:
@@ -96,7 +112,7 @@ def postprocess_final_answer(
     not_answerable = str(_generation_config(global_config)["answer_not_enough_evidence"])
     lowered = raw.lower()
 
-    if target == "unknown" and _looks_not_answerable(lowered):
+    if _looks_not_answerable(lowered) and not _has_confident_answer_tail(raw):
         return not_answerable, {"target": target, "changed": raw != not_answerable, "rule": "not_answerable"}
     if target == "int":
         value = _extract_int(raw)
@@ -134,7 +150,7 @@ def _target_answer_type(question: str, answer_plan: dict[str, Any], global_confi
         return "int"
     if re.search(r"\b(percentage|ratio|float|average|gap|score|rate|difference)\b", text):
         return "float"
-    if re.search(r"\b(list|what are|which two|all the)\b", text):
+    if re.search(r"\b(list|what are|which two|list all|name all)\b", text):
         return "list"
     return "unknown"
 
@@ -155,6 +171,16 @@ def _looks_not_answerable(lowered_answer: str) -> bool:
         "does not contain enough",
     )
     return any(pattern in lowered_answer for pattern in patterns)
+
+
+def _has_confident_answer_tail(text: str) -> bool:
+    tail = _answer_tail(text).strip()
+    if not tail:
+        return False
+    lowered_tail = tail.lower()
+    if _looks_not_answerable(lowered_tail):
+        return False
+    return bool(re.search(r"[A-Za-z0-9]", tail))
 
 
 def _extract_int(text: str) -> str | None:
@@ -258,7 +284,10 @@ def _extract_float(text: str) -> str | None:
 def _extract_list(text: str) -> str | None:
     bracket = re.search(r"\[[^\]]+\]", text, re.DOTALL)
     if bracket:
-        return " ".join(bracket.group(0).split())
+        value = " ".join(bracket.group(0).split())
+        if re.fullmatch(r"\[\s*\d+(?:\s*,\s*\d+)*\s*\]", value):
+            return None
+        return value
     lines = [line.strip(" -\t") for line in text.splitlines() if line.strip()]
     bullet_items = []
     for line in lines:
@@ -331,9 +360,11 @@ def _build_prompt(
     vlm_calls: list[dict[str, Any]],
     table_reasoner_calls: list[dict[str, Any]],
     max_chars: int,
+    answer_type: str,
 ) -> str:
     text = FINAL_PROMPT.format(
         question=question,
+        answer_type=answer_type,
         text_evidence=_dump_nodes(evidence_package.get("text_evidence", []), include_raw=False),
         entity_evidence=_dump_nodes(evidence_package.get("entity_evidence", []), include_raw=False),
         page_evidence=_dump_nodes(evidence_package.get("page_evidence", []), include_raw=False),
