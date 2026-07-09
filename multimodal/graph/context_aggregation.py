@@ -51,7 +51,16 @@ def multimodal_context_aggregation(
         "projected_nodes": [],
         "filtered_projection_candidates": [],
         "lca_input_entities": [],
-        "lca_result": {"method": "", "input_entities": [], "lca_nodes": [], "paths": [], "describe_preview": ""},
+        "lca_result": {
+            "method": "",
+            "input_entities": [],
+            "lca_nodes": [],
+            "paths": [],
+            "describe_preview": "",
+            "describe_reuse_success": False,
+            "structured_lca_available": False,
+            "reason": "",
+        },
         "page_context_nodes": [],
         "kept_media_nodes": [],
         "aggregation_context": "",
@@ -226,7 +235,18 @@ def _allow_single_letter(entity_node: dict, context: dict, config: dict) -> bool
 
 def _run_original_leanrag_context(question: str, db, global_config: dict, input_entities: list[dict[str, Any]], config: dict) -> dict[str, Any]:
     method = (config.get("lca") or {}).get("method", "query_graph_describe_reuse")
-    result = {"method": method, "input_entities": input_entities, "lca_nodes": [], "paths": [], "describe_preview": "", "describe": "", "errors": []}
+    result = {
+        "method": method,
+        "input_entities": input_entities,
+        "lca_nodes": [],
+        "paths": [],
+        "describe_preview": "",
+        "describe": "",
+        "describe_reuse_success": False,
+        "structured_lca_available": False,
+        "reason": "",
+        "errors": [],
+    }
     if method != "query_graph_describe_reuse":
         result["errors"].append("only query_graph_describe_reuse is implemented for Phase 5")
         return result
@@ -242,12 +262,18 @@ def _run_original_leanrag_context(question: str, db, global_config: dict, input_
         describe, _ = query_graph_func(query_graph_config, db, question)
         result["describe"] = str(describe)
         result["describe_preview"] = str(describe)[:1000]
+        result["describe_reuse_success"] = bool(result["describe_preview"] and not result["errors"])
+        result["structured_lca_available"] = False
+        result["reason"] = "query_graph returns describe string only; lca_nodes and paths are not exposed by the current interface"
     except Exception as exc:
         result["method"] = "projected_entities_fallback"
         result["errors"].append(str(exc))
         fallback = "Projected LeanRAG entities:\n" + json.dumps(input_entities, ensure_ascii=False, indent=2)
         result["describe"] = fallback
         result["describe_preview"] = fallback[:1000]
+        result["describe_reuse_success"] = False
+        result["structured_lca_available"] = False
+        result["reason"] = "query_graph_describe_reuse failed; using projected entities fallback"
     return result
 
 
