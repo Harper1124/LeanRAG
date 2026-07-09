@@ -231,15 +231,15 @@ def _run_original_leanrag_context(question: str, db, global_config: dict, input_
         result["errors"].append("only query_graph_describe_reuse is implemented for Phase 5")
         return result
     try:
-        required = {"working_dir", "chunks_file", "use_llm_func", "embeddings_func", "level_mode", "topk"}
-        missing = sorted(key for key in required if key not in global_config)
+        query_graph_config = _prepare_query_graph_config(global_config)
+        missing = _missing_query_graph_config(query_graph_config)
         if missing:
             raise ValueError(f"query_graph config missing keys: {missing}")
-        query_graph_func = global_config.get("query_graph_func")
+        query_graph_func = query_graph_config.get("query_graph_func")
         if query_graph_func is None:
             from query_graph import query_graph as query_graph_func
 
-        describe, _ = query_graph_func(global_config, db, question)
+        describe, _ = query_graph_func(query_graph_config, db, question)
         result["describe"] = str(describe)
         result["describe_preview"] = str(describe)[:1000]
     except Exception as exc:
@@ -249,6 +249,34 @@ def _run_original_leanrag_context(question: str, db, global_config: dict, input_
         result["describe"] = fallback
         result["describe_preview"] = fallback[:1000]
     return result
+
+
+def _prepare_query_graph_config(global_config: dict | None) -> dict[str, Any]:
+    config = dict(global_config or {})
+    working_dir = config.get("working_dir")
+    if working_dir and not config.get("chunks_file"):
+        config["chunks_file"] = str(Path(working_dir) / "leanrag_chunk.json")
+    config.setdefault("topk", 10)
+    config.setdefault("level_mode", 2)
+    if "embeddings_func" not in config:
+        try:
+            from query_graph import embedding
+
+            config["embeddings_func"] = embedding
+        except Exception:
+            pass
+    return config
+
+
+def _missing_query_graph_config(global_config: dict) -> list[str]:
+    missing = []
+    for key in ("working_dir", "chunks_file", "level_mode", "topk"):
+        if key not in global_config or global_config.get(key) in (None, ""):
+            missing.append(key)
+    for key in ("embeddings_func", "use_llm_func"):
+        if not callable(global_config.get(key)):
+            missing.append(key)
+    return sorted(missing)
 
 
 def _select_anchor_nodes(evidence_package: dict, node_lookup: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
