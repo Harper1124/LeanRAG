@@ -688,6 +688,7 @@ def main() -> None:
     parser.add_argument("--doc_id", default=None)
     parser.add_argument("--query", required=True)
     parser.add_argument("--config", default="config.yaml")
+    parser.add_argument("--output_file", default=None, help="Optional JSON file path for saving the answer and trace.")
     args = parser.parse_args()
     full_config = _load_config(args.config)
     config = full_config.get("multimodal", {})
@@ -700,7 +701,14 @@ def main() -> None:
     )
     answer, trace = query_mm_graph(config, None, args.query, doc_id=args.doc_id)
     print(answer)
-    print(json.dumps(trace, ensure_ascii=False, indent=2))
+    if args.output_file:
+        output_path = Path(args.output_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"answer": answer, "trace": trace}
+        output_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(f"Saved full result to {output_path}")
+    else:
+        print(json.dumps(trace, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":
