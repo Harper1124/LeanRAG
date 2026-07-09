@@ -96,6 +96,8 @@ def multimodal_context_aggregation(
     result["page_context_nodes"] = list(page_context_by_id.values())[: int(config["max_page_context_nodes"])]
     if result["lca_input_entities"]:
         result["lca_result"] = _run_original_leanrag_context(question, db, global_config, result["lca_input_entities"], config)
+        for error in result["lca_result"].get("errors") or []:
+            result["errors"].append(f"query_graph_describe_reuse failed: {error}")
         result["aggregation_context"] = str(result["lca_result"].get("describe") or result["lca_result"].get("describe_preview") or "")
         result["aggregation_context"] = result["aggregation_context"][: int(config["max_aggregation_context_chars"])]
         result["aggregation_context_added"] = bool(result["aggregation_context"])
@@ -232,13 +234,16 @@ def _run_original_leanrag_context(question: str, db, global_config: dict, input_
         required = {"working_dir", "chunks_file", "use_llm_func", "embeddings_func", "level_mode", "topk"}
         missing = sorted(key for key in required if key not in global_config)
         if missing:
-            raise KeyError(f"query_graph config missing keys: {missing}")
-        from query_graph import query_graph
+            raise ValueError(f"query_graph config missing keys: {missing}")
+        query_graph_func = global_config.get("query_graph_func")
+        if query_graph_func is None:
+            from query_graph import query_graph as query_graph_func
 
-        describe, _ = query_graph(global_config, db, question)
+        describe, _ = query_graph_func(global_config, db, question)
         result["describe"] = str(describe)
         result["describe_preview"] = str(describe)[:1000]
     except Exception as exc:
+        result["method"] = "projected_entities_fallback"
         result["errors"].append(str(exc))
         fallback = "Projected LeanRAG entities:\n" + json.dumps(input_entities, ensure_ascii=False, indent=2)
         result["describe"] = fallback
