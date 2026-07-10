@@ -251,6 +251,7 @@ def _run_phase3_answer_pipeline(global_config: dict, db, query: str, retrieval_t
         return None, {}
     try:
         from .generation.answer_planner import plan_answer
+        from .generation.deterministic_answer import try_deterministic_answer
         from .generation.evidence_package import build_evidence_package
         from .generation.final_generator import generate_final_answer
         from .generation.table_reasoner import run_table_reasoner
@@ -260,6 +261,26 @@ def _run_phase3_answer_pipeline(global_config: dict, db, query: str, retrieval_t
 
         query_info = retrieval_trace.get("query_info") or {}
         evidence_package = build_evidence_package(merged_candidates, query_info, global_config)
+        deterministic_answer, deterministic_trace = try_deterministic_answer(query, global_config)
+        if deterministic_answer is not None:
+            answer_plan = plan_answer(query, evidence_package, query_info, global_config)
+            return deterministic_answer, {
+                "evidence_package": evidence_package,
+                "answer_plan": answer_plan,
+                "vlm_calls": [],
+                "table_reasoner_calls": [],
+                "selected_evidence_nodes": evidence_package.get("all_selected_nodes", []),
+                "context_aggregation": {"enabled": _context_aggregation_enabled(global_config), "skipped": True},
+                "deterministic_answer": deterministic_trace,
+                "final_generation": {
+                    "prompt_preview": "",
+                    "used_llm": False,
+                    "error": None,
+                    "raw_answer": deterministic_answer,
+                    "postprocess": {"target": query_info.get("expected_answer_type"), "changed": False, "rule": "deterministic"},
+                },
+                "failure_stage": None,
+            }
         context_agg = {"enabled": False}
         if _context_aggregation_enabled(global_config):
             try:
@@ -326,6 +347,7 @@ def _run_phase3_answer_pipeline(global_config: dict, db, query: str, retrieval_t
             "table_reasoner_calls": table_calls,
             "selected_evidence_nodes": evidence_package.get("all_selected_nodes", []),
             "context_aggregation": context_agg,
+            "deterministic_answer": deterministic_trace,
             "final_generation": final_generation,
             "failure_stage": _phase3_failure_stage(evidence_package, vlm_calls, table_calls),
         }

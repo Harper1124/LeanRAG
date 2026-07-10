@@ -123,5 +123,6 @@ multimodal:
     use_vlm: true
     answer_with_vlm_when_media: true
     use_table_reasoner: true
+    use_answer_format_oracle_abstention: false
     answer_not_enough_evidence: "Not answerable"
     max_prompt_chars: 24000

@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from multimodal.retrieval.media_ref import matching_media_refs
+from .table_utils import has_structured_table, hydrate_table_candidate, load_mm_media_by_id
 
 
 DEFAULT_BUDGET = {
@@ -23,6 +24,7 @@ def build_evidence_package(
 ) -> dict[str, list[dict[str, Any]]]:
     media_refs = (query_info or {}).get("media_refs", [])
     budget = _budget(config)
+    media_by_id = load_mm_media_by_id((config or {}).get("working_dir") if isinstance(config, dict) else None)
     package = {
         "text_evidence": [],
         "entity_evidence": [],
@@ -47,13 +49,14 @@ def build_evidence_package(
             added = True
         elif node_type == "media":
             matched_refs = matching_media_refs(candidate, media_refs)
-            if media_refs and not matched_refs and candidate.get("source") != "graph_expansion":
+            if media_refs and not matched_refs:
                 continue
             if matched_refs:
                 slim.setdefault("debug", {})["matched_media_refs"] = matched_refs
-            is_table = _is_table(candidate)
+            slim = hydrate_table_candidate(slim, media_by_id)
+            is_table = _is_table(slim)
             is_visual = _is_visual(candidate)
-            if is_table and len(package["table_evidence"]) < budget["max_table_nodes"]:
+            if is_table and has_structured_table(slim) and len(package["table_evidence"]) < budget["max_table_nodes"]:
                 package["table_evidence"].append(slim)
                 added = True
             if is_visual and len(package["visual_evidence"]) < budget["max_media_nodes"]:

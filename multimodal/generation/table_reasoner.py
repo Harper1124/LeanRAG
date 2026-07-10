@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
+from .table_utils import has_structured_table
+
 
 TABLE_REASONER_PROMPT = """You answer using only the provided table evidence.
 Return the shortest supported answer. If the evidence is insufficient, return exactly: Not answerable.
@@ -52,6 +54,8 @@ def run_table_reasoner(
 def _table_context(table_nodes: list[dict[str, Any]], max_chars: int) -> str:
     parts = []
     for node in table_nodes:
+        if not has_structured_table(node):
+            continue
         raw_ref = node.get("raw_ref") or {}
         metadata = node.get("metadata") or {}
         table_info = metadata.get("table_info") or {}
@@ -59,12 +63,10 @@ def _table_context(table_nodes: list[dict[str, Any]], max_chars: int) -> str:
             raw_ref.get("table_markdown")
             or raw_ref.get("table_html")
             or _cells_text(table_info.get("cells") or [])
-            or node.get("caption")
-            or node.get("ocr_text")
-            or node.get("summary")
-            or raw_ref.get("path")
             or ""
         )
+        if not text.strip():
+            continue
         parts.append(
             "\n".join(
                 [

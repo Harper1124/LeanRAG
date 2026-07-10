@@ -4,6 +4,9 @@ import json
 import re
 from typing import Any, Callable
 
+from multimodal.retrieval.media_ref import extract_media_refs
+from .table_utils import has_structured_table
+
 
 FINAL_PROMPT = """Question:
 {question}
@@ -50,7 +53,11 @@ def generate_final_answer(
     global_config: dict[str, Any],
 ) -> tuple[str, dict[str, Any]]:
     generation = _generation_config(global_config)
-    if _target_answer_type(question, answer_plan, global_config) == "unknown" and _has_explicit_unknown_format(global_config):
+    if (
+        _target_answer_type(question, answer_plan, global_config) == "unknown"
+        and _has_explicit_unknown_format(global_config)
+        and _use_answer_format_oracle_abstention(global_config)
+    ):
         return generation["answer_not_enough_evidence"], {
             "prompt_preview": "",
             "used_llm": False,
@@ -61,6 +68,16 @@ def generate_final_answer(
     if answer_plan.get("answer_mode") == "not_enough_evidence":
         return generation["answer_not_enough_evidence"], {"prompt_preview": "", "used_llm": False, "error": None}
     answer_type = _target_answer_type(question, answer_plan, global_config)
+    sufficiency = _evidence_sufficiency(question, evidence_package, answer_type)
+    if not sufficiency["sufficient"]:
+        return generation["answer_not_enough_evidence"], {
+            "prompt_preview": "",
+            "used_llm": False,
+            "error": None,
+            "raw_answer": "",
+            "evidence_sufficiency": sufficiency,
+            "postprocess": {"target": answer_type, "changed": True, "rule": "evidence_insufficient"},
+        }
     prompt = _build_prompt(
         question,
         evidence_package,
@@ -73,19 +90,19 @@ def generate_final_answer(
     if llm_func:
         try:
             answer = str(llm_func(prompt))
-            return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None)
+            return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None, sufficiency)
         except TypeError:
             try:
                 answer = str(llm_func(question, system_prompt=prompt))
-                return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None)
+                return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None, sufficiency)
             except Exception as exc:
                 answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
-                return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc))
+                return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc), sufficiency)
         except Exception as exc:
             answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
-            return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc))
+            return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc), sufficiency)
     answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
-    return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, "llm_func_missing")
+    return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, "llm_func_missing", sufficiency)
 
 
 def _with_postprocess(
@@ -96,6 +113,7 @@ def _with_postprocess(
     prompt: str,
     used_llm: bool,
     error: str | None,
+    sufficiency: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     processed, postprocess = postprocess_final_answer(raw_answer, question, answer_plan, global_config)
     return processed, {
@@ -103,6 +121,7 @@ def _with_postprocess(
         "used_llm": used_llm,
         "error": error,
         "raw_answer": raw_answer,
+        "evidence_sufficiency": sufficiency or {},
         "postprocess": postprocess,
     }
 
@@ -120,9 +139,9 @@ def postprocess_final_answer(
     not_answerable = str(_generation_config(global_config)["answer_not_enough_evidence"])
     lowered = raw.lower()
 
-    if target == "unknown" and _has_explicit_unknown_format(global_config):
+    if target == "unknown" and _has_explicit_unknown_format(global_config) and _use_answer_format_oracle_abstention(global_config):
         return not_answerable, {"target": target, "changed": raw != not_answerable, "rule": "answer_format_unknown"}
-    if _looks_not_answerable(lowered) and not _has_confident_answer_tail(raw):
+    if _looks_not_answerable(lowered):
         return not_answerable, {"target": target, "changed": raw != not_answerable, "rule": "not_answerable"}
     if target == "int":
         value = _extract_int(raw)
@@ -170,6 +189,136 @@ def _has_explicit_unknown_format(global_config: dict[str, Any]) -> bool:
     return answer_format in {"unknown", "none", "null", "not answerable", "unanswerable"}
 
 
+def _use_answer_format_oracle_abstention(global_config: dict[str, Any]) -> bool:
+    if "use_answer_format_oracle_abstention" in global_config:
+        return bool(global_config["use_answer_format_oracle_abstention"])
+    generation = global_config.get("generation")
+    if isinstance(generation, dict) and "use_answer_format_oracle_abstention" in generation:
+        return bool(generation["use_answer_format_oracle_abstention"])
+    return False
+
+
+def _evidence_sufficiency(question: str, evidence_package: dict[str, Any], answer_type: str) -> dict[str, Any]:
+    refs = extract_media_refs(question)
+    pages = _question_pages(question)
+    table_nodes = evidence_package.get("table_evidence", []) or []
+    visual_nodes = evidence_package.get("visual_evidence", []) or []
+    text_nodes = evidence_package.get("text_evidence", []) or []
+    page_nodes = evidence_package.get("page_evidence", []) or []
+    all_nodes = list(text_nodes) + list(evidence_package.get("entity_evidence", []) or []) + list(page_nodes) + list(visual_nodes) + list(table_nodes)
+    reasons = []
+
+    if refs and not _has_matched_ref(refs, visual_nodes + table_nodes):
+        reasons.append("explicit_media_ref_not_grounded")
+    if pages and not _has_evidence_on_pages(pages, all_nodes):
+        reasons.append("page_hint_not_grounded")
+    if _question_needs_table(question) and not any(has_structured_table(node) for node in table_nodes):
+        reasons.append("structured_table_missing")
+    if answer_type == "unknown" and not _has_keyword_support(question, all_nodes):
+        reasons.append("question_object_not_supported")
+
+    return {
+        "sufficient": not reasons,
+        "reasons": reasons,
+        "media_refs": refs,
+        "page_hints": sorted(pages),
+        "table_nodes": len(table_nodes),
+        "structured_table_nodes": sum(1 for node in table_nodes if has_structured_table(node)),
+    }
+
+
+def _has_matched_ref(refs: list[dict[str, Any]], nodes: list[dict[str, Any]]) -> bool:
+    wanted = {(str(ref.get("kind")), str(ref.get("number"))) for ref in refs}
+    matched = set()
+    for node in nodes:
+        for ref in ((node.get("debug") or {}).get("matched_media_refs") or []):
+            matched.add((str(ref.get("kind")), str(ref.get("number"))))
+    return bool(wanted and wanted.issubset(matched))
+
+
+def _question_pages(question: str) -> set[int]:
+    text = question.lower()
+    pages = {int(match) for match in re.findall(r"\bpages?\s*(\d+)\b", text)}
+    for start, end in re.findall(r"\bpages?\s*(\d+)\s*[-–]\s*(\d+)\b", text):
+        left, right = int(start), int(end)
+        if right < left:
+            left, right = right, left
+        if right - left <= 30:
+            pages.update(range(left, right + 1))
+    return pages
+
+
+def _has_evidence_on_pages(pages: set[int], nodes: list[dict[str, Any]]) -> bool:
+    evidence_pages = set()
+    for node in nodes:
+        for key in ("page_id", "page", "page_start", "page_end"):
+            if node.get(key) is not None:
+                try:
+                    evidence_pages.add(int(node[key]))
+                except (TypeError, ValueError):
+                    pass
+    return bool(pages & evidence_pages)
+
+
+def _question_needs_table(question: str) -> bool:
+    text = question.lower()
+    if re.search(r"\b(table|row|column|cell)\b", text):
+        return True
+    return bool(re.search(r"\bclaims?\b", text) and re.search(r"\b(dataset|datasets|scientific articles|newspaper|wiki)\b", text))
+
+
+def _has_keyword_support(question: str, nodes: list[dict[str, Any]]) -> bool:
+    terms = [
+        term
+        for term in re.findall(r"[a-z0-9][a-z0-9/-]+", question.lower())
+        if len(term) > 2 and term not in _SUFFICIENCY_STOPWORDS
+    ]
+    if not terms:
+        return bool(nodes)
+    evidence_text = "\n".join(_node_text(node) for node in nodes).lower()
+    hits = sum(1 for term in set(terms) if term in evidence_text)
+    required = 2 if len(set(terms)) >= 4 else 1
+    return hits >= required
+
+
+_SUFFICIENCY_STOPWORDS = {
+    "what",
+    "which",
+    "when",
+    "where",
+    "does",
+    "have",
+    "with",
+    "from",
+    "this",
+    "that",
+    "paper",
+    "document",
+    "according",
+    "answer",
+    "format",
+    "write",
+    "please",
+}
+
+
+def _node_text(node: dict[str, Any]) -> str:
+    raw_ref = node.get("raw_ref") or {}
+    metadata = node.get("metadata") or {}
+    parts = [
+        node.get("text_for_embedding"),
+        node.get("caption"),
+        node.get("ocr_text"),
+        node.get("summary"),
+        raw_ref.get("table_markdown"),
+        raw_ref.get("table_html"),
+        raw_ref.get("media_id"),
+        metadata.get("media_type"),
+        metadata.get("text"),
+    ]
+    return "\n".join(str(part) for part in parts if part)
+
+
 def _looks_not_answerable(lowered_answer: str) -> bool:
     patterns = (
         "not answerable",
@@ -178,10 +327,16 @@ def _looks_not_answerable(lowered_answer: str) -> bool:
         "not mentioned",
         "no explicit mention",
         "no direct statement",
+        "no specific answer",
+        "not enough information",
         "insufficient evidence",
+        "not available",
+        "not shown",
+        "not present",
         "cannot be determined",
         "can't be determined",
         "cannot determine",
+        "cannot be confirmed",
         "do not contain enough",
         "does not contain enough",
     )
@@ -207,12 +362,14 @@ def _extract_int(text: str) -> str | None:
     direct = _extract_direct_int_phrase(text)
     if direct is not None:
         return direct
+    if len(text.split()) > 12:
+        return None
     numbers = _numeric_matches(text)
     integer_like = [raw for raw in numbers if not re.search(r"[.%/]", raw)]
-    if integer_like:
+    if len(integer_like) == 1:
         return str(int(integer_like[-1].replace(",", "")))
     words = _number_word_matches(text)
-    if words:
+    if len(words) == 1:
         return str(words[-1])
     return None
 
@@ -278,6 +435,8 @@ def _extract_direct_int_phrase(text: str) -> str | None:
 
 
 def _extract_float(text: str) -> str | None:
+    if len(text.split()) > 18 and not _answer_tail(text):
+        return None
     numbers = _numeric_matches(text)
     if not numbers:
         words = _number_word_matches(text)
@@ -434,6 +593,7 @@ def _table_text(nodes: list[dict[str, Any]], table_calls: list[dict[str, Any]]) 
     rows = []
     for node in nodes:
         raw_ref = node.get("raw_ref") or {}
+        table_info = (node.get("metadata") or {}).get("table_info") or {}
         rows.append(
             {
                 "node_id": node.get("node_id"),
@@ -441,6 +601,12 @@ def _table_text(nodes: list[dict[str, Any]], table_calls: list[dict[str, Any]]) 
                 "media_id": raw_ref.get("media_id"),
                 "table_markdown": raw_ref.get("table_markdown"),
                 "table_html": raw_ref.get("table_html"),
+                "table_info": {
+                    "format": table_info.get("format"),
+                    "n_rows": table_info.get("n_rows"),
+                    "n_cols": table_info.get("n_cols"),
+                    "cells": (table_info.get("cells") or [])[:80],
+                },
                 "table_reasoner_result": table_by_node.get(node.get("node_id")),
             }
         )

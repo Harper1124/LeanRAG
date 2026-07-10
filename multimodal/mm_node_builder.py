@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .io_utils import load_dataclasses, read_jsonl, write_json, write_jsonl
+from .generation.table_utils import parse_table
 from .schema import MMChunk, MMEdge, MMMedia, MMNode, dataclass_to_dict
 
 
@@ -546,14 +547,7 @@ def _infer_media_type(media: MMMedia) -> str:
 def _table_info(media: MMMedia) -> dict[str, Any]:
     if media.modality != "table":
         return {}
-    return {
-        "format": "html" if media.table_html else ("markdown" if media.table_markdown else "none"),
-        "cells": [],
-        "n_rows": 0,
-        "n_cols": 0,
-        "parse_confidence": 0.0,
-        "table_parse_available": bool(media.table_html or media.table_markdown),
-    }
+    return parse_table(media.table_html, media.table_markdown)
 
 
 def _count_nodes_edges(nodes: list[MMNode], edges: list[MMEdge]) -> dict[str, Any]:
