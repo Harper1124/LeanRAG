@@ -261,7 +261,14 @@ def _run_phase3_answer_pipeline(global_config: dict, db, query: str, retrieval_t
 
         query_info = retrieval_trace.get("query_info") or {}
         evidence_package = build_evidence_package(merged_candidates, query_info, global_config)
-        deterministic_answer, deterministic_trace = try_deterministic_answer(query, global_config)
+        if _should_skip_deterministic_for_oracle_abstention(global_config):
+            deterministic_answer, deterministic_trace = None, {
+                "enabled": True,
+                "matched": False,
+                "reason": "skipped_for_answer_format_oracle_abstention",
+            }
+        else:
+            deterministic_answer, deterministic_trace = try_deterministic_answer(query, global_config)
         if deterministic_answer is not None:
             answer_plan = plan_answer(query, evidence_package, query_info, global_config)
             return deterministic_answer, {
@@ -380,6 +387,18 @@ def _phase3_failure_stage(evidence_package: dict, vlm_calls: list[dict], table_c
     if any(call.get("error") and not call.get("table_answer") for call in table_calls):
         return "table_reasoner_failed"
     return None
+
+
+def _should_skip_deterministic_for_oracle_abstention(global_config: dict[str, Any]) -> bool:
+    answer_format = str(global_config.get("answer_format") or "").strip().lower()
+    if answer_format not in {"unknown", "none", "null", "not answerable", "unanswerable"}:
+        return False
+    if "use_answer_format_oracle_abstention" in global_config:
+        return bool(global_config["use_answer_format_oracle_abstention"])
+    generation = global_config.get("generation")
+    if isinstance(generation, dict) and "use_answer_format_oracle_abstention" in generation:
+        return bool(generation["use_answer_format_oracle_abstention"])
+    return False
 
 
 def _context_aggregation_enabled(global_config: dict) -> bool:

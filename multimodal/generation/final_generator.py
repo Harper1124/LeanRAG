@@ -589,7 +589,9 @@ def _table_text(nodes: list[dict[str, Any]], table_calls: list[dict[str, Any]]) 
     table_by_node = {}
     for call in table_calls:
         for node_id in call.get("used_table_nodes", []):
-            table_by_node[node_id] = {"table_answer": call.get("table_answer"), "error": call.get("error")}
+            supported_answer = _supported_subanswer(call.get("table_answer"))
+            if supported_answer or call.get("error"):
+                table_by_node[node_id] = {"table_answer": supported_answer or None, "error": call.get("error")}
     rows = []
     for node in nodes:
         raw_ref = node.get("raw_ref") or {}
@@ -619,12 +621,23 @@ def _fallback_answer(
     generation: dict[str, Any],
 ) -> str:
     for call in table_reasoner_calls:
-        if call.get("table_answer"):
-            return str(call["table_answer"])
+        answer = _supported_subanswer(call.get("table_answer"))
+        if answer:
+            return answer
     for call in vlm_calls:
-        if call.get("vlm_answer"):
-            return str(call["vlm_answer"])
+        answer = _supported_subanswer(call.get("vlm_answer"))
+        if answer:
+            return answer
     return str(generation["answer_not_enough_evidence"])
+
+
+def _supported_subanswer(answer: Any) -> str:
+    text = str(answer or "").strip()
+    if not text:
+        return ""
+    if _looks_not_answerable(text.lower()):
+        return ""
+    return text
 
 
 def _generation_config(config: dict[str, Any]) -> dict[str, Any]:

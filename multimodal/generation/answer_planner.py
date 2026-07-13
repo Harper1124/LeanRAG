@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -24,7 +25,6 @@ def plan_answer(
     query_info: dict[str, Any] | None = None,
     config: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    del question
     query_info = query_info or {}
     generation = _generation_config(config)
     budget = _budget(config)
@@ -51,7 +51,7 @@ def plan_answer(
         answer_mode = "mixed"
 
     use_vlm = bool(generation["use_vlm"] and generation["answer_with_vlm_when_media"] and has_visual)
-    use_table_reasoner = bool(generation["use_table_reasoner"] and has_table)
+    use_table_reasoner = bool(generation["use_table_reasoner"] and has_table and _has_table_intent(question, query_info))
     return {
         "use_vlm": use_vlm,
         "use_table_reasoner": use_table_reasoner,
@@ -64,6 +64,18 @@ def plan_answer(
         "selected_entity_nodes": entity_nodes,
         "selected_page_nodes": page_nodes,
     }
+
+
+def _has_table_intent(question: str, query_info: dict[str, Any]) -> bool:
+    text = question.lower()
+    for ref in query_info.get("media_refs") or []:
+        if str(ref.get("kind") or "").lower() == "table":
+            return True
+    if str(query_info.get("query_type") or "").lower() == "table":
+        return True
+    if re.search(r"\b(table|tab\.|row|column|cell)\b", text):
+        return True
+    return bool(re.search(r"\bclaims?\b", text) and re.search(r"\b(dataset|datasets|scientific articles|newspaper|wiki)\b", text))
 
 
 def _generation_config(config: dict[str, Any] | None) -> dict[str, Any]:
