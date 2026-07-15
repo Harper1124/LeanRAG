@@ -7,5 +7,5 @@ visualize.py
 *.log
 ckg_data
 ttt
-result/
+results/
 exp/
