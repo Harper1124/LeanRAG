@@ -451,17 +451,85 @@ def _safe_int(value: Any) -> int | None:
 def _evaluation_model_config_from_args(args: argparse.Namespace) -> dict[str, Any] | None:
     if not args.extract_answers:
         return None
+    full_config = _load_config(args.config)
+    configured = full_config.get("evaluation_model") or full_config.get("evaluation") or {}
+    fallback = full_config.get("deepseek", {})
     config = {
-        "model": args.evaluation_model,
-        "base_url": args.evaluation_base_url,
-        "api_key": args.evaluation_api_key,
-        "api_key_env": args.evaluation_api_key_env,
-        "temperature": args.evaluation_temperature,
-        "max_tokens": args.evaluation_max_tokens,
+        "model": args.evaluation_model or configured.get("model") or fallback.get("model"),
+        "base_url": args.evaluation_base_url or configured.get("base_url") or fallback.get("base_url"),
+        "api_key": args.evaluation_api_key or configured.get("api_key") or fallback.get("api_key", ""),
+        "api_key_env": args.evaluation_api_key_env or configured.get("api_key_env") or fallback.get("api_key_env"),
+        "temperature": args.evaluation_temperature if args.evaluation_temperature is not None else configured.get("temperature", 0.0),
+        "max_tokens": args.evaluation_max_tokens if args.evaluation_max_tokens is not None else configured.get("max_tokens", 256),
     }
     if not config["model"] or not config["base_url"]:
-        raise ValueError("--evaluation_model and --evaluation_base_url are required with --extract_answers")
+        raise ValueError("evaluation model and base_url are required with --extract_answers")
     return config
+
+
+def _load_config(path: str | None) -> dict[str, Any]:
+    if not path:
+        return {}
+    try:
+        import yaml
+
+        with open(path, "r", encoding="utf-8") as f:
+            return yaml.safe_load(f) or {}
+    except ModuleNotFoundError:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                return _parse_simple_yaml(f.read())
+        except FileNotFoundError:
+            return {}
+    except FileNotFoundError:
+        return {}
+
+
+def _parse_simple_yaml(text: str) -> dict[str, Any]:
+    config: dict[str, Any] = {}
+    current: dict[str, Any] | None = None
+    for raw_line in text.splitlines():
+        line = raw_line.split("#", 1)[0].rstrip()
+        if not line.strip():
+            continue
+        indent = len(line) - len(line.lstrip(" "))
+        stripped = line.strip()
+        if ":" not in stripped:
+            continue
+        key, value = stripped.split(":", 1)
+        key = key.strip()
+        value = value.strip()
+        if indent == 0:
+            if value:
+                config[key] = _parse_scalar(value)
+                current = None
+            else:
+                current = {}
+                config[key] = current
+        elif indent > 0 and current is not None:
+            current[key] = _parse_scalar(value)
+    return config
+
+
+def _parse_scalar(value: str) -> Any:
+    text = value.strip()
+    if not text:
+        return ""
+    if (text.startswith('"') and text.endswith('"')) or (text.startswith("'") and text.endswith("'")):
+        return text[1:-1]
+    lowered = text.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    if lowered in {"null", "none"}:
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    try:
+        return float(text)
+    except ValueError:
+        return text
 
 
 def main() -> None:
@@ -469,13 +537,14 @@ def main() -> None:
     parser.add_argument("--dataset_dir", required=True)
     parser.add_argument("--predictions_file", required=True)
     parser.add_argument("--output_file", required=True)
+    parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--extract_answers", action="store_true", help="Use an evaluation model to extract canonical answers before scoring.")
     parser.add_argument("--evaluation_model", default=None)
     parser.add_argument("--evaluation_base_url", default=None)
     parser.add_argument("--evaluation_api_key", default="")
     parser.add_argument("--evaluation_api_key_env", default=None)
-    parser.add_argument("--evaluation_temperature", type=float, default=0.0)
-    parser.add_argument("--evaluation_max_tokens", type=int, default=256)
+    parser.add_argument("--evaluation_temperature", type=float, default=None)
+    parser.add_argument("--evaluation_max_tokens", type=int, default=None)
     args = parser.parse_args()
     output = score_mmlongbench_doc(
         args.dataset_dir,

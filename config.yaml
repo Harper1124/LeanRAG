@@ -14,6 +14,13 @@ deepseek:
   api_key: "ollama"
   base_url: "http://127.0.0.1:11444/v1"
 
+evaluation_model:
+  model: "qwen2.5:7b"
+  api_key: "ollama"
+  base_url: "http://127.0.0.1:11444/v1"
+  temperature: 0.0
+  max_tokens: 256
+
 # mysql:
 #   host: "127.0.0.1"
 #   port: 4321
