@@ -21,11 +21,6 @@ evaluation_model:
   temperature: 0.0
   max_tokens: 256
 
-evaluation_extraction:
-  short_string_max_chars: 80
-  short_identifier_max_chars: 80
-  enable_guard: true
-
 # mysql:
 #   host: "127.0.0.1"
 #   port: 4321
