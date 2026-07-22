@@ -117,6 +117,7 @@ def _evaluation_config(
     if not extract_answers:
         return None
     configured = full_config.get("evaluation_model") or full_config.get("evaluation") or {}
+    extraction_options = full_config.get("evaluation_extraction") or {}
     deepseek = full_config.get("deepseek", {})
     config = {
         "model": evaluation_model or configured.get("model") or deepseek.get("model"),
@@ -126,6 +127,8 @@ def _evaluation_config(
         "temperature": configured.get("temperature", 0.0),
         "max_tokens": configured.get("max_tokens", 256),
     }
+    if isinstance(extraction_options, dict):
+        config.update(extraction_options)
     if not config["model"] or not config["base_url"]:
         raise ValueError("evaluation model and base_url are required when extract_answers=True")
     return config

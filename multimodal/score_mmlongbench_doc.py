@@ -11,7 +11,12 @@ from typing import Any
 
 from .docbench_loader import load_docbench
 from .io_utils import read_jsonl, write_json
-from .mmlongbench_answer_extraction import ExtractedAnswer, make_answer_extractor
+from .mmlongbench_answer_extraction import (
+    ExtractedAnswer,
+    GuardedExtraction,
+    guard_extraction,
+    make_answer_extractor,
+)
 
 
 def score_mmlongbench_doc(
@@ -35,7 +40,7 @@ def score_mmlongbench_doc(
         sample = gold.get(key)
         if sample is None:
             sample = _match_gold_by_question(gold, pred)
-        rows.append(_score_row(sample, pred, answer_extractor))
+        rows.append(_score_row(sample, pred, answer_extractor, evaluation_model_config))
 
     summary = {
         "overall": _aggregate(rows),
@@ -53,16 +58,14 @@ def score_mmlongbench_doc(
     return output
 
 
-def _score_row(sample: dict | None, pred: dict, answer_extractor=None) -> dict:
+def _score_row(sample: dict | None, pred: dict, answer_extractor=None, extraction_config: dict[str, Any] | None = None) -> dict:
     metadata = (sample or {}).get("metadata", {})
     gold_answer = (sample or {}).get("answer", pred.get("gold_answer", ""))
     prediction = str(pred.get("prediction", ""))
     answer_format = _clean_scalar(metadata.get("answer_format"))
-    extracted = _extract_prediction_answer(sample, pred, prediction, answer_extractor)
-    if extracted:
-        extracted = _canonicalize_extracted_answer(extracted, prediction, answer_format)
-    scored_prediction = extracted.answer if extracted else prediction
-    extracted_format = extracted.answer_format if extracted else _clean_scalar(pred.get("extracted_answer_format"))
+    guarded = _extract_prediction_answer(sample, pred, prediction, answer_format, answer_extractor, extraction_config)
+    scored_prediction = guarded.guarded_answer
+    extracted_format = guarded.guarded_answer_format
     evidence_pages = _parse_list(metadata.get("evidence_pages"))
     evidence_sources = [_clean_scalar(item) for item in _parse_list(metadata.get("evidence_sources"))]
     retrieved_pages = sorted(_extract_pages(pred))
@@ -71,23 +74,30 @@ def _score_row(sample: dict | None, pred: dict, answer_extractor=None) -> dict:
     list_partial_f1 = _partial_list_f1(gold_answer, scored_prediction) if _official_answer_format(answer_format) == "List" else None
     primary_answer_score = list_partial_f1 if list_partial_f1 is not None else official_extracted_metrics["answer_score"]
     evidence_metrics = _evidence_metrics(evidence_pages, retrieved_pages)
-    extraction_changed = bool(extracted) and _normalize(prediction) != _normalize(scored_prediction)
-    extraction_helped = bool(extracted) and official_extracted_metrics["answer_score"] > official_raw_metrics["answer_score"]
-    extraction_hurt = bool(extracted) and official_extracted_metrics["answer_score"] < official_raw_metrics["answer_score"]
+    extraction_changed = _normalize(prediction) != _normalize(scored_prediction)
+    extraction_helped = official_extracted_metrics["answer_score"] > official_raw_metrics["answer_score"]
+    extraction_hurt = official_extracted_metrics["answer_score"] < official_raw_metrics["answer_score"]
     return {
         "doc_id": pred.get("doc_id", (sample or {}).get("doc_id", "")),
         "question_id": pred.get("question_id", (sample or {}).get("question_id", "")),
         "question": pred.get("question", (sample or {}).get("question", "")),
         "gold_answer": gold_answer,
         "prediction": prediction,
-        "extracted_answer": scored_prediction if extracted else None,
+        "extracted_answer": guarded.guarded_answer,
         "extracted_answer_format": extracted_format,
-        "answer_extraction_raw": extracted.raw_response if extracted else None,
-        "answer_extraction_error": extracted.error if extracted else None,
+        "answer_extraction_raw": guarded.extraction_raw_response,
+        "answer_extraction_error": guarded.extraction_error,
         "scored_prediction": scored_prediction,
         "extraction_changed": extraction_changed,
         "extraction_helped": extraction_helped,
         "extraction_hurt": extraction_hurt,
+        "extraction_guard_applied": guarded.guard_action != "none",
+        "extraction_guard_action": guarded.guard_action,
+        "extraction_guard_reason": guarded.guard_reason,
+        "precheck_bypassed_llm": guarded.precheck_bypassed_llm,
+        "raw_normalized_prediction": guarded.raw_normalized_prediction,
+        "pre_guard_extracted_answer": guarded.pre_guard_extracted_answer,
+        "post_guard_scored_prediction": guarded.post_guard_scored_prediction,
         "answer_format": answer_format or "Unknown",
         "doc_type": _clean_scalar(metadata.get("doc_type")) or "Unknown",
         "evidence_pages": evidence_pages,
@@ -108,51 +118,48 @@ def _score_row(sample: dict | None, pred: dict, answer_extractor=None) -> dict:
     }
 
 
-def _extract_prediction_answer(sample: dict | None, pred: dict, prediction: str, answer_extractor) -> ExtractedAnswer | None:
+def _extract_prediction_answer(
+    sample: dict | None,
+    pred: dict,
+    prediction: str,
+    answer_format: str | None,
+    answer_extractor,
+    extraction_config: dict[str, Any] | None,
+) -> GuardedExtraction:
+    question = str(pred.get("question") or (sample or {}).get("question") or "")
     if pred.get("extracted_answer") is not None:
-        return ExtractedAnswer(
+        existing = ExtractedAnswer(
             answer=str(pred.get("extracted_answer")),
             answer_format=_clean_scalar(pred.get("extracted_answer_format")) or "Str",
             raw_response=str(pred.get("answer_extraction_raw") or ""),
             error=_clean_scalar(pred.get("answer_extraction_error")),
         )
-    if answer_extractor is None:
-        return None
-    if _is_not_answerable_text(prediction):
-        return ExtractedAnswer(answer="Not answerable", answer_format="Str", raw_response="", error=None)
-    answer_format = _clean_scalar(((sample or {}).get("metadata") or {}).get("answer_format"))
-    expected_format = _official_answer_format(answer_format)
-    if expected_format in {"Int", "Float"}:
-        scalar = _extract_single_number_text(prediction, integer=expected_format == "Int")
-        if scalar is not None:
-            return ExtractedAnswer(answer=scalar, answer_format=expected_format, raw_response="", error=None)
-    question = str(pred.get("question") or (sample or {}).get("question") or "")
-    return answer_extractor(question, prediction)
-
-
-def _canonicalize_extracted_answer(extracted: ExtractedAnswer, original_prediction: str, answer_format: str | None) -> ExtractedAnswer:
-    answer = str(extracted.answer or "").strip()
-    expected_format = _official_answer_format(answer_format)
-    extracted_format = _normalize_extracted_format(extracted.answer_format)
-    if _is_fail_to_answer_text(answer) and _is_not_answerable_text(original_prediction):
-        answer = "Not answerable"
-        extracted_format = "Str"
-    elif _is_not_answerable_text(answer):
-        answer = "Not answerable"
-        extracted_format = "Str"
-    elif expected_format in {"Int", "Float"} or extracted_format in {"Int", "Float"}:
-        answer = _strip_scalar_brackets(answer)
-        if expected_format == "Int" or extracted_format == "Int":
-            int_value = _extract_single_number_text(answer, integer=True)
-            if int_value is not None:
-                answer = int_value
-                extracted_format = "Int"
-        elif expected_format == "Float" or extracted_format == "Float":
-            float_value = _extract_single_number_text(answer, integer=False)
-            if float_value is not None:
-                answer = float_value
-                extracted_format = "Float"
-    return ExtractedAnswer(answer=answer, answer_format=extracted_format, raw_response=extracted.raw_response, error=extracted.error)
+    else:
+        existing = None
+    if existing is None and answer_extractor is None:
+        return GuardedExtraction(
+            raw_prediction=prediction,
+            extracted_answer=None,
+            extracted_answer_format=None,
+            guarded_answer=prediction,
+            guarded_answer_format=_official_answer_format(answer_format),
+            guard_action="none",
+            guard_reason="extraction_disabled",
+            precheck_bypassed_llm=False,
+            raw_normalized_prediction=prediction,
+            pre_guard_extracted_answer="",
+            post_guard_scored_prediction=prediction,
+            extraction_error=None,
+            extraction_raw_response="",
+        )
+    return guard_extraction(
+        prediction,
+        answer_format=answer_format,
+        extractor=answer_extractor,
+        question=question,
+        existing_extracted=existing,
+        config=extraction_config,
+    )
 
 
 def _official_answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
@@ -219,43 +226,8 @@ def _prefixed_metrics(prefix: str, metrics: dict[str, Any]) -> dict[str, Any]:
     return {f"{prefix}_{key}": value for key, value in metrics.items()}
 
 
-def _normalize_extracted_format(value: str | None) -> str:
-    text = str(value or "").strip().strip("[]").strip().lower()
-    if text in {"int", "integer"}:
-        return "Int"
-    if text in {"float", "number"}:
-        return "Float"
-    if text in {"list", "array"}:
-        return "List"
-    return "Str"
-
-
 def _is_not_answerable_text(value: Any) -> bool:
     return _normalize(_stringify_answer(value)) in {"not answerable", "none", "unknown", "unanswerable", ""}
-
-
-def _is_fail_to_answer_text(value: Any) -> bool:
-    return _normalize(_stringify_answer(value)) in {"fail to answer", "failed to answer"}
-
-
-def _strip_scalar_brackets(value: str) -> str:
-    text = str(value or "").strip()
-    match = re.fullmatch(r"\[\s*([^\[\],]+?)\s*\]", text)
-    return match.group(1).strip() if match else text
-
-
-def _extract_single_number_text(value: str, integer: bool) -> str | None:
-    text = _strip_scalar_brackets(value).replace(",", "").strip()
-    match = re.fullmatch(r"(-?\d+(?:\.\d+)?%?)", text)
-    if not match:
-        return None
-    raw = match.group(1)
-    if integer:
-        try:
-            return str(int(float(raw.rstrip("%"))))
-        except ValueError:
-            return None
-    return raw
 
 
 def _partial_list_f1(gold: Any, pred: str) -> float:
@@ -604,6 +576,7 @@ def _evaluation_model_config_from_args(args: argparse.Namespace) -> dict[str, An
         return None
     full_config = _load_config(args.config)
     configured = full_config.get("evaluation_model") or full_config.get("evaluation") or {}
+    extraction_options = full_config.get("evaluation_extraction") or {}
     fallback = full_config.get("deepseek", {})
     config = {
         "model": args.evaluation_model or configured.get("model") or fallback.get("model"),
@@ -613,6 +586,8 @@ def _evaluation_model_config_from_args(args: argparse.Namespace) -> dict[str, An
         "temperature": args.evaluation_temperature if args.evaluation_temperature is not None else configured.get("temperature", 0.0),
         "max_tokens": args.evaluation_max_tokens if args.evaluation_max_tokens is not None else configured.get("max_tokens", 256),
     }
+    if isinstance(extraction_options, dict):
+        config.update(extraction_options)
     if not config["model"] or not config["base_url"]:
         raise ValueError("evaluation model and base_url are required with --extract_answers")
     return config
