@@ -66,13 +66,25 @@ def run_mmlongbench_doc_eval(
         )
 
     predictions_file = output / "mmlongbench_doc_predictions.jsonl"
+    traces_file = output / "mmlongbench_doc_traces.jsonl"
     scores_file = output / "mmlongbench_doc_scores.json"
-    result = {"predictions_file": str(predictions_file), "scores_file": str(scores_file)}
+    result = {
+        "predictions_file": str(predictions_file),
+        "traces_file": str(traces_file),
+        "scores_file": str(scores_file),
+    }
 
     if predict:
         from .evaluate_docbench import run_docbench_eval
 
-        run_docbench_eval(dataset_dir, working_root, str(predictions_file), limit=limit, config_file=config_file)
+        run_docbench_eval(
+            dataset_dir,
+            working_root,
+            str(predictions_file),
+            trace_file=str(traces_file),
+            limit=limit,
+            config_file=config_file,
+        )
 
     if score:
         evaluation_config = _evaluation_config(

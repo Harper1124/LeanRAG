@@ -105,7 +105,7 @@ def _score_row(sample: dict | None, pred: dict, answer_extractor=None) -> dict:
         "anls": official_extracted_metrics["anls"],
         "official_answer_format": official_extracted_metrics["official_answer_format"],
         **evidence_metrics,
-        "trace_error": (pred.get("trace") or {}).get("error"),
+        "trace_error": pred.get("trace_error") or (pred.get("trace") or {}).get("error"),
     }
 
 
