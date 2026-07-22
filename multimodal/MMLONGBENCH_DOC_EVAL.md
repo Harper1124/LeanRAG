@@ -75,15 +75,14 @@ python -m multimodal.run_mmlongbench_doc_eval \
 
 ## Metrics
 
-- `answer_score`: main answer metric. With `--extract_answers`, it scores `scored_prediction` from `extracted_answer` using MMLongBench-Doc-style rules: exact integer match, tolerant float/percentage match, ANLS for strings, and length-matched list scoring.
-- `legacy_answer_score`: the earlier LeanRAG rule score on the original free-form prediction.
+- `answer_score`: main answer metric. With `--extract_answers`, it scores `scored_prediction` from `extracted_answer` using exact integer match, tolerant float/percentage match, ANLS for strings, and partial list F1 for list answers.
 - `official_raw_answer_score`: MMLongBench-Doc-style score on the original free-form prediction before answer extraction.
-- `official_extracted_answer_score`: MMLongBench-Doc-style score on the canonical extracted answer. This is the same value as `answer_score`.
+- `official_extracted_answer_score`: MMLongBench-Doc-style score on the canonical extracted answer, including strict length-matched list scoring.
 - `exact_match`: normalized exact answer match.
 - `token_f1`: normalized token overlap F1.
 - `numeric_match`: numeric correctness for `Int` and `Float` answers.
 - `list_f1`: item-level F1 for list answers.
-- `list_partial_f1`: auxiliary partial list F1 on the extracted answer, kept for error analysis when strict list scoring gives zero because of length mismatch.
+- `list_partial_f1`: partial list F1 on the extracted answer. For `List` questions this is also used as `answer_score`.
 - `anls`: approximate normalized Levenshtein score for string answers.
 - `extracted_answer` / `extracted_answer_format`: canonical answer and format produced by the evaluation model before rule scoring.
 - `page_hit`: whether any retrieved evidence page overlaps the gold `evidence_pages`.
