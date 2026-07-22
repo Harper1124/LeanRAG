@@ -2,19 +2,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from .openai_clients import resolve_api_key
 
 
-ANSWER_EXTRACTION_PROMPT = """Given the question and analysis, you are tasked to extract answers with required formats from the free-form analysis.
-- Your extracted answers should be one of the following formats: (1) Integer, (2) Float, (3) String and (4) List.
-If you find the analysis the question can not be answered from the given documents, type "Not answerable".
-Exception: If the analysis only tells you that it can not read/understand the images or documents, type "Fail to answer".
-- Please make your response as concise as possible. Also note that your response should be formatted as below:
-Extracted answer: answer
-Answer format: Integer|Float|String|List
-"""
+ANSWER_EXTRACTION_PROMPT_PATH = Path(__file__).with_name("prompt_for_answer_extraction.md")
+ANSWER_EXTRACTION_PROMPT = ANSWER_EXTRACTION_PROMPT_PATH.read_text(encoding="utf-8")
 
 
 @dataclass
