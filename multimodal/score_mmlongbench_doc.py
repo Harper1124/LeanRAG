@@ -43,6 +43,7 @@ def score_mmlongbench_doc(
         "by_extracted_answer_format": _aggregate_groups(rows, "extracted_answer_format"),
         "by_doc_type": _aggregate_groups(rows, "doc_type"),
         "by_evidence_source": _aggregate_multivalue_groups(rows, "evidence_sources"),
+        "score_diagnostics": _score_diagnostics(rows),
         "num_predictions": len(predictions),
         "num_gold": len(gold),
         "used_answer_extraction": bool(extract_answers),
@@ -58,13 +59,21 @@ def _score_row(sample: dict | None, pred: dict, answer_extractor=None) -> dict:
     prediction = str(pred.get("prediction", ""))
     answer_format = _clean_scalar(metadata.get("answer_format"))
     extracted = _extract_prediction_answer(sample, pred, prediction, answer_extractor)
+    if extracted:
+        extracted = _canonicalize_extracted_answer(extracted, prediction, answer_format)
     scored_prediction = extracted.answer if extracted else prediction
     extracted_format = extracted.answer_format if extracted else _clean_scalar(pred.get("extracted_answer_format"))
     evidence_pages = _parse_list(metadata.get("evidence_pages"))
     evidence_sources = [_clean_scalar(item) for item in _parse_list(metadata.get("evidence_sources"))]
     retrieved_pages = sorted(_extract_pages(pred))
-    answer_metrics = _answer_metrics(gold_answer, scored_prediction, answer_format)
+    legacy_metrics = _legacy_answer_metrics(gold_answer, prediction, answer_format)
+    official_raw_metrics = _official_answer_metrics(gold_answer, prediction, answer_format)
+    official_extracted_metrics = _official_answer_metrics(gold_answer, scored_prediction, answer_format)
+    list_partial_f1 = _legacy_list_f1(gold_answer, scored_prediction) if _official_answer_format(answer_format) == "List" else None
     evidence_metrics = _evidence_metrics(evidence_pages, retrieved_pages)
+    extraction_changed = bool(extracted) and _normalize(prediction) != _normalize(scored_prediction)
+    extraction_helped = bool(extracted) and official_extracted_metrics["answer_score"] > official_raw_metrics["answer_score"]
+    extraction_hurt = bool(extracted) and official_extracted_metrics["answer_score"] < official_raw_metrics["answer_score"]
     return {
         "doc_id": pred.get("doc_id", (sample or {}).get("doc_id", "")),
         "question_id": pred.get("question_id", (sample or {}).get("question_id", "")),
@@ -76,12 +85,25 @@ def _score_row(sample: dict | None, pred: dict, answer_extractor=None) -> dict:
         "answer_extraction_raw": extracted.raw_response if extracted else None,
         "answer_extraction_error": extracted.error if extracted else None,
         "scored_prediction": scored_prediction,
+        "extraction_changed": extraction_changed,
+        "extraction_helped": extraction_helped,
+        "extraction_hurt": extraction_hurt,
         "answer_format": answer_format or "Unknown",
         "doc_type": _clean_scalar(metadata.get("doc_type")) or "Unknown",
         "evidence_pages": evidence_pages,
         "retrieved_pages": retrieved_pages,
         "evidence_sources": evidence_sources,
-        **answer_metrics,
+        **_prefixed_metrics("legacy", legacy_metrics),
+        **_prefixed_metrics("official_raw", official_raw_metrics),
+        **_prefixed_metrics("official_extracted", official_extracted_metrics),
+        "answer_score": official_extracted_metrics["answer_score"],
+        "exact_match": official_extracted_metrics["exact_match"],
+        "token_f1": official_extracted_metrics["token_f1"],
+        "numeric_match": official_extracted_metrics["numeric_match"],
+        "list_f1": official_extracted_metrics["list_f1"],
+        "list_partial_f1": list_partial_f1,
+        "anls": official_extracted_metrics["anls"],
+        "official_answer_format": official_extracted_metrics["official_answer_format"],
         **evidence_metrics,
         "trace_error": (pred.get("trace") or {}).get("error"),
     }
@@ -97,11 +119,38 @@ def _extract_prediction_answer(sample: dict | None, pred: dict, prediction: str,
         )
     if answer_extractor is None:
         return None
+    if _is_not_answerable_text(prediction):
+        return ExtractedAnswer(answer="Not answerable", answer_format="Str", raw_response="", error=None)
     question = str(pred.get("question") or (sample or {}).get("question") or "")
     return answer_extractor(question, prediction)
 
 
-def _answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
+def _canonicalize_extracted_answer(extracted: ExtractedAnswer, original_prediction: str, answer_format: str | None) -> ExtractedAnswer:
+    answer = str(extracted.answer or "").strip()
+    expected_format = _official_answer_format(answer_format)
+    extracted_format = _normalize_extracted_format(extracted.answer_format)
+    if _is_fail_to_answer_text(answer) and _is_not_answerable_text(original_prediction):
+        answer = "Not answerable"
+        extracted_format = "Str"
+    elif _is_not_answerable_text(answer):
+        answer = "Not answerable"
+        extracted_format = "Str"
+    elif expected_format in {"Int", "Float"} or extracted_format in {"Int", "Float"}:
+        answer = _strip_scalar_brackets(answer)
+        if expected_format == "Int" or extracted_format == "Int":
+            int_value = _extract_single_number_text(answer, integer=True)
+            if int_value is not None:
+                answer = int_value
+                extracted_format = "Int"
+        elif expected_format == "Float" or extracted_format == "Float":
+            float_value = _extract_single_number_text(answer, integer=False)
+            if float_value is not None:
+                answer = float_value
+                extracted_format = "Float"
+    return ExtractedAnswer(answer=answer, answer_format=extracted_format, raw_response=extracted.raw_response, error=extracted.error)
+
+
+def _official_answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
     gold_text = _stringify_answer(gold)
     pred_text = _stringify_answer(pred)
     official_format = _official_answer_format(answer_format)
@@ -117,6 +166,28 @@ def _answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
         "anls": score if official_format in {"Str", "None"} else None,
         "official_answer_format": official_format,
     }
+
+
+def _legacy_answer_metrics(gold: Any, pred: Any, answer_format: str | None) -> dict:
+    gold_text = _stringify_answer(gold)
+    pred_text = _stringify_answer(pred)
+    is_unanswerable = _normalize(gold_text) in {"not answerable", "none", "nan", ""}
+    if is_unanswerable:
+        score = 1.0 if _normalize(pred_text) in {"not answerable", "none", "unknown", "unanswerable", ""} else 0.0
+        return {"answer_score": score, "exact_match": score, "token_f1": score, "numeric_match": None, "list_f1": None, "anls": None, "official_answer_format": _official_answer_format(answer_format)}
+
+    exact = 1.0 if _normalize(gold_text) == _normalize(pred_text) else 0.0
+    token_f1 = _token_f1(gold_text, pred_text)
+    official_format = _official_answer_format(answer_format)
+    numeric_match = _legacy_numeric_match(gold_text, pred_text) if official_format in {"Int", "Float"} else None
+    list_f1 = _legacy_list_f1(gold, pred_text) if official_format == "List" else None
+    if list_f1 is not None:
+        score = list_f1
+    elif numeric_match is not None:
+        score = numeric_match
+    else:
+        score = max(exact, token_f1)
+    return {"answer_score": score, "exact_match": exact, "token_f1": token_f1, "numeric_match": numeric_match, "list_f1": list_f1, "anls": None, "official_answer_format": official_format}
 
 
 def _mmlongbench_eval_score(gt: Any, pred: Any, answer_type: str) -> float:
@@ -159,6 +230,93 @@ def _mmlongbench_list_score(gt: Any, pred: Any) -> float:
     if isfloat(gt_clean[0]) or is_exact_match(gt_clean[0]):
         return float("-".join(gt_clean) == "-".join(pred_clean))
     return float(min(anls_compute(gt_value, pred_value) for gt_value, pred_value in zip(gt_clean, pred_clean)))
+
+
+def _prefixed_metrics(prefix: str, metrics: dict[str, Any]) -> dict[str, Any]:
+    return {f"{prefix}_{key}": value for key, value in metrics.items()}
+
+
+def _normalize_extracted_format(value: str | None) -> str:
+    text = str(value or "").strip().strip("[]").strip().lower()
+    if text in {"int", "integer"}:
+        return "Int"
+    if text in {"float", "number"}:
+        return "Float"
+    if text in {"list", "array"}:
+        return "List"
+    return "Str"
+
+
+def _is_not_answerable_text(value: Any) -> bool:
+    return _normalize(_stringify_answer(value)) in {"not answerable", "none", "unknown", "unanswerable", ""}
+
+
+def _is_fail_to_answer_text(value: Any) -> bool:
+    return _normalize(_stringify_answer(value)) in {"fail to answer", "failed to answer"}
+
+
+def _strip_scalar_brackets(value: str) -> str:
+    text = str(value or "").strip()
+    match = re.fullmatch(r"\[\s*([^\[\],]+?)\s*\]", text)
+    return match.group(1).strip() if match else text
+
+
+def _extract_single_number_text(value: str, integer: bool) -> str | None:
+    text = _strip_scalar_brackets(value).replace(",", "").strip()
+    match = re.fullmatch(r"(-?\d+(?:\.\d+)?%?)", text)
+    if not match:
+        return None
+    raw = match.group(1)
+    if integer:
+        try:
+            return str(int(float(raw.rstrip("%"))))
+        except ValueError:
+            return None
+    return raw
+
+
+def _legacy_numeric_match(gold: str, pred: str) -> float:
+    gold_nums = _numbers(gold)
+    pred_nums = _numbers(pred)
+    if not gold_nums or not pred_nums:
+        return 0.0
+    for gold_num in gold_nums:
+        for pred_num in pred_nums:
+            if _close_number(gold_num, pred_num):
+                return 1.0
+    return 0.0
+
+
+def _numbers(text: str) -> list[float]:
+    nums = []
+    for raw in re.findall(r"-?\d+(?:,\d{3})*(?:\.\d+)?%?", text):
+        scale = 0.01 if raw.endswith("%") else 1.0
+        nums.append(float(raw.rstrip("%").replace(",", "")) * scale)
+    return nums
+
+
+def _close_number(left: float, right: float) -> bool:
+    return isclose(left, right, rel_tol=1e-3, abs_tol=1e-3) or isclose(left, right * 0.01, rel_tol=1e-3, abs_tol=1e-3)
+
+
+def _legacy_list_f1(gold: Any, pred: str) -> float:
+    gold_items = [_normalize(_stringify_answer(item)) for item in _parse_list(gold)]
+    pred_items = [_normalize(item) for item in re.split(r"[,;\n]|\band\b", _stringify_answer(pred)) if _normalize(item)]
+    if not gold_items:
+        return 0.0
+    matched = 0
+    used = set()
+    for gold_item in gold_items:
+        for idx, pred_item in enumerate(pred_items):
+            if idx in used:
+                continue
+            if gold_item == pred_item or gold_item in pred_item or pred_item in gold_item:
+                matched += 1
+                used.add(idx)
+                break
+    precision = matched / len(pred_items) if pred_items else 0.0
+    recall = matched / len(gold_items)
+    return 2 * precision * recall / (precision + recall) if precision + recall else 0.0
 
 
 def levenshtein_distance(s1: str, s2: str) -> int:
@@ -325,10 +483,14 @@ def _aggregate(rows: list[dict]) -> dict:
     return {
         "count": len(rows),
         "answer_score": _mean(rows, "answer_score"),
+        "legacy_answer_score": _mean(rows, "legacy_answer_score"),
+        "official_raw_answer_score": _mean(rows, "official_raw_answer_score"),
+        "official_extracted_answer_score": _mean(rows, "official_extracted_answer_score"),
         "exact_match": _mean(rows, "exact_match"),
         "token_f1": _mean(rows, "token_f1"),
         "numeric_match": _mean(rows, "numeric_match"),
         "list_f1": _mean(rows, "list_f1"),
+        "list_partial_f1": _mean(rows, "list_partial_f1"),
         "anls": _mean(rows, "anls"),
         "page_hit": _mean(rows, "page_hit"),
         "page_precision": _mean(rows, "page_precision"),
@@ -342,6 +504,37 @@ def _aggregate(rows: list[dict]) -> dict:
         "missing_workspace_rate": sum(1 for row in rows if row.get("trace_error")) / len(rows) if rows else 0.0,
         "answer_extraction_error_rate": sum(1 for row in rows if row.get("answer_extraction_error")) / len(rows) if rows else 0.0,
     }
+
+
+def _score_diagnostics(rows: list[dict]) -> dict:
+    if not rows:
+        return {
+            "count": 0,
+            "extraction_changed_count": 0,
+            "extraction_helped_count": 0,
+            "extraction_hurt_count": 0,
+            "extraction_unchanged_count": 0,
+            "bracket_numeric_count": 0,
+            "not_answerable_preserved_count": 0,
+        }
+    return {
+        "count": len(rows),
+        "extraction_changed_count": sum(1 for row in rows if row.get("extraction_changed")),
+        "extraction_helped_count": sum(1 for row in rows if row.get("extraction_helped")),
+        "extraction_hurt_count": sum(1 for row in rows if row.get("extraction_hurt")),
+        "extraction_unchanged_count": sum(1 for row in rows if not row.get("extraction_changed")),
+        "bracket_numeric_count": sum(1 for row in rows if _looks_like_bracket_numeric(row.get("answer_extraction_raw"))),
+        "not_answerable_preserved_count": sum(
+            1
+            for row in rows
+            if _is_not_answerable_text(row.get("prediction")) and row.get("extracted_answer") == "Not answerable"
+        ),
+    }
+
+
+def _looks_like_bracket_numeric(value: Any) -> bool:
+    text = str(value or "")
+    return bool(re.search(r"Extracted\s+answer\s*:\s*\[\s*-?\d+(?:\.\d+)?%?\s*\]", text, flags=re.IGNORECASE))
 
 
 def _aggregate_groups(rows: list[dict], key: str) -> dict:

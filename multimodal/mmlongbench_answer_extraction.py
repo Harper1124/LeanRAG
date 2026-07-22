@@ -12,8 +12,8 @@ ANSWER_EXTRACTION_PROMPT = """Given the question and analysis, you are tasked to
 If you find the analysis the question can not be answered from the given documents, type "Not answerable".
 Exception: If the analysis only tells you that it can not read/understand the images or documents, type "Fail to answer".
 - Please make your response as concise as possible. Also note that your response should be formatted as below:
-Extracted answer: [answer]
-Answer format: [answer format]
+Extracted answer: answer
+Answer format: Integer|Float|String|List
 """
 
 
@@ -39,9 +39,9 @@ def make_answer_extractor(config: dict[str, Any]):
             response = client.chat.completions.create(
                 model=model,
                 messages=[
-                    {"role": "user", "content": prompt},
+                    {"role": "system", "content": prompt},
                     {
-                        "role": "assistant",
+                        "role": "user",
                         "content": f"\n\nQuestion:{question}\nAnalysis:{output}\n",
                     },
                 ],
@@ -66,14 +66,14 @@ def parse_extraction_response(text: str) -> tuple[str, str]:
         text,
         flags=re.IGNORECASE | re.DOTALL,
     )
-    format_match = re.search(r"Answer\s+format\s*:\s*(?P<format>[A-Za-z]+)", text, flags=re.IGNORECASE)
+    format_match = re.search(r"Answer\s+format\s*:\s*\[?\s*(?P<format>[A-Za-z]+)", text, flags=re.IGNORECASE)
     answer = answer_match.group("answer").strip() if answer_match else text.strip()
     answer_format = _normalize_answer_format(format_match.group("format") if format_match else "")
     return answer, answer_format
 
 
 def _normalize_answer_format(value: str) -> str:
-    text = str(value or "").strip().lower()
+    text = str(value or "").strip().strip("[]").strip().lower()
     if text in {"int", "integer"}:
         return "Int"
     if text in {"float", "number"}:
