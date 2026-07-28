@@ -46,6 +46,8 @@ def enhance_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], work
     seen = {(edge.get("src"), edge.get("dst"), edge.get("edge_type")) for edge in edge_list}
     by_type = defaultdict(list)
     for node in nodes:
+        if node.get("node_type") == "media" and str((node.get("metadata") or {}).get("media_type") or "generic").lower() == "noise":
+            continue
         by_type[node.get("node_type")].append(node)
     chunks_by_id = _chunks_by_id(working_dir)
     entity_media = _entity_media(working_dir)

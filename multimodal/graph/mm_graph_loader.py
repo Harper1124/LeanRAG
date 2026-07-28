@@ -93,8 +93,20 @@ def load_mm_graph(
     selected_edge_path = edge_path if edge_path.exists() else seed_path
 
     nodes = read_jsonl(node_path)
+    nodes = [node for node in nodes if not _is_noise_media_node(node)]
     edges = read_jsonl(selected_edge_path) if selected_edge_path.exists() else []
     return MMGraph(nodes, edges)
+
+
+def _is_noise_media_node(node: dict[str, Any]) -> bool:
+    if node.get("node_type") != "media":
+        return False
+    metadata = node.get("metadata") or {}
+    raw_ref = node.get("raw_ref") or {}
+    media_type = str(
+        metadata.get("media_type") or raw_ref.get("mapped_type") or raw_ref.get("type") or metadata.get("modality") or "generic"
+    ).lower()
+    return media_type == "noise"
 
 
 def _filter_edges(edges: list[dict[str, Any]], edge_types: set[str] | list[str] | None) -> list[dict[str, Any]]:

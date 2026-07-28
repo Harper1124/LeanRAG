@@ -17,6 +17,7 @@ class MediaRetriever:
             node
             for node in read_jsonl(self.nodes_path)
             if node.get("node_type") == "media" and (doc_id is None or node.get("doc_id") == doc_id)
+            and str((node.get("metadata") or {}).get("media_type") or "generic").lower() != "noise"
         ]
         self._doc_freq = _doc_freq(self.nodes)
 

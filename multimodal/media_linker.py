@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .io_utils import write_json
-from .schema import MMChunk, MMMedia
+from .schema import MMChunk, MMMedia, is_indexable_media
 
 
 # 将图片/表格与文本 chunk 建立弱关联，方便查询时从文本证据带出相关媒体证据。
@@ -20,11 +20,21 @@ def link_media_to_chunks(
     topk_per_media: int = 3,
 ) -> tuple[list[MMChunk], list[MMMedia]]:
     """Attach images/tables to nearby and semantically related text chunks."""
+    indexable_media = [item for item in media_items if is_indexable_media(item)]
+    noise_ids = {item.media_id for item in media_items if not is_indexable_media(item)}
+    for chunk in chunks:
+        chunk.attached_media_ids = [media_id for media_id in chunk.attached_media_ids if media_id not in noise_ids]
+    for item in media_items:
+        if item.media_id in noise_ids:
+            item.nearby_chunk_ids.clear()
+            item.attached_entity_names.clear()
+            item.attach_scores.clear()
+
     text_chunks = [chunk for chunk in chunks if chunk.modality == "text" and chunk.text]
     chunk_vectors = _embed_texts(embedding_func, [chunk.text for chunk in text_chunks])
-    media_vectors = _embed_texts(embedding_func, [_media_text(item) for item in media_items])
+    media_vectors = _embed_texts(embedding_func, [_media_text(item) for item in indexable_media])
 
-    for media_index, media in enumerate(media_items):
+    for media_index, media in enumerate(indexable_media):
         scored = []
         for chunk_index, chunk in enumerate(text_chunks):
             # 综合页码邻近、语义相似、文档顺序和显式提及四类信号打分。
@@ -70,11 +80,14 @@ def link_media_to_entities(
         return media_items
 
     # entity.source_id 通常指向 chunk.hash_code；据此把实体和 chunk 附带媒体连接起来。
+    indexable_media = [item for item in media_items if is_indexable_media(item)]
+    allowed_ids = {item.media_id for item in indexable_media}
     chunks_by_hash = {chunk.hash_code: chunk for chunk in chunks}
     media_by_chunk = {}
     for chunk in chunks:
-        media_by_chunk[chunk.hash_code] = chunk.attached_media_ids
-        media_by_chunk[chunk.chunk_id] = chunk.attached_media_ids
+        attached = [media_id for media_id in chunk.attached_media_ids if media_id in allowed_ids]
+        media_by_chunk[chunk.hash_code] = attached
+        media_by_chunk[chunk.chunk_id] = attached
     entity_media: dict[str, list[str]] = {}
     with entity_path.open("r", encoding="utf-8-sig") as f:
         for line in f:
@@ -93,7 +106,7 @@ def link_media_to_entities(
                 attached.extend(media_by_chunk.get(source_id, []))
             unique = list(dict.fromkeys(attached))[:topk_per_entity]
             entity_media[name] = unique
-            for media in media_items:
+            for media in indexable_media:
                 if media.media_id in unique and name not in media.attached_entity_names:
                     media.attached_entity_names.append(name)
     write_json(entity_media, working / "entity_media.json")

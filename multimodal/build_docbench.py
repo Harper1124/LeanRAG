@@ -2,18 +2,22 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import traceback
 from collections import defaultdict
 from pathlib import Path
 
-from .chunk_builder import build_mm_chunks_from_mineru, save_mm_artifacts
+from .chunk_builder import build_mm_chunks_from_mineru, media_type_statistics, save_mm_artifacts
 from .docbench_loader import load_docbench
 from .io_utils import save_dataclasses, write_json, write_jsonl
 from .media_captioner import caption_images, summarize_tables
 from .media_linker import link_media_to_chunks, link_media_to_entities
 from .mm_node_builder import build_phase1_mm_graph
 from .mineru_parser import parse_pdf_with_mineru
+
+
+logger = logging.getLogger(__name__)
 
 
 # 构建阶段的总入口：把 DocBench/MMLongBench-Doc 数据集转成 LeanRAG 可查询的工作目录。
@@ -58,6 +62,8 @@ def build_docbench(
             max_token_size=max_token_size,
             overlap_token_size=overlap_token_size,
         )
+        media_stats = media_type_statistics(media_items)
+        logger.info("%s media types: %s", doc_id, " ".join(f"{key}={value}" for key, value in media_stats.items()))
         if use_media_caption:
             media_items = caption_images(media_items, _make_captioner(model_config or {}))
         if use_table_summary:
@@ -84,6 +90,8 @@ def build_docbench(
             "mm_nodes_file": artifact_paths["mm_nodes_file"],
             "mm_edges_seed_file": artifact_paths["mm_edges_seed_file"],
             "leanrag_chunk_file": artifact_paths["leanrag_chunk_file"],
+            "media_type_stats_file": artifact_paths["media_type_stats_file"],
+            "media_type_counts": media_stats,
             "working_dir": str(working_dir),
             "entity_vector_db": str(working_dir / "milvus_demo.db"),
             "evidence_vector_db": str(working_dir / "evidence_milvus.db"),
@@ -309,6 +317,7 @@ def _make_table_summarizer(model_config: dict):
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     parser = argparse.ArgumentParser(description="Build multimodal DocBench artifacts for LeanRAG.")
     parser.add_argument("--docbench_dir", required=True)
     parser.add_argument("--working_root", required=True)

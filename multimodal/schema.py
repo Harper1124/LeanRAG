@@ -4,6 +4,10 @@ from dataclasses import asdict, dataclass, field, fields, is_dataclass
 from typing import Any, Literal, TypeVar, get_args, get_origin
 
 
+MediaType = Literal["image", "chart", "table", "noise", "generic"]
+MEDIA_TYPES = {"image", "chart", "table", "noise", "generic"}
+
+
 @dataclass
 class MMChunk:
     # 文本证据块：保留页码、位置、章节和附着媒体，查询时可回溯到原 PDF。
@@ -26,9 +30,12 @@ class MMMedia:
     # 图片/表格证据：保存路径、OCR/摘要、附近 chunk 和关联实体等检索辅助信息。
     media_id: str
     doc_id: str
-    modality: Literal["image", "table"]
+    modality: MediaType
     page: int | None
     path: str
+    original_type: str = ""
+    mapped_type: MediaType | str = ""
+    type: MediaType | str = ""
     caption: str = ""
     ocr_text: str = ""
     summary: str = ""
@@ -38,6 +45,29 @@ class MMMedia:
     nearby_chunk_ids: list[str] = field(default_factory=list)
     attached_entity_names: list[str] = field(default_factory=list)
     attach_scores: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # mapped_type/type are the canonical Phase 1 fields. Keep modality in
+        # sync so Phase 2-5 code that still reads modality remains compatible.
+        candidate = str(self.mapped_type or self.type or self.modality or "generic").lower()
+        canonical = candidate if candidate in MEDIA_TYPES else "generic"
+        self.mapped_type = canonical
+        self.type = canonical
+        self.modality = canonical  # type: ignore[assignment]
+        if not self.original_type:
+            self.original_type = candidate
+
+    @property
+    def indexable(self) -> bool:
+        return self.mapped_type != "noise"
+
+
+def is_indexable_media(item: MMMedia | dict[str, Any]) -> bool:
+    """Return False for decorative/layout noise while accepting legacy records."""
+    if isinstance(item, MMMedia):
+        return item.indexable
+    mapped = str(item.get("mapped_type") or item.get("type") or item.get("modality") or "generic").lower()
+    return mapped != "noise"
 
 
 @dataclass

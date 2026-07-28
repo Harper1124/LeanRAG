@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -12,7 +14,27 @@ except ImportError:
     tiktoken = None
 
 from .io_utils import save_dataclasses, write_json
-from .schema import MMChunk, MMMedia, dataclass_to_dict
+from .schema import MEDIA_TYPES, MMChunk, MMMedia, dataclass_to_dict
+
+
+logger = logging.getLogger(__name__)
+
+TEXT_BLOCK_TYPES = {
+    "text", "title", "paragraph", "list", "equation", "formula", "interline_equation",
+    "display_formula", "inline_formula", "equation_inline", "equation_interline", "aside_text", "page_aside_text",
+    "algorithm", "code", "reference",
+}
+NOISE_TYPE_TERMS = {
+    "page_number", "page_num", "page_header", "page_footer", "page_footnote", "header", "footer",
+    "logo", "watermark", "decoration", "decorative", "ornament", "background", "seal",
+}
+CHART_TYPE_TERMS = {
+    "chart", "plot", "bar_chart", "bar_graph", "line_chart", "line_graph", "pie_chart",
+    "scatter_chart", "scatter_plot", "histogram", "box_plot", "heatmap", "radar_chart",
+}
+IMAGE_TYPE_TERMS = {
+    "image", "img", "figure", "photo", "photograph", "diagram", "illustration", "schematic", "drawing",
+}
 
 
 # 将 MinerU 的解析产物统一转换为本项目内部使用的 chunk/media 数据结构。
@@ -23,7 +45,7 @@ def build_mm_chunks_from_mineru(
     max_token_size: int = 1024,
     overlap_token_size: int = 128,
 ) -> tuple[list[MMChunk], list[MMMedia]]:
-    """Convert MinerU output into text chunks and image/table media records."""
+    """Convert MinerU output into text chunks and normalized media records."""
     out = Path(mineru_output_dir)
     content_file = _find_content_list(out)
     if content_file:
@@ -71,12 +93,13 @@ def build_mm_chunks_from_mineru(
                     )
                 )
                 text_order += 1
-        elif item_type in {"image", "table"}:
+        elif item_type in MEDIA_TYPES:
             # 媒体本身不直接进入 LeanRAG 文本图，而是通过 summary/nearby_chunk_ids 与文本证据关联。
             path = _resolve_media_path(item, asset_root)
+            original_type = _original_type(item)
             media_id = f"{doc_id}_{item_type}_{media_order:06d}"
-            caption = _clean_text(_first(item, [f"{item_type}_caption", "caption", "img_caption", "table_caption"], ""))
-            footnote = _clean_text(_first(item, [f"{item_type}_footnote", "footnote", "img_footnote", "table_footnote"], ""))
+            caption = _clean_text(_first(item, [f"{item_type}_caption", "caption", "img_caption", "image_caption", "chart_caption", "table_caption"], ""))
+            footnote = _clean_text(_first(item, [f"{item_type}_footnote", "footnote", "img_footnote", "image_footnote", "chart_footnote", "table_footnote"], ""))
             table_html = _clean_text(_first(item, ["table_html", "html", "table_body"], ""))
             table_markdown = _clean_text(_first(item, ["table_markdown", "markdown", "md"], ""))
             ocr_text = _clean_text(_first(item, ["ocr_text", "ocr", "text"], ""))
@@ -88,6 +111,9 @@ def build_mm_chunks_from_mineru(
                     modality=item_type,
                     page=page,
                     path=str(path) if path else "",
+                    original_type=original_type,
+                    mapped_type=item_type,
+                    type=item_type,
                     caption=caption,
                     ocr_text=ocr_text,
                     summary=summary,
@@ -98,6 +124,8 @@ def build_mm_chunks_from_mineru(
             )
             media_order += 1
 
+    stats = media_type_statistics(media_items)
+    logger.info("MinerU media type statistics: %s", " ".join(f"{name}={stats[name]}" for name in sorted(MEDIA_TYPES)))
     return chunks, media_items
 
 
@@ -121,6 +149,8 @@ def save_mm_artifacts(
     leanrag_chunk_file = working / "leanrag_chunk.json"
     save_dataclasses(chunks, mm_chunk_file)
     save_dataclasses(media_items, mm_media_file)
+    media_stats_file = working / "media_type_stats.json"
+    write_json(media_type_statistics(media_items), media_stats_file)
     export_leanrag_text_chunks(chunks, str(leanrag_chunk_file))
     try:
         from .mm_node_builder import build_phase1_mm_graph
@@ -134,6 +164,7 @@ def save_mm_artifacts(
         "mm_chunk_file": str(mm_chunk_file),
         "mm_media_file": str(mm_media_file),
         "leanrag_chunk_file": str(leanrag_chunk_file),
+        "media_type_stats_file": str(media_stats_file),
         "mm_nodes_file": str(working / "mm_nodes.jsonl"),
         "mm_edges_seed_file": str(working / "mm_edges_seed.jsonl"),
     }
@@ -169,10 +200,19 @@ def _load_content_items(path: Path) -> list[dict[str, Any]]:
     with path.open("r", encoding="utf-8-sig") as f:
         data = json.load(f)
     if isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
+        if all(isinstance(item, list) for item in data):
+            flattened = []
+            for page_idx, page_items in enumerate(data):
+                for item in page_items:
+                    if isinstance(item, dict):
+                        normalized = _normalize_content_item(item)
+                        normalized.setdefault("page_idx", page_idx)
+                        flattened.append(normalized)
+            return flattened
+        return [_normalize_content_item(item) for item in data if isinstance(item, dict)]
     for key in ("content_list", "content", "items", "blocks"):
         if isinstance(data.get(key), list):
-            return [item for item in data[key] if isinstance(item, dict)]
+            return [_normalize_content_item(item) for item in data[key] if isinstance(item, dict)]
     if isinstance(data.get("pages"), list):
         flattened = []
         for page in data["pages"]:
@@ -181,19 +221,84 @@ def _load_content_items(path: Path) -> list[dict[str, Any]]:
             page_no = _first(page, ["page", "page_idx", "page_no"], None)
             for item in page.get("items", page.get("content", page.get("blocks", []))):
                 if isinstance(item, dict):
-                    item.setdefault("page", page_no)
-                    flattened.append(item)
+                    normalized = _normalize_content_item(item)
+                    normalized.setdefault("page", page_no)
+                    flattened.append(normalized)
         return flattened
     raise ValueError(f"Cannot parse MinerU content list: {path}")
 
 
+def _normalize_content_item(item: dict[str, Any]) -> dict[str, Any]:
+    """Flatten MinerU v2 nested content without changing v1 records."""
+    normalized = dict(item)
+    content = item.get("content")
+    if not isinstance(content, dict):
+        return normalized
+
+    source = content.get("image_source") or content.get("media_source") or content.get("source")
+    if isinstance(source, dict) and source.get("path") and not _has_media_payload(normalized):
+        normalized["img_path"] = source["path"]
+    for key in ("image_caption", "chart_caption", "table_caption", "caption"):
+        if key in content and not normalized.get(key):
+            normalized[key] = _nested_text(content[key])
+    for key in ("image_footnote", "chart_footnote", "table_footnote", "footnote"):
+        if key in content and not normalized.get(key):
+            normalized[key] = _nested_text(content[key])
+    if content.get("html") and not normalized.get("table_html"):
+        normalized["table_html"] = content["html"]
+    if content.get("markdown") and not normalized.get("table_markdown"):
+        normalized["table_markdown"] = content["markdown"]
+
+    raw_type = re.sub(r"[^a-z0-9]+", "_", _original_type(normalized).lower()).strip("_")
+    if raw_type in TEXT_BLOCK_TYPES or raw_type in NOISE_TYPE_TERMS or raw_type.startswith("page_"):
+        normalized.setdefault("text", _nested_text(content))
+    return normalized
+
+
+def _nested_text(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        return "\n".join(part for item in value for part in [_nested_text(item)] if part)
+    if isinstance(value, dict):
+        direct = value.get("content")
+        if isinstance(direct, str):
+            return direct.strip()
+        return "\n".join(part for item in value.values() for part in [_nested_text(item)] if part)
+    return ""
+
+
 def _item_type(item: dict[str, Any]) -> str:
-    raw = str(_first(item, ["type", "category", "modality"], "text")).lower()
-    if "table" in raw:
+    raw = _original_type(item)
+    normalized = re.sub(r"[^a-z0-9]+", "_", raw.lower()).strip("_")
+    if normalized in NOISE_TYPE_TERMS or any(term in normalized for term in ("page_number", "page_header", "page_footer", "logo", "watermark", "decorat")):
+        return "noise"
+    if normalized in CHART_TYPE_TERMS or any(term in normalized for term in ("chart", "scatter_plot", "line_plot", "bar_plot", "histogram", "heatmap")):
+        return "chart"
+    if "table" in normalized:
         return "table"
-    if "image" in raw or "img" in raw or "figure" in raw:
+    if normalized in IMAGE_TYPE_TERMS or any(term in normalized for term in ("image", "photo", "diagram", "illustration", "schematic")):
         return "image"
-    return "text"
+    if normalized in TEXT_BLOCK_TYPES or _has_text_payload(item):
+        return "text"
+    # Unknown non-text blocks are retained as generic media. This is deliberate:
+    # a MinerU version adding a new media label must not silently drop evidence.
+    return "generic"
+
+
+def _original_type(item: dict[str, Any]) -> str:
+    return str(_first(item, ["type", "block_type", "category", "modality"], "unknown")).strip() or "unknown"
+
+
+def _has_text_payload(item: dict[str, Any]) -> bool:
+    return any(_clean_text(item.get(key)) for key in ("text", "markdown", "md")) and not _has_media_payload(item)
+
+
+def _has_media_payload(item: dict[str, Any]) -> bool:
+    return any(item.get(key) not in (None, "") for key in (
+        "img_path", "image_path", "chart_path", "table_path", "asset_path", "path",
+        "table_html", "table_markdown", "img_caption", "image_caption", "chart_caption", "table_caption",
+    ))
 
 
 def _extract_page(item: dict[str, Any]) -> int | None:
@@ -220,7 +325,7 @@ def _extract_bbox(item: dict[str, Any]) -> list[float] | None:
 
 
 def _resolve_media_path(item: dict[str, Any], asset_root: Path) -> Path | None:
-    value = _first(item, ["img_path", "image_path", "table_path", "asset_path", "path"], None)
+    value = _first(item, ["img_path", "image_path", "chart_path", "table_path", "asset_path", "path"], None)
     if not value:
         return None
     path = Path(str(value))
@@ -291,3 +396,8 @@ def _clean_text(text: Any) -> str:
 
 def _hash(text: str) -> str:
     return hashlib.md5(text.encode("utf-8")).hexdigest()
+
+
+def media_type_statistics(media_items: list[MMMedia]) -> dict[str, int]:
+    counts = Counter(str(item.mapped_type) for item in media_items)
+    return {name: counts.get(name, 0) for name in ("image", "chart", "table", "noise", "generic")}

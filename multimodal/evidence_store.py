@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable
 
 from .io_utils import read_json, write_json
-from .schema import MMMedia, dataclass_to_dict
+from .schema import MMMedia, dataclass_to_dict, is_indexable_media
 
 
 COLLECTION_NAME = "evidence_collection"
@@ -21,7 +21,7 @@ def build_evidence_vector_store(
     import numpy as np
 
     working = Path(working_dir)
-    records = [_media_record(item) for item in media_items if _media_text(item)]
+    records = media_records_for_index(media_items)
     write_json(records, working / "evidence_records.json")
     if not records:
         return
@@ -80,21 +80,24 @@ def search_evidence(
             results = client.search(
                 collection_name=COLLECTION_NAME,
                 data=[query.tolist()],
-                limit=topk,
+                limit=max(topk, topk * 2),
                 filter=f'doc_id == "{doc_id}"' if doc_id else "",
-                output_fields=["media_id", "doc_id", "modality", "path", "page", "text"],
+                output_fields=["media_id", "doc_id", "modality", "mapped_type", "type", "path", "page", "text"],
             )
-            return [
+            return [item for item in [
                 {"score": hit.get("distance"), **hit.get("entity", {})}
                 for hit in results[0]
-            ]
+            ] if is_indexable_media(item)][:topk]
         except Exception:
             pass
     vector_path = working / "evidence_vectors.json"
     if not vector_path.exists():
         return []
     # 本地 JSON 兜底检索：逐条计算 cosine，适合小规模或调试场景。
-    records = [record for record in read_json(vector_path) if not doc_id or record.get("doc_id") == doc_id]
+    records = [
+        record for record in read_json(vector_path)
+        if (not doc_id or record.get("doc_id") == doc_id) and is_indexable_media(record)
+    ]
     query = np.asarray(query_embedding, dtype=float)
     if query.ndim == 2:
         query = query[0]
@@ -118,8 +121,13 @@ def _media_record(item: MMMedia) -> dict:
     return record
 
 
+def media_records_for_index(media_items: list[MMMedia]) -> list[dict]:
+    """Build embedding records while retaining noise only in mm_media metadata."""
+    return [_media_record(item) for item in media_items if is_indexable_media(item) and _media_text(item)]
+
+
 def _milvus_record(index: int, record: dict) -> dict:
-    keep = ["media_id", "doc_id", "modality", "path", "page", "text", "dense"]
+    keep = ["media_id", "doc_id", "modality", "mapped_type", "type", "path", "page", "text", "dense"]
     return {"id": index, **{key: record.get(key) for key in keep}}
 
 

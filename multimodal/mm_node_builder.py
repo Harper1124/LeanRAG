@@ -10,7 +10,7 @@ from typing import Any
 
 from .io_utils import load_dataclasses, read_jsonl, write_json, write_jsonl
 from .generation.table_utils import parse_table
-from .schema import MMChunk, MMEdge, MMMedia, MMNode, dataclass_to_dict
+from .schema import MMChunk, MMEdge, MMMedia, MMNode, dataclass_to_dict, is_indexable_media
 
 
 def build_phase1_mm_graph(
@@ -94,7 +94,7 @@ def build_mm_nodes(
         indexes["text_by_chunk_id"][chunk.chunk_id] = node.node_id
         indexes["text_by_hash"][chunk.hash_code] = node.node_id
 
-    for media in sorted(media_items, key=lambda item: (item.page or 0, item.media_id)):
+    for media in sorted((item for item in media_items if is_indexable_media(item)), key=lambda item: (item.page or 0, item.media_id)):
         node = _build_media_node(media, chunk_by_id)
         nodes.append(node)
         indexes["media"][media.media_id] = node.node_id
@@ -175,7 +175,7 @@ def build_mm_edges(
             metadata={"page": node.page_id},
         )
 
-    for media in media_items:
+    for media in (item for item in media_items if is_indexable_media(item)):
         media_node_id = indexes["media"].get(media.media_id)
         if not media_node_id:
             continue
@@ -244,7 +244,7 @@ def validate_phase1_outputs(
     edge_types = {edge.get("edge_type") for edge in edges}
 
     errors = []
-    for media in media_items:
+    for media in (item for item in media_items if is_indexable_media(item)):
         node = media_nodes_by_id.get(media.media_id)
         if not node:
             errors.append(f"missing media node for {media.media_id}")
@@ -299,7 +299,7 @@ def _build_document_node(doc_id: str, chunks: list[MMChunk], media_items: list[M
         page_id=None,
         text_for_embedding=doc_id,
         raw_ref={"doc_id": doc_id},
-        metadata={"text_chunk_count": len(chunks), "media_count": len(media_items)},
+        metadata={"text_chunk_count": len(chunks), "media_count": len([item for item in media_items if is_indexable_media(item)])},
         source="mineru",
     )
 
@@ -312,7 +312,7 @@ def _build_page_node(doc_id: str, page: int, chunks: list[MMChunk], media_items:
     ]
     page_chunks.sort(key=lambda item: item.order)
     page_text = " ".join(chunk.text for chunk in page_chunks[:8] if chunk.text).strip()
-    media_count = len([item for item in media_items if item.page == page])
+    media_count = len([item for item in media_items if item.page == page and is_indexable_media(item)])
     fallback = f"Page {page} of document {doc_id}. Contains {len(page_chunks)} text chunks and {media_count} media items."
     return MMNode(
         node_id=_page_node_id(doc_id, page),
@@ -360,6 +360,9 @@ def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode
     raw_ref = {
         "media_id": media.media_id,
         "path": _portable_path(media.path),
+        "original_type": media.original_type,
+        "mapped_type": media.mapped_type,
+        "type": media.type,
         "table_html": media.table_html,
         "table_markdown": media.table_markdown,
     }
@@ -371,7 +374,7 @@ def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode
         text_for_embedding=text_for_embedding,
         raw_ref=raw_ref,
         metadata={
-            "media_type": _infer_media_type(media),
+            "media_type": media.mapped_type,
             "modality": media.modality,
             "nearby_chunk_ids": media.nearby_chunk_ids,
             "attached_entity_names": media.attached_entity_names,
@@ -534,14 +537,7 @@ def _normalize_entity_id(name: str) -> str:
 
 
 def _infer_media_type(media: MMMedia) -> str:
-    if media.modality == "table":
-        return "table"
-    haystack = " ".join([media.caption or "", media.summary or "", media.ocr_text or ""]).lower()
-    if any(term in haystack for term in ("chart", "plot", "axis", "bar", "line graph")):
-        return "chart"
-    if any(term in haystack for term in ("figure", "fig.")):
-        return "figure"
-    return media.modality or "unknown"
+    return str(media.mapped_type or media.type or media.modality or "generic")
 
 
 def _table_info(media: MMMedia) -> dict[str, Any]:
