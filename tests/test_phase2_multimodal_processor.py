@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from multimodal.io_utils import save_dataclasses, write_jsonl
+from multimodal.processing.chart_ocr import parse_chart_layout
 from multimodal.processing.context_builder import MultimodalContextBuilder
 from multimodal.processing.pipeline import EvidenceAwareMultimodalProcessor, process_workspace
 from multimodal.processing.processors import ChartProcessor, ImageProcessor, TableProcessor
@@ -135,6 +136,68 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "Chart OCR unavailable.*chart image not found"):
             ChartProcessor(require_ocr_backend=True).process(chart, {})
+
+    def test_chart_layout_separates_stacked_bar_axes_legends_and_values(self):
+        items = [
+            {"text": "Wins", "bbox": [238, 9, 34, 18], "region": "full", "line_id": "legend-1", "confidence": 0.9},
+            {"text": "Ties", "bbox": [340, 9, 30, 18], "region": "full", "line_id": "legend-2", "confidence": 0.9},
+            {"text": "Loses", "bbox": [438, 9, 39, 18], "region": "full", "line_id": "legend-3", "confidence": 0.9},
+            {"text": "Gemini+", "bbox": [12, 83, 61, 12], "region": "full", "line_id": "row-1", "confidence": 0.9},
+            {"text": "GPT-4V+", "bbox": [11, 178, 62, 12], "region": "full", "line_id": "row-2", "confidence": 0.9},
+            {"text": "41.5", "bbox": [168, 82, 28, 12], "region": "plot_crop", "line_id": "value-1", "confidence": 0.94},
+            {"text": "34.5", "bbox": [351, 82, 28, 12], "region": "plot_crop", "line_id": "value-2", "confidence": 0.94},
+            {"text": "20", "bbox": [172, 430, 18, 12], "region": "full", "line_id": "tick-20", "confidence": 0.96},
+            {"text": "100", "bbox": [555, 430, 26, 12], "region": "full", "line_id": "tick-100", "confidence": 0.96},
+            {"text": "Percent", "bbox": [289, 450, 64, 14], "region": "full", "line_id": "x-label", "confidence": 0.95},
+            {"text": "(%)", "bbox": [359, 449, 28, 17], "region": "full", "line_id": "x-label", "confidence": 0.95},
+        ]
+
+        parsed = parse_chart_layout(
+            {"backend": "test", "status": "ok", "width": 600, "height": 475, "items": items}
+        )
+
+        self.assertEqual(parsed["title"], "")
+        self.assertEqual(parsed["x_axis"]["label"], "Percent (%)")
+        self.assertEqual([item["text"] for item in parsed["y_axis"]["tick_labels"]], ["Gemini+", "GPT-4V+"])
+        self.assertEqual({item["text"] for item in parsed["legends"]}, {"Wins", "Ties", "Loses"})
+        self.assertEqual({item["text"] for item in parsed["readable_data_points"]}, {"41.5", "34.5"})
+
+    def test_chart_layout_keeps_series_names_out_of_data_points(self):
+        items = [
+            {"text": "7B", "bbox": [320, 20, 20, 11], "region": "full", "line_id": "legend-1", "confidence": 0.95},
+            {"text": "34B", "bbox": [320, 38, 25, 11], "region": "full", "line_id": "legend-2", "confidence": 0.95},
+            {"text": "100k", "bbox": [100, 270, 32, 11], "region": "full", "line_id": "x-1", "confidence": 0.96},
+            {"text": "Step", "bbox": [205, 288, 30, 13], "region": "full", "line_id": "x-label", "confidence": 0.96},
+        ]
+
+        parsed = parse_chart_layout(
+            {"backend": "test", "status": "ok", "width": 410, "height": 306, "items": items}
+        )
+
+        self.assertEqual({item["text"] for item in parsed["legends"]}, {"7B", "34B"})
+        self.assertEqual(parsed["readable_data_points"], [])
+        self.assertNotIn("7B", parsed["numeric_tokens"])
+
+    def test_chart_layout_recovers_horizontal_bar_categories_and_angled_ticks(self):
+        items = [
+            {"text": "Containing images", "bbox": [35, 36, 186, 20], "region": "full", "line_id": "row-1", "confidence": 0.96},
+            {"text": "Accuracy", "bbox": [130, 503, 91, 20], "region": "full", "line_id": "row-2", "confidence": 0.96},
+            {"text": "All", "bbox": [879, 447, 23, 16], "region": "full", "line_id": "legend-1", "confidence": 0.9},
+            {"text": "Two", "bbox": [879, 477, 37, 15], "region": "full", "line_id": "legend-2", "confidence": 0.9},
+            {"text": "None", "bbox": [881, 506, 50, 16], "region": "full", "line_id": "legend-3", "confidence": 0.9},
+            {"text": "0", "bbox": None, "region": "x_axis_rotated", "line_id": "angled-0", "confidence": 0.9},
+            {"text": "3000", "bbox": None, "region": "x_axis_rotated", "line_id": "angled-3000", "confidence": 0.9},
+            {"text": "Count", "bbox": [559, 615, 70, 19], "region": "full", "line_id": "x-label", "confidence": 0.96},
+        ]
+
+        parsed = parse_chart_layout(
+            {"backend": "test", "status": "ok", "width": 950, "height": 650, "items": items}
+        )
+
+        self.assertEqual(parsed["x_axis"]["label"], "Count")
+        self.assertEqual({item["text"] for item in parsed["x_axis"]["tick_labels"]}, {"0", "3000"})
+        self.assertEqual({item["text"] for item in parsed["y_axis"]["tick_labels"]}, {"Containing images", "Accuracy"})
+        self.assertEqual({item["text"] for item in parsed["legends"]}, {"All", "Two", "None"})
 
     def test_table_numbers_are_traceable_to_source_cells(self):
         table = MMMedia(

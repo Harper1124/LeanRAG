@@ -64,6 +64,10 @@ multimodal:
     upscale: 2.0
     min_confidence: 25
     y_axis_crop_fraction: 0.22
+    plot_psm: 11
+    plot_text_threshold: 125
+    detect_angled_x_ticks: true
+    x_tick_rotation_degrees: 45
 
   embedding_dim: 1024
   graph_max_workers: 2
