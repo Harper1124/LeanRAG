@@ -77,6 +77,65 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
         self.assertEqual(chart_spy.calls, [chart.media_id])
         self.assertEqual(records[0]["media_type"], "chart")
 
+    def test_chart_program_ocr_populates_axes_legends_and_values(self):
+        chart = MMMedia(
+            media_id="doc_chart_ocr", doc_id="doc", modality="chart", mapped_type="chart", type="chart",
+            page=7, path="chart.png", caption="Training output norms",
+        )
+
+        def fake_ocr(path):
+            del path
+            return {
+                "backend": "test_ocr",
+                "status": "ok",
+                "width": 400,
+                "height": 300,
+                "items": [
+                    {"text": "Output", "bbox": None, "region": "y_axis_rotated", "line_id": "y-label", "confidence": 0.98},
+                    {"text": "Norm", "bbox": None, "region": "y_axis_rotated", "line_id": "y-label", "confidence": 0.98},
+                    {"text": "Step", "bbox": [180, 280, 40, 12], "region": "full", "line_id": "x-label", "confidence": 0.99},
+                    {"text": "0k", "bbox": [55, 260, 18, 10], "region": "full", "line_id": "x-ticks", "confidence": 0.95},
+                    {"text": "30k", "bbox": [360, 260, 25, 10], "region": "full", "line_id": "x-ticks", "confidence": 0.95},
+                    {"text": "0.0", "bbox": [8, 235, 22, 10], "region": "full", "line_id": "y0", "confidence": 0.96},
+                    {"text": "35.0", "bbox": [4, 18, 28, 10], "region": "full", "line_id": "y35", "confidence": 0.96},
+                    {"text": "with dropout", "bbox": [100, 35, 90, 12], "region": "full", "line_id": "legend1", "confidence": 0.97},
+                    {"text": "without dropout", "bbox": [100, 52, 105, 12], "region": "full", "line_id": "legend2", "confidence": 0.97},
+                    {"text": "20", "bbox": [240, 120, 18, 10], "region": "full", "line_id": "point", "confidence": 0.91},
+                ],
+            }
+
+        def fake_vlm(**kwargs):
+            return {
+                "chart_type": "line chart",
+                "series": ["with dropout", "without dropout"],
+                "qualitative_trends": [
+                    {"series": "without dropout", "trend": "increases", "evidence": "the line reaches 20"}
+                ],
+                "confidence": 0.9,
+            }
+
+        structured, semantic, confidence = ChartProcessor(fake_vlm, ocr_func=fake_ocr).process(chart, {})
+
+        self.assertEqual(structured["ocr_status"], "ok")
+        self.assertEqual(structured["x_axis"]["label"], "Step")
+        self.assertEqual(structured["y_axis"]["label"], "Output Norm")
+        self.assertEqual({item["text"] for item in structured["x_axis"]["tick_labels"]}, {"0k", "30k"})
+        self.assertEqual({item["text"] for item in structured["y_axis"]["tick_labels"]}, {"0.0", "35.0"})
+        self.assertIn("with dropout", {item["text"] for item in structured["legends"]})
+        self.assertIn("20", {item["text"] for item in structured["readable_data_points"]})
+        self.assertEqual(semantic["x_axis"], structured["x_axis"])
+        self.assertEqual(len(semantic["qualitative_trends"]), 1)
+        self.assertGreater(confidence["programmatic_parse"], 0.5)
+
+    def test_required_chart_ocr_fails_with_diagnostic(self):
+        chart = MMMedia(
+            media_id="doc_chart_missing_ocr", doc_id="doc", modality="chart", mapped_type="chart", type="chart",
+            page=1, path="missing.png",
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "Chart OCR unavailable.*chart image not found"):
+            ChartProcessor(require_ocr_backend=True).process(chart, {})
+
     def test_table_numbers_are_traceable_to_source_cells(self):
         table = MMMedia(
             media_id="doc_table_1", doc_id="doc", modality="table", mapped_type="table", type="table",

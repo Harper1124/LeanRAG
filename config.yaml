@@ -57,6 +57,14 @@ multimodal:
   vlm_base_url: "http://127.0.0.1:11444/v1"
   vlm_api_key: "ollama"
 
+  chart_ocr:
+    backend: pytesseract
+    language: eng
+    psm: 11
+    upscale: 2.0
+    min_confidence: 25
+    y_axis_crop_fraction: 0.22
+
   embedding_dim: 1024
   graph_max_workers: 2
   graph_embedding_max_workers: 1

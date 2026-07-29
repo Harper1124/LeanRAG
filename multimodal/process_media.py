@@ -15,12 +15,25 @@ def main() -> None:
     parser.add_argument("--output_file", default="processed_media.json")
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--offline", action="store_true", help="Skip VLM/LLM calls and emit programmatic fallback output.")
+    parser.add_argument(
+        "--allow_missing_chart_ocr",
+        action="store_true",
+        help="Allow chart records with an unavailable OCR backend. By default this is a build error.",
+    )
     args = parser.parse_args()
 
     config = _load_config(args.config)
     vlm_func = None if args.offline else _make_vlm(config)
     llm_func = None if args.offline else _make_llm(config)
-    records = process_workspace(args.working_dir, args.output_file, vlm_func=vlm_func, llm_func=llm_func)
+    mm_config = config.get("multimodal", {}) if isinstance(config, dict) else {}
+    records = process_workspace(
+        args.working_dir,
+        args.output_file,
+        vlm_func=vlm_func,
+        llm_func=llm_func,
+        chart_ocr_config=mm_config.get("chart_ocr", {}),
+        require_chart_ocr=not args.allow_missing_chart_ocr,
+    )
     target = Path(args.output_file)
     if not target.is_absolute():
         target = Path(args.working_dir) / target

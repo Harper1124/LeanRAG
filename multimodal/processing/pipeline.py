@@ -64,6 +64,8 @@ def process_workspace(
     output_file: str | Path = "processed_media.json",
     vlm_func: Callable | None = None,
     llm_func: Callable | None = None,
+    chart_ocr_config: dict[str, Any] | None = None,
+    require_chart_ocr: bool = False,
 ) -> list[dict[str, Any]]:
     working = Path(working_dir)
     media_path = working / "mm_media.json"
@@ -79,7 +81,11 @@ def process_workspace(
     processor = EvidenceAwareMultimodalProcessor(
         context_builder,
         image_processor=ImageProcessor(vlm_func),
-        chart_processor=ChartProcessor(vlm_func),
+        chart_processor=ChartProcessor(
+            vlm_func,
+            ocr_config=chart_ocr_config,
+            require_ocr_backend=require_chart_ocr,
+        ),
         table_processor=TableProcessor(llm_func),
     )
     records = processor.process(media_items)

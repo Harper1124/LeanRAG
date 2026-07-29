@@ -8,6 +8,7 @@ from typing import Any
 
 from ..generation.table_utils import parse_table
 from ..schema import MMMedia
+from .chart_ocr import extract_chart_ocr, parse_chart_layout, text_only_ocr_result
 from .prompts import CHART_PROMPT, IMAGE_PROMPT, TABLE_PROMPT
 
 
@@ -52,12 +53,24 @@ class ImageProcessor:
 class ChartProcessor:
     media_type = "chart"
 
-    def __init__(self, vlm_func: Callable | None = None, ocr_func: Callable | None = None) -> None:
+    def __init__(
+        self,
+        vlm_func: Callable | None = None,
+        ocr_func: Callable | None = None,
+        ocr_config: dict[str, Any] | None = None,
+        require_ocr_backend: bool = False,
+    ) -> None:
         self.vlm_func = vlm_func
         self.ocr_func = ocr_func
+        self.ocr_config = ocr_config or {}
+        self.require_ocr_backend = require_ocr_backend
 
     def process(self, media: MMMedia, media_context: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-        structured = _parse_chart_evidence(media, self.ocr_func)
+        structured = _parse_chart_evidence(media, self.ocr_func, self.ocr_config)
+        if self.require_ocr_backend and structured.get("ocr_status") == "unavailable":
+            raise RuntimeError(
+                f"Chart OCR unavailable for {media.media_id}: {structured.get('ocr_error') or 'unknown error'}"
+            )
         response = _call_json_model(
             self.vlm_func,
             CHART_PROMPT.replace("{structured}", _json_for_prompt(structured)).replace(
@@ -65,7 +78,7 @@ class ChartProcessor:
             ),
             image_path=media.path,
         )
-        allowed_numbers = set(structured["numeric_tokens"])
+        allowed_numbers = set(NUMBER_RE.findall(structured.get("ocr_text") or ""))
         semantic = {
             "chart_type": _safe_numeric_text(response.get("chart_type"), allowed_numbers),
             "title": structured["title"] or _safe_numeric_text(response.get("title"), allowed_numbers),
@@ -90,6 +103,9 @@ class ChartProcessor:
         confidence = {
             "overall": semantic["confidence"],
             "programmatic_parse": structured["parse_confidence"],
+            "ocr_backend": structured.get("ocr_backend"),
+            "ocr_status": structured.get("ocr_status"),
+            "ocr_error": structured.get("ocr_error"),
             "visual_model_available": bool(self.vlm_func),
             "model_response_valid": bool(response),
         }
@@ -136,36 +152,17 @@ def _image_file_metadata(path: str) -> dict[str, Any]:
     return result
 
 
-def _parse_chart_evidence(media: MMMedia, ocr_func: Callable | None = None) -> dict[str, Any]:
-    ocr = str(media.ocr_text or "").strip()
-    ocr_source = "mineru_ocr" if ocr else ""
-    if not ocr and media.path:
-        ocr = _run_chart_ocr(media.path, ocr_func)
-        ocr_source = "program_ocr" if ocr else "unavailable"
-    lines = [" ".join(line.split()) for line in ocr.splitlines() if line.strip()]
-    numeric_tokens = list(dict.fromkeys(token for line in lines for token in NUMBER_RE.findall(line)))
-    x_lines = [line for line in lines if re.search(r"\bx[- ]?axis\b|horizontal axis", line, re.I)]
-    y_lines = [line for line in lines if re.search(r"\by[- ]?axis\b|vertical axis", line, re.I)]
-    legend_lines = [line for line in lines if re.search(r"\blegend\b|\bseries\b", line, re.I)]
-    data_points = [
-        {"text": line, "values": NUMBER_RE.findall(line), "source": "ocr"}
-        for line in lines
-        if NUMBER_RE.search(line)
-    ]
-    title = next((line for line in lines if not NUMBER_RE.search(line) and line not in x_lines + y_lines + legend_lines), "")
-    return {
-        **_image_file_metadata(media.path),
-        "ocr_text": ocr,
-        "ocr_source": ocr_source,
-        "ocr_lines": lines,
-        "numeric_tokens": numeric_tokens,
-        "title": title,
-        "x_axis": {"candidates": x_lines, "source": "ocr"} if x_lines else {},
-        "y_axis": {"candidates": y_lines, "source": "ocr"} if y_lines else {},
-        "legends": [{"text": line, "source": "ocr"} for line in legend_lines],
-        "readable_data_points": data_points,
-        "parse_confidence": 0.8 if lines else 0.0,
-    }
+def _parse_chart_evidence(
+    media: MMMedia,
+    ocr_func: Callable | None = None,
+    ocr_config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if str(media.ocr_text or "").strip():
+        ocr_result = text_only_ocr_result(media.ocr_text, source="mineru_ocr")
+    else:
+        ocr_result = extract_chart_ocr(media.path, ocr_func=ocr_func, config=ocr_config)
+    parsed = parse_chart_layout(ocr_result)
+    return {**_image_file_metadata(media.path), **parsed, "ocr_source": parsed.get("ocr_backend", "")}
 
 
 def _parse_table_evidence(media: MMMedia) -> dict[str, Any]:
@@ -256,22 +253,6 @@ def _valid_source_cells(value: Any, lookup: dict[tuple[int, int], str]) -> list[
         if key in lookup and key not in result:
             result.append(key)
     return result
-
-
-def _run_chart_ocr(path: str, ocr_func: Callable | None) -> str:
-    if ocr_func:
-        try:
-            return str(ocr_func(path) or "").strip()
-        except Exception:
-            return ""
-    try:
-        import pytesseract
-        from PIL import Image
-
-        with Image.open(path) as image:
-            return str(pytesseract.image_to_string(image) or "").strip()
-    except Exception:
-        return ""
 
 
 def _table_numeric_provenance_complete(semantic: dict[str, Any], structured: dict[str, Any]) -> bool:
