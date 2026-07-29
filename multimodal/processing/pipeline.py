@@ -53,10 +53,6 @@ class EvidenceAwareMultimodalProcessor:
                 "media_context": context,
                 "structured_content": structured,
                 "semantic_content": semantic,
-                # Compatibility aliases for consumers using the Phase 2
-                # design-document terminology.
-                "content_understanding": structured,
-                "semantic_understanding": semantic,
                 "grounding": grounding,
                 "semantic_role": primary_role,
                 "semantic_confidence": semantic_confidence,
