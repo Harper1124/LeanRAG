@@ -39,6 +39,32 @@ class ImageProcessor:
             "uncertain_items": _string_list(response.get("uncertain_items")),
             "confidence": _confidence(response.get("confidence")),
         }
+        requested_sources = response.get("evidence_source") if isinstance(response.get("evidence_source"), dict) else {}
+        visual_sources = _string_list(requested_sources.get("visual"))
+        visible_evidence = semantic["visual_facts"] + semantic["visible_text"]
+        semantic["evidence_source"] = {
+            "visual": [item for item in visual_sources if item in visible_evidence] or visible_evidence,
+            "caption": _source_quotes(
+                requested_sources.get("caption"),
+                str(media_context.get("direct_evidence", {}).get("caption") or ""),
+                fallback_to_source=True,
+            ),
+            "nearby_text": _source_quotes(
+                requested_sources.get("nearby_text"),
+                str(media_context.get("layout_context", {}).get("nearby_text") or ""),
+                fallback_to_source=True,
+            ),
+        }
+        roles = response.get("semantic_role")
+        if isinstance(roles, str):
+            roles = [roles]
+        allowed_roles = {"example", "architecture", "experiment", "illustration", "other"}
+        semantic["semantic_role"] = [
+            str(item).lower() for item in _json_list(roles) if str(item).lower() in allowed_roles
+        ] or ["other"]
+        semantic["semantic_confidence"] = _confidence(
+            response.get("semantic_confidence", semantic["confidence"])
+        )
         if not response:
             semantic["uncertain_items"].append("VLM analysis unavailable or returned invalid JSON")
         confidence = {
@@ -79,13 +105,25 @@ class ChartProcessor:
             image_path=media.path,
         )
         allowed_numbers = set(NUMBER_RE.findall(structured.get("ocr_text") or ""))
+        response_grounding = response.get("chart_grounding") if isinstance(response.get("chart_grounding"), dict) else {}
+        chart_grounding = {
+            "visual_evidence": _safe_numeric_items(response_grounding.get("visual_evidence"), allowed_numbers),
+            "ocr_evidence": _source_quotes(
+                response_grounding.get("ocr_evidence"), structured.get("ocr_text") or ""
+            ),
+            "context_evidence": _source_quotes(
+                response_grounding.get("context_evidence"), _flatten_text(media_context)
+            ),
+        }
         semantic = {
-            "chart_type": _safe_numeric_text(response.get("chart_type"), allowed_numbers),
-            "title": structured["title"] or _safe_numeric_text(response.get("title"), allowed_numbers),
-            "x_axis": structured["x_axis"],
-            "y_axis": structured["y_axis"],
-            "legends": structured["legends"],
-            "series": _safe_numeric_items(response.get("series"), allowed_numbers),
+            "chart_type": _safe_numeric_text(response.get("chart_type"), allowed_numbers) or "unknown",
+            "title": _safe_numeric_text(response.get("title"), allowed_numbers) or structured["title"] or "unknown",
+            # OCR/layout output remains in structured_content as candidates;
+            # semantic axis and series meaning comes from the visual model.
+            "x_axis": _validated_axis(response.get("x_axis"), allowed_numbers),
+            "y_axis": _validated_axis(response.get("y_axis"), allowed_numbers),
+            "legends": _safe_numeric_items(response.get("legends"), allowed_numbers) or ["unknown"],
+            "series": _safe_numeric_items(response.get("series"), allowed_numbers) or ["unknown"],
             # Readable values are program-derived only; model values are intentionally ignored.
             "readable_data_points": structured["readable_data_points"],
             "qualitative_trends": _validated_trends(response.get("qualitative_trends"), allowed_numbers),
@@ -97,6 +135,10 @@ class ChartProcessor:
             "unreadable_regions": _safe_numeric_items(response.get("unreadable_regions"), allowed_numbers),
             "grounded_summary": _safe_numeric_text(response.get("grounded_summary"), allowed_numbers),
             "confidence": _confidence(response.get("confidence")),
+            "chart_grounding": chart_grounding,
+            "semantic_confidence": _confidence(
+                response.get("semantic_confidence", response.get("confidence"))
+            ),
         }
         if not response:
             semantic["unreadable_regions"].append("VLM interpretation unavailable or returned invalid JSON")
@@ -162,7 +204,13 @@ def _parse_chart_evidence(
     else:
         ocr_result = extract_chart_ocr(media.path, ocr_func=ocr_func, config=ocr_config)
     parsed = parse_chart_layout(ocr_result)
-    return {**_image_file_metadata(media.path), **parsed, "ocr_source": parsed.get("ocr_backend", "")}
+    return {
+        **_image_file_metadata(media.path),
+        **parsed,
+        "axis_candidates": {"x": parsed.get("x_axis", {}), "y": parsed.get("y_axis", {})},
+        "legend_candidates": parsed.get("legends", []),
+        "ocr_source": parsed.get("ocr_backend", ""),
+    }
 
 
 def _parse_table_evidence(media: MMMedia) -> dict[str, Any]:
@@ -227,6 +275,33 @@ def _validated_table_semantics(response: dict[str, Any], structured: dict[str, A
     title_and_purpose = _safe_numeric_text(response.get("title_and_purpose"), all_numbers)
     if not title_and_purpose:
         title_and_purpose = _safe_numeric_text(re.sub(r"^\s*table\s+\d+[a-z]?\s*[:.\-]?\s*", "", caption, flags=re.I), all_numbers)
+    table_structure_response = response.get("table_structure") if isinstance(response.get("table_structure"), dict) else {}
+    table_structure = {
+        "header_meaning": _validated_cell_grounded_items(table_structure_response.get("header_meaning"), lookup),
+        "column_semantics": _validated_cell_grounded_items(table_structure_response.get("column_semantics"), lookup),
+        "row_semantics": _validated_cell_grounded_items(table_structure_response.get("row_semantics"), lookup),
+    }
+    cell_grounding = _validated_cell_grounded_items(response.get("cell_grounding"), lookup)
+    for item in important:
+        cell_grounding.append({
+            "claim": item.get("reason") or item["value"],
+            "source_cells": [[item["row"], item["col"]]],
+            "source_values": [item["value"]],
+        })
+    for item in comparisons:
+        coords = [(int(row), int(col)) for row, col in item["source_cells"]]
+        cell_grounding.append({
+            "claim": item["statement"],
+            "source_cells": item["source_cells"],
+            "source_values": [lookup[coord] for coord in coords],
+        })
+    cell_grounding = _dedupe_grounding(cell_grounding)
+    if title_and_purpose and not _numeric_text_traceable(title_and_purpose, cell_grounding):
+        title_and_purpose = ""
+    grounded_summary = _safe_numeric_text(response.get("grounded_summary"), all_numbers)
+    if grounded_summary and not _numeric_text_traceable(grounded_summary, cell_grounding):
+        grounded_summary = ""
+    semantic_confidence = _confidence(response.get("semantic_confidence", response.get("confidence", structured.get("parse_confidence", 0.0))))
     return {
         "title_and_purpose": title_and_purpose,
         "header_hierarchy": _safe_numeric_items(response.get("header_hierarchy") or structured.get("header_hierarchy"), all_numbers),
@@ -235,10 +310,61 @@ def _validated_table_semantics(response: dict[str, Any], structured: dict[str, A
         "units": _safe_numeric_items(response.get("units") or structured.get("units"), all_numbers),
         "important_cells": important,
         "comparisons": comparisons,
-        "grounded_summary": _safe_numeric_text(response.get("grounded_summary"), all_numbers),
-        "ambiguous_structure": list(dict.fromkeys(ambiguity)),
+        "grounded_summary": grounded_summary,
+        "ambiguous_structure": [
+            item for item in dict.fromkeys(ambiguity) if _numeric_text_traceable(item, cell_grounding)
+        ],
         "confidence": _confidence(response.get("confidence", structured.get("parse_confidence", 0.0))),
+        "table_structure": table_structure,
+        "cell_grounding": cell_grounding,
+        "semantic_confidence": semantic_confidence,
     }
+
+
+def _validated_cell_grounded_items(value: Any, lookup: dict[tuple[int, int], str]) -> list[dict[str, Any]]:
+    result = []
+    for item in _json_list(value):
+        if not isinstance(item, dict):
+            continue
+        coords = _valid_source_cells(item.get("source_cells"), lookup)
+        if not coords:
+            continue
+        source_values = [lookup[coord] for coord in coords]
+        allowed_numbers = {token for source in source_values for token in NUMBER_RE.findall(source)}
+        claim = str(item.get("claim") or item.get("meaning") or item.get("semantic") or "")
+        if not claim or not set(NUMBER_RE.findall(claim)).issubset(allowed_numbers):
+            continue
+        grounded = {
+            key: value
+            for key, value in item.items()
+            if key not in {"source_cells", "source_values"} and _numbers_supported(value, allowed_numbers)
+        }
+        grounded["source_cells"] = [[row, col] for row, col in coords]
+        grounded["source_values"] = source_values
+        result.append(grounded)
+    return result
+
+
+def _dedupe_grounding(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    seen = set()
+    result = []
+    for item in items:
+        key = (str(item.get("claim") or item.get("meaning") or ""), json.dumps(item.get("source_cells"), sort_keys=True))
+        if key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
+
+
+def _numeric_text_traceable(text: str, grounding: list[dict[str, Any]]) -> bool:
+    required = set(NUMBER_RE.findall(text))
+    supported = {
+        token
+        for item in grounding
+        for source in item.get("source_values", [])
+        for token in NUMBER_RE.findall(str(source))
+    }
+    return required.issubset(supported)
 
 
 def _valid_source_cells(value: Any, lookup: dict[tuple[int, int], str]) -> list[tuple[int, int]]:
@@ -265,6 +391,14 @@ def _table_numeric_provenance_complete(semantic: dict[str, Any], structured: dic
         cited = {token for coord in coords for token in NUMBER_RE.findall(lookup.get(coord, ""))}
         if not set(NUMBER_RE.findall(item.get("statement", ""))).issubset(cited):
             return False
+    for item in semantic.get("cell_grounding", []):
+        coords = _valid_source_cells(item.get("source_cells"), lookup)
+        if not coords:
+            return False
+        cited = {token for coord in coords for token in NUMBER_RE.findall(lookup[coord])}
+        claim = str(item.get("claim") or item.get("meaning") or "")
+        if not set(NUMBER_RE.findall(claim)).issubset(cited):
+            return False
     return True
 
 
@@ -290,6 +424,42 @@ def _safe_numeric_items(value: Any, allowed_numbers: set[str]) -> list[Any]:
 def _safe_numeric_text(value: Any, allowed_numbers: set[str]) -> str:
     text = str(value or "")
     return text if set(NUMBER_RE.findall(text)).issubset(allowed_numbers) else ""
+
+
+def _validated_axis(value: Any, allowed_numbers: set[str]) -> dict[str, Any]:
+    if isinstance(value, str):
+        value = {"label": value, "meaning": value}
+    if not isinstance(value, dict) or not _numbers_supported(value, allowed_numbers):
+        return {"label": "unknown", "meaning": "unknown", "unit": "", "confidence": 0.0}
+    result = dict(value)
+    result["label"] = str(result.get("label") or "unknown")
+    result["meaning"] = str(result.get("meaning") or result["label"] or "unknown")
+    result["unit"] = str(result.get("unit") or "")
+    result["confidence"] = _confidence(result.get("confidence"))
+    return result
+
+
+def _source_quotes(value: Any, source: str, fallback_to_source: bool = False) -> list[str]:
+    source = str(source or "").strip()
+    if not source:
+        return []
+    normalized_source = " ".join(source.lower().split())
+    result = []
+    for item in _string_list(value):
+        normalized_item = " ".join(item.lower().split())
+        if normalized_item and normalized_item in normalized_source:
+            result.append(item)
+    if not result and fallback_to_source:
+        result.append(source)
+    return result
+
+
+def _flatten_text(value: Any) -> str:
+    if isinstance(value, dict):
+        return "\n".join(_flatten_text(item) for item in value.values())
+    if isinstance(value, list):
+        return "\n".join(_flatten_text(item) for item in value)
+    return str(value or "")
 
 
 def _numbers_supported(value: Any, allowed_numbers: set[str]) -> bool:

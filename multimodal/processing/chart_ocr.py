@@ -36,19 +36,33 @@ def parse_chart_layout(ocr_result: dict[str, Any]) -> dict[str, Any]:
     height = int(ocr_result.get("height") or 0)
     lines = _group_lines(items)
     full_lines = [line for line in lines if line.get("region") == "full"]
+    legend_lines = _spatial_text_lines(
+        [item for item in items if item.get("region") in {"full", "plot_crop"}],
+        width,
+        height,
+    )
     rotated_y = [line for line in lines if line.get("region") == "y_axis_rotated"]
     text_lines = [line for line in lines if line.get("region") == "text_only"]
 
-    x_tokens = _remove_value_fragments([item for item in items if _region(item, width, height) == "x_axis"])
+    x_tokens = _remove_value_fragments(
+        [item for item in items if item.get("region") == "full" and _region(item, width, height) == "x_axis"]
+    )
     y_tokens = _rightmost_value_per_line(
-        _remove_value_fragments([item for item in items if _region(item, width, height) == "y_axis"])
+        _remove_value_fragments(
+            [item for item in items if item.get("region") == "full" and _region(item, width, height) == "y_axis"]
+        )
     )
     x_ticks = [_value_record(item, "x_tick") for item in x_tokens if _is_value(item.get("text"))]
-    x_ticks.extend(
+    rotated_x_ticks = [
         _value_record(item, "x_tick")
         for item in items
-        if item.get("region") == "x_axis_rotated" and _is_value(item.get("text"))
-    )
+        if item.get("region") == "x_axis_rotated"
+        and _is_value(item.get("text"))
+        and float(item.get("confidence", 0.0)) >= 0.6
+    ]
+    if len(rotated_x_ticks) >= 2:
+        x_ticks.extend(rotated_x_ticks)
+    accepted_rotated_x = {item["text"] for item in rotated_x_ticks} if len(rotated_x_ticks) >= 2 else set()
     y_ticks = [_value_record(item, "y_tick") for item in y_tokens if _is_value(item.get("text"))]
 
     x_labels = _axis_label_candidates(full_lines, width, height, axis="x")
@@ -86,7 +100,7 @@ def parse_chart_layout(ocr_result: dict[str, Any]) -> dict[str, Any]:
     y_labels = _dedupe_records(y_labels)
 
     legend_candidates = _legend_candidates(
-        full_lines,
+        legend_lines,
         x_labels + x_category_lines,
         y_labels + y_category_lines,
         width,
@@ -98,7 +112,7 @@ def parse_chart_layout(ocr_result: dict[str, Any]) -> dict[str, Any]:
         if re.search(r"\blegend\b|\bseries\b", str(line.get("text") or ""), re.I)
     )
     legend_candidates = _dedupe_records(legend_candidates)
-    title = _title_candidate(full_lines, legend_candidates, width, height)
+    title = _title_candidate(legend_lines, legend_candidates, width, height)
     if not title:
         title = next(
             (
@@ -120,11 +134,26 @@ def parse_chart_layout(ocr_result: dict[str, Any]) -> dict[str, Any]:
     for item in items:
         if item.get("region") not in {"full", "plot_crop", "x_axis_rotated", "text_only"} or not _is_value(item.get("text")):
             continue
+        if item.get("region") == "x_axis_rotated" and str(item.get("text") or "") not in accepted_rotated_x:
+            continue
+        if (
+            item.get("region") == "plot_crop"
+            and _valid_bbox(item.get("bbox"))
+            and width
+            and _center(item["bbox"])[0] < width * 0.15
+        ):
+            continue
         if item.get("line_id") in legend_line_ids or _inside_any_bbox(
             item.get("bbox"), [legend.get("bbox") for legend in legend_candidates]
         ):
             continue
-        role = "x_axis" if item.get("region") == "x_axis_rotated" else _region(item, width, height)
+        role = (
+            "x_axis"
+            if item.get("region") == "x_axis_rotated"
+            else "plot"
+            if item.get("region") == "plot_crop"
+            else _region(item, width, height)
+        )
         record = _value_record(
             item,
             role if role in {"x_axis", "y_axis"} else "ocr_value" if item.get("region") == "text_only" else "plot_value",
@@ -224,7 +253,7 @@ def _pytesseract_ocr(path: str, config: dict[str, Any]) -> dict[str, Any]:
             # bars. A thresholded plot-area pass isolates that text while
             # retaining coordinates in the original image.
             plot_box = (
-                round(image.width * float(config.get("plot_left_fraction", 0.10))),
+                round(image.width * float(config.get("plot_left_fraction", 0.15))),
                 round(image.height * float(config.get("plot_top_fraction", 0.04))),
                 round(image.width * float(config.get("plot_right_fraction", 0.99))),
                 round(image.height * float(config.get("plot_bottom_fraction", 0.90))),
@@ -258,7 +287,7 @@ def _pytesseract_ocr(path: str, config: dict[str, Any]) -> dict[str, Any]:
             if len(bottom_numeric) < 2 and bool(config.get("detect_angled_x_ticks", True)):
                 bottom_top = round(image.height * float(config.get("x_tick_crop_top_fraction", 0.70)))
                 bottom = image.crop((0, bottom_top, image.width, image.height))
-                angled = bottom.rotate(float(config.get("x_tick_rotation_degrees", 45.0)), expand=True)
+                angled = bottom.rotate(float(config.get("x_tick_rotation_degrees", -45.0)), expand=True)
                 items.extend(
                     _tesseract_items(
                         pytesseract,
@@ -407,6 +436,130 @@ def _group_lines(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(lines, key=lambda item: (_bbox_value(item, 1), _bbox_value(item, 0), item["text"]))
 
 
+def _merge_nearby_lines(
+    lines: list[dict[str, Any]], width: int, height: int
+) -> list[dict[str, Any]]:
+    """Rejoin OCR fragments split across the full and thresholded passes."""
+    positioned = [line for line in lines if _valid_bbox(line.get("bbox"))]
+    unpositioned = [line for line in lines if not _valid_bbox(line.get("bbox"))]
+    row_groups: list[list[dict[str, Any]]] = []
+    row_tolerance = max(3.0, height * 0.015) if height else 3.0
+    for line in sorted(positioned, key=lambda item: (_center(item["bbox"])[1], _bbox_value(item, 0))):
+        cy = _center(line["bbox"])[1]
+        group = next(
+            (group for group in row_groups if abs(_center(group[0]["bbox"])[1] - cy) <= row_tolerance),
+            None,
+        )
+        if group is None:
+            row_groups.append([line])
+        else:
+            group.append(line)
+
+    merged = []
+    max_gap = max(5.0, width * 0.03) if width else 5.0
+    for row_index, group in enumerate(row_groups):
+        clusters: list[list[dict[str, Any]]] = []
+        for line in sorted(group, key=lambda item: _bbox_value(item, 0)):
+            if not clusters:
+                clusters.append([line])
+                continue
+            current_box = _union_bbox([item["bbox"] for item in clusters[-1]])
+            gap = float(line["bbox"][0]) - (float(current_box[0]) + float(current_box[2]))
+            if gap <= max_gap:
+                clusters[-1].append(line)
+            else:
+                clusters.append([line])
+        for cluster_index, cluster in enumerate(clusters):
+            kept = []
+            for line in cluster:
+                text = str(line.get("text") or "")
+                if any(
+                    text in str(other.get("text") or "")
+                    and _inside_any_bbox(line.get("bbox"), [other.get("bbox")])
+                    for other in kept
+                ):
+                    continue
+                kept.append(line)
+            bbox = _union_bbox([item["bbox"] for item in kept])
+            merged.append(
+                {
+                    "text": " ".join(str(item.get("text") or "") for item in kept).strip(),
+                    "confidence": round(
+                        sum(float(item.get("confidence", 0.0)) for item in kept) / len(kept), 4
+                    ),
+                    "bbox": bbox,
+                    "region": "merged",
+                    "line_id": f"merged:{row_index}:{cluster_index}",
+                }
+            )
+    return sorted(merged + unpositioned, key=lambda item: (_bbox_value(item, 1), _bbox_value(item, 0), item["text"]))
+
+
+def _spatial_text_lines(
+    items: list[dict[str, Any]], width: int, height: int
+) -> list[dict[str, Any]]:
+    """Build visual lines from tokens emitted by multiple OCR passes."""
+    positioned = [item for item in items if _valid_bbox(item.get("bbox"))]
+    rows: list[list[dict[str, Any]]] = []
+    row_tolerance = max(3.0, height * 0.015) if height else 3.0
+    for item in sorted(positioned, key=lambda value: (_center(value["bbox"])[1], _bbox_value(value, 0))):
+        cy = _center(item["bbox"])[1]
+        row = next(
+            (row for row in rows if abs(_center(row[0]["bbox"])[1] - cy) <= row_tolerance),
+            None,
+        )
+        if row is None:
+            rows.append([item])
+        else:
+            duplicate = next(
+                (existing for existing in row if _bbox_overlap_ratio(existing["bbox"], item["bbox"]) >= 0.6),
+                None,
+            )
+            if duplicate is None:
+                row.append(item)
+            elif float(item.get("confidence", 0.0)) > float(duplicate.get("confidence", 0.0)):
+                row[row.index(duplicate)] = item
+
+    result = []
+    max_gap = max(5.0, width * 0.03) if width else 5.0
+    for row_index, row in enumerate(rows):
+        clusters: list[list[dict[str, Any]]] = []
+        for item in sorted(row, key=lambda value: _bbox_value(value, 0)):
+            if not clusters:
+                clusters.append([item])
+                continue
+            current_box = _union_bbox([value["bbox"] for value in clusters[-1]])
+            gap = float(item["bbox"][0]) - (float(current_box[0]) + float(current_box[2]))
+            if gap <= max_gap:
+                clusters[-1].append(item)
+            else:
+                clusters.append([item])
+        for cluster_index, cluster in enumerate(clusters):
+            result.append(
+                {
+                    "text": " ".join(str(item.get("text") or "") for item in cluster).strip(),
+                    "confidence": round(
+                        sum(float(item.get("confidence", 0.0)) for item in cluster) / len(cluster), 4
+                    ),
+                    "bbox": _union_bbox([item["bbox"] for item in cluster]),
+                    "region": "merged",
+                    "line_id": f"spatial:{row_index}:{cluster_index}",
+                }
+            )
+    return sorted(result, key=lambda item: (_bbox_value(item, 1), _bbox_value(item, 0), item["text"]))
+
+
+def _bbox_overlap_ratio(left: Any, right: Any) -> float:
+    if not _valid_bbox(left) or not _valid_bbox(right):
+        return 0.0
+    l_left, l_top, l_width, l_height = map(float, left[:4])
+    r_left, r_top, r_width, r_height = map(float, right[:4])
+    overlap_width = max(0.0, min(l_left + l_width, r_left + r_width) - max(l_left, r_left))
+    overlap_height = max(0.0, min(l_top + l_height, r_top + r_height) - max(l_top, r_top))
+    smaller_area = min(l_width * l_height, r_width * r_height)
+    return (overlap_width * overlap_height / smaller_area) if smaller_area else 0.0
+
+
 def _axis_label_candidates(lines: list[dict[str, Any]], width: int, height: int, axis: str) -> list[dict[str, Any]]:
     result = []
     for line in lines:
@@ -454,6 +607,7 @@ def _legend_candidates(
     # top line remains eligible to be the chart title instead.
     if len(top_candidates) >= 2:
         candidates.extend(top_candidates)
+    candidates = [item for item in candidates if item.get("text")]
     # A legend generally contains multiple nearby labels. Keep isolated lines
     # only when they have explicit series-like markers.
     result = []
@@ -463,7 +617,7 @@ def _legend_candidates(
         explicit = bool(re.search(r"\bw/?o\b|\bw/\b|baseline|series|model|all|none|two|wins?|ties?|los(?:e|es)", item["text"], re.I))
         if peers or explicit:
             result.append(item)
-    return _dedupe_records(result)
+    return _dedupe_overlapping_records(_dedupe_records(result))
 
 
 def _title_candidate(
@@ -572,9 +726,16 @@ def _line_record(line: dict[str, Any]) -> dict[str, Any]:
 
 def _legend_record(line: dict[str, Any]) -> dict[str, Any]:
     record = _line_record(line)
-    match = re.search(r"\b(All|Two|None|Wins?|Ties?|Loses?)\b\s*$", record["text"], re.I)
+    text = re.sub(r"^(?:m{2,}|mama|la\.?)\s+", "", record["text"], flags=re.I)
+    text = re.sub(r"^wi\s+(?=(?:QK|Qk|dropout|norm))", "w/ ", text)
+    text = re.sub(r"\s+[^A-Za-z0-9)+]+$", "", text).strip()
+    match = re.search(r"\b(All|Two|None|Wins?|Ties?|Loses?)\b", text, re.I)
     if match:
         record["text"] = match.group(1)
+    elif re.fullmatch(r"(?:m{2,}|mama|la\.?)", text, re.I):
+        record["text"] = ""
+    else:
+        record["text"] = text
     return record
 
 
@@ -626,11 +787,11 @@ def _region(item: dict[str, Any], width: int, height: int) -> str:
     # clearly left of the plot margin; the first x tick is usually farther in.
     if cx <= width * 0.13:
         return "y_axis"
-    if cy >= height * 0.74:
+    if cy >= height * 0.84:
         return "x_axis"
     if cx <= width * 0.18:
         return "y_axis"
-    if width * 0.18 < cx < width * 0.96 and height * 0.08 < cy < height * 0.74:
+    if width * 0.18 < cx < width * 0.96 and height * 0.08 < cy < height * 0.84:
         return "plot"
     return "unknown"
 
@@ -769,6 +930,18 @@ def _dedupe_records(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             seen.add(key)
             result.append(item)
     return result
+
+
+def _dedupe_overlapping_records(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    result = []
+    for item in sorted(items, key=lambda value: len(str(value.get("text") or "")), reverse=True):
+        if any(
+            _bbox_overlap_ratio(item.get("bbox"), existing.get("bbox")) >= 0.45
+            for existing in result
+        ):
+            continue
+        result.append(item)
+    return sorted(result, key=lambda value: (_bbox_value(value, 1), _bbox_value(value, 0)))
 
 
 def _empty_result(backend: str, error: str) -> dict[str, Any]:

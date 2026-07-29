@@ -108,10 +108,19 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
         def fake_vlm(**kwargs):
             return {
                 "chart_type": "line chart",
+                "x_axis": {"label": "Optimization step", "meaning": "training progress", "unit": "step", "confidence": 0.9},
+                "y_axis": {"label": "Output norm", "meaning": "model output magnitude", "unit": "", "confidence": 0.9},
+                "legends": ["with dropout", "without dropout"],
                 "series": ["with dropout", "without dropout"],
                 "qualitative_trends": [
                     {"series": "without dropout", "trend": "increases", "evidence": "the line reaches 20"}
                 ],
+                "chart_grounding": {
+                    "visual_evidence": ["Two lines are visible."],
+                    "ocr_evidence": ["Step", "Output Norm"],
+                    "context_evidence": [],
+                },
+                "semantic_confidence": 0.88,
                 "confidence": 0.9,
             }
 
@@ -124,7 +133,10 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
         self.assertEqual({item["text"] for item in structured["y_axis"]["tick_labels"]}, {"0.0", "35.0"})
         self.assertIn("with dropout", {item["text"] for item in structured["legends"]})
         self.assertIn("20", {item["text"] for item in structured["readable_data_points"]})
-        self.assertEqual(semantic["x_axis"], structured["x_axis"])
+        self.assertEqual(semantic["x_axis"]["label"], "Optimization step")
+        self.assertNotEqual(semantic["x_axis"], structured["x_axis"])
+        self.assertEqual(semantic["chart_grounding"]["ocr_evidence"], ["Step", "Output Norm"])
+        self.assertEqual(semantic["semantic_confidence"], 0.88)
         self.assertEqual(len(semantic["qualitative_trends"]), 1)
         self.assertGreater(confidence["programmatic_parse"], 0.5)
 
@@ -137,6 +149,37 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Chart OCR unavailable.*chart image not found"):
             ChartProcessor(require_ocr_backend=True).process(chart, {})
 
+    def test_chart_unknown_semantics_do_not_fall_back_to_rule_roles(self):
+        chart = MMMedia(
+            media_id="doc_chart_unknown", doc_id="doc", modality="chart", mapped_type="chart", type="chart",
+            page=1, path="chart.png",
+        )
+
+        def fake_ocr(path):
+            del path
+            return {
+                "status": "ok", "width": 400, "height": 300,
+                "items": [
+                    {"text": "Step", "bbox": [180, 280, 40, 12], "region": "full", "line_id": "x", "confidence": 0.99},
+                    {"text": "Loss", "bbox": None, "region": "y_axis_rotated", "line_id": "y", "confidence": 0.99},
+                ],
+            }
+
+        def fake_vlm(**kwargs):
+            return {
+                "chart_type": "unknown", "title": "unknown",
+                "x_axis": {"label": "unknown"}, "y_axis": {"label": "unknown"},
+                "legends": ["unknown"], "series": ["unknown"],
+                "semantic_confidence": 0.2, "confidence": 0.2,
+            }
+
+        structured, semantic, _ = ChartProcessor(fake_vlm, ocr_func=fake_ocr).process(chart, {})
+
+        self.assertEqual(structured["axis_candidates"]["x"]["label"], "Step")
+        self.assertEqual(semantic["x_axis"]["label"], "unknown")
+        self.assertEqual(semantic["y_axis"]["label"], "unknown")
+        self.assertEqual(semantic["semantic_confidence"], 0.2)
+
     def test_chart_layout_separates_stacked_bar_axes_legends_and_values(self):
         items = [
             {"text": "Wins", "bbox": [238, 9, 34, 18], "region": "full", "line_id": "legend-1", "confidence": 0.9},
@@ -146,6 +189,7 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
             {"text": "GPT-4V+", "bbox": [11, 178, 62, 12], "region": "full", "line_id": "row-2", "confidence": 0.9},
             {"text": "41.5", "bbox": [168, 82, 28, 12], "region": "plot_crop", "line_id": "value-1", "confidence": 0.94},
             {"text": "34.5", "bbox": [351, 82, 28, 12], "region": "plot_crop", "line_id": "value-2", "confidence": 0.94},
+            {"text": "46.0", "bbox": [180, 366, 30, 11], "region": "plot_crop", "line_id": "value-bottom", "confidence": 0.95},
             {"text": "20", "bbox": [172, 430, 18, 12], "region": "full", "line_id": "tick-20", "confidence": 0.96},
             {"text": "100", "bbox": [555, 430, 26, 12], "region": "full", "line_id": "tick-100", "confidence": 0.96},
             {"text": "Percent", "bbox": [289, 450, 64, 14], "region": "full", "line_id": "x-label", "confidence": 0.95},
@@ -160,7 +204,25 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
         self.assertEqual(parsed["x_axis"]["label"], "Percent (%)")
         self.assertEqual([item["text"] for item in parsed["y_axis"]["tick_labels"]], ["Gemini+", "GPT-4V+"])
         self.assertEqual({item["text"] for item in parsed["legends"]}, {"Wins", "Ties", "Loses"})
-        self.assertEqual({item["text"] for item in parsed["readable_data_points"]}, {"41.5", "34.5"})
+        self.assertEqual({item["text"] for item in parsed["readable_data_points"]}, {"41.5", "34.5", "46.0"})
+
+    def test_chart_layout_rejoins_legend_fragments_across_ocr_passes(self):
+        items = [
+            {"text": "—", "bbox": [183, 31, 28, 2], "region": "full", "line_id": "full-legend", "confidence": 0.8},
+            {"text": "7B", "bbox": [222, 27, 15, 10], "region": "plot_crop", "line_id": "crop-legend", "confidence": 0.95},
+            {"text": "w/o", "bbox": [243, 28, 22, 10], "region": "plot_crop", "line_id": "crop-legend", "confidence": 0.95},
+            {"text": "image", "bbox": [271, 27, 39, 13], "region": "plot_crop", "line_id": "crop-legend", "confidence": 0.96},
+            {"text": "generation", "bbox": [316, 27, 71, 13], "region": "full", "line_id": "full-legend", "confidence": 0.96},
+            {"text": "Step", "bbox": [216, 288, 29, 13], "region": "full", "line_id": "x-label", "confidence": 0.96},
+        ]
+
+        parsed = parse_chart_layout(
+            {"backend": "test", "status": "ok", "width": 418, "height": 306, "items": items}
+        )
+
+        self.assertEqual([item["text"] for item in parsed["legends"]], ["7B w/o image generation"])
+        self.assertEqual(parsed["title"], "")
+        self.assertEqual(parsed["readable_data_points"], [])
 
     def test_chart_layout_keeps_series_names_out_of_data_points(self):
         items = [
@@ -217,6 +279,21 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
                     {"statement": "B has 999", "source_cells": [[2, 1]]},
                 ],
                 "grounded_summary": "Scores are 10 and 20.",
+                "table_structure": {
+                    "header_meaning": [
+                        {"meaning": "Score column", "source_cells": [[0, 1]]}
+                    ],
+                    "column_semantics": [
+                        {"meaning": "The recorded scores are 10 and 20", "source_cells": [[1, 1], [2, 1]]},
+                        {"meaning": "The score is 999", "source_cells": [[2, 1]]},
+                    ],
+                    "row_semantics": [],
+                },
+                "cell_grounding": [
+                    {"claim": "A has score 10", "source_cells": [[1, 1]]},
+                    {"claim": "B has score 999", "source_cells": [[2, 1]]},
+                ],
+                "semantic_confidence": 0.85,
                 "confidence": 0.9,
             }
 
@@ -226,6 +303,10 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
         self.assertEqual(semantic["important_cells"], [{"row": 1, "col": 1, "value": "10", "reason": "reported score"}])
         self.assertEqual(len(semantic["comparisons"]), 1)
         self.assertNotIn("999", json.dumps(semantic))
+        self.assertEqual(len(semantic["table_structure"]["header_meaning"]), 1)
+        self.assertEqual(len(semantic["table_structure"]["column_semantics"]), 1)
+        self.assertTrue(all(item["source_cells"] for item in semantic["cell_grounding"]))
+        self.assertEqual(semantic["semantic_confidence"], 0.85)
         self.assertTrue(confidence["numeric_provenance_complete"])
 
     def test_image_keeps_visual_and_caption_evidence_separate(self):
@@ -242,6 +323,13 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
                 "caption_consistency": "The caption calls this a system architecture.",
                 "grounded_summary": "A blue block labeled Module A is visible.",
                 "uncertain_items": [],
+                "evidence_source": {
+                    "visual": ["A blue rectangular block is visible."],
+                    "caption": ["Figure 2: System architecture"],
+                    "nearby_text": ["As shown in Figure 2, the system contains two modules."],
+                },
+                "semantic_role": ["architecture"],
+                "semantic_confidence": 0.75,
                 "confidence": 0.8,
             }
 
@@ -250,6 +338,10 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
         self.assertEqual(context["direct_evidence"]["caption"], "Figure 2: System architecture")
         self.assertEqual(semantic["visual_facts"], ["A blue rectangular block is visible."])
         self.assertNotIn(context["direct_evidence"]["caption"], semantic["visual_facts"])
+        self.assertEqual(semantic["evidence_source"]["visual"], ["A blue rectangular block is visible."])
+        self.assertEqual(semantic["evidence_source"]["caption"], ["Figure 2: System architecture"])
+        self.assertIn("system contains two modules", semantic["evidence_source"]["nearby_text"][0])
+        self.assertEqual(semantic["semantic_role"], ["architecture"])
         self.assertIn("remain in media_context", confidence["evidence_separation"])
 
     def test_context_builder_uses_page_and_media_near_text_relations(self):
@@ -289,6 +381,13 @@ class Phase2MultimodalProcessorTest(unittest.TestCase):
             self.assertEqual((working / "mm_edges_seed.jsonl").read_bytes(), edge_bytes_before)
             self.assertFalse((working / "mm_edges.jsonl").exists())
             self.assertTrue((working / "processed_media.json").exists())
+            reloaded = json.loads((working / "processed_media.json").read_text(encoding="utf-8"))
+            self.assertEqual(reloaded[0]["structured_content"], reloaded[0]["content_understanding"])
+            self.assertEqual(reloaded[0]["semantic_content"], reloaded[0]["semantic_understanding"])
+            self.assertIn("media_context", reloaded[0])
+            self.assertIn("grounding", reloaded[0])
+            self.assertIn("semantic_role", reloaded[0])
+            self.assertIn("semantic_confidence", reloaded[0])
             serialized = json.dumps(records)
             for forbidden in ("graph_text", "retrieval_text", "entity_info", "graph_knowledge"):
                 self.assertNotIn(forbidden, serialized)
