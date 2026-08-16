@@ -29,10 +29,14 @@ Program OCR text, positions, and readable numbers are factual evidence. Program 
 - Caption and document context may clarify purpose or conflicts, but they are not evidence for plotted values or trends.
 - Do not copy a candidate role when pixels do not support it. Return "unknown" for an uncertain field.
 - Do not invent or interpolate blurred numbers.
+- OCR tick labels describe an axis scale; they are not series values. A concrete plotted value requires a readable_data_point or data label.
 - Produce at most 6 qualitative_trends and at most 4 extrema_and_intersections.
 - Every qualitative_trend item must identify its series, state its basis, and include visual_evidence or exact OCR quotes.
 - ocr_evidence items must be exact text from the supplied OCR lines.
 - Every number in an output field must occur in the supplied OCR evidence.
+- main_message must state what the chart primarily demonstrates using chart pixels/OCR, not nearby prose alone.
+- document_relation must explain whether the chart supports, illustrates, qualifies, or contradicts the nearby text and must quote that text exactly.
+- method_assessment may name a preferred method only when the chart establishes the comparison and a quoted context sentence or explicit metric definition establishes what higher/lower means. Otherwise use "unknown".
 - Record caption/image conflicts in caption_consistency.
 - Use unreadable_regions for unclear regions.
 - Do not produce a summary, entities, graph knowledge, graph_text, retrieval_text, or a long free-form description.
@@ -43,6 +47,15 @@ Return this schema:
   "qualitative_trends": [
     {"series": "", "trend": "", "evidence": "", "visual_evidence": [], "ocr_evidence": []}
   ],
+  "main_message": {"statement": "", "visual_evidence": [], "ocr_evidence": []},
+  "document_relation": {
+    "relation": "supports|illustrates|qualifies|contradicts|unclear",
+    "statement": "", "context_quotes": []
+  },
+  "method_assessment": {
+    "preferred_method": "unknown", "criterion": "", "direction": "unknown",
+    "statement": "", "visual_evidence": [], "ocr_evidence": [], "context_quotes": []
+  },
   "extrema_and_intersections": [],
   "caption_consistency": "", "unreadable_regions": [], "confidence": 0.0,
   "chart_grounding": {"visual_evidence": [], "ocr_evidence": [], "context_evidence": []},
@@ -58,16 +71,17 @@ CHART_SUMMARY_PROMPT = """Write a concise grounded chart summary and return one 
 
 Evidence policy:
 - Use only the supplied validated claims. Do not inspect or reinterpret the original chart.
-- Write 1 to 3 concise sentences describing the chart and its most important supported trends.
+- Write up to 4 concise sentences, ordered as main point, important trend, document relation, and method assessment when those claim types are available.
 - Every sentence must cite one or more supporting_claim_ids from the supplied claims.
 - Do not introduce a number, series, comparison, ranking, cause, or conclusion absent from those cited claims.
 - Every number in a sentence must occur verbatim in its cited claims.
 - Do not claim that one configuration causes an outcome unless the validated claim explicitly states causality.
+- A document-relation or method-assessment sentence must copy the validated claim statement without changing its direction or preferred method.
 
 Return this schema:
 {
   "summary_sentences": [
-    {"text": "", "supporting_claim_ids": ["claim_0"]}
+    {"role": "main_point|trend|document_relation|method_assessment", "text": "", "supporting_claim_ids": ["claim_0"]}
   ],
   "confidence": 0.0
 }

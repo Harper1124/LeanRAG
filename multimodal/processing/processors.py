@@ -120,18 +120,19 @@ class ChartProcessor:
         compact_evidence = _compact_chart_evidence(structured, media_context, media.caption)
         response, analysis_diagnostic = _call_json_model_diagnostic(
             self.vlm_func,
-            CHART_ANALYSIS_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence)),
+            CHART_ANALYSIS_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence, max_chars=18000)),
             image_path=media.path,
         )
         analysis_attempts = 1
         if not response and self.vlm_func:
             response, analysis_diagnostic = _call_json_model_diagnostic(
                 self.vlm_func,
-                CHART_ANALYSIS_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence)),
+                CHART_ANALYSIS_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence, max_chars=18000)),
                 image_path=media.path,
             )
             analysis_attempts = 2
         allowed_numbers = set(NUMBER_RE.findall(structured.get("ocr_text") or ""))
+        claim_allowed_numbers = _chart_claim_allowed_numbers(structured)
         response_grounding = response.get("chart_grounding") if isinstance(response.get("chart_grounding"), dict) else {}
         chart_grounding = {
             "visual_evidence": _safe_numeric_items(response_grounding.get("visual_evidence"), allowed_numbers),
@@ -145,6 +146,7 @@ class ChartProcessor:
         qualitative_trends = _validated_chart_trends(
             response.get("qualitative_trends"),
             allowed_numbers,
+            claim_allowed_numbers,
             structured.get("ocr_text") or "",
             chart_grounding,
         )
@@ -173,6 +175,26 @@ class ChartProcessor:
                 response.get("semantic_confidence", response.get("confidence"))
             ),
         }
+        semantic["main_message"] = _validated_chart_main_message(
+            response.get("main_message"), allowed_numbers, claim_allowed_numbers, structured.get("ocr_text") or ""
+        )
+        semantic["document_relation"] = _validated_chart_document_relation(
+            response.get("document_relation"), media_context
+        )
+        semantic["method_assessment"] = _validated_chart_method_assessment(
+            response.get("method_assessment"),
+            semantic,
+            media_context,
+            allowed_numbers,
+            claim_allowed_numbers,
+            structured.get("ocr_text") or "",
+        )
+        semantic["qualitative_trends"], semantic["semantic_conflicts"] = _remove_conflicting_chart_trends(
+            semantic["qualitative_trends"]
+        )
+        if not semantic["main_message"] and not semantic["qualitative_trends"]:
+            semantic["document_relation"] = {}
+        _merge_chart_claim_grounding(semantic)
         if not response:
             semantic["unreadable_regions"].append("VLM interpretation unavailable or returned invalid JSON")
         summary_evidence = _chart_summary_evidence(semantic, structured)
@@ -191,7 +213,7 @@ class ChartProcessor:
         grounded_summary, summary_grounding = _validated_chart_summary(
             summary_response,
             summary_evidence,
-            allowed_numbers,
+            claim_allowed_numbers,
         )
         if not grounded_summary:
             grounded_summary, summary_grounding = _fallback_chart_summary(summary_evidence)
@@ -215,6 +237,16 @@ class ChartProcessor:
             "summary_response_excerpt": summary_diagnostic["response_excerpt"],
             "summary_numeric_provenance_complete": _chart_summary_numeric_provenance_complete(
                 grounded_summary, summary_grounding
+            ),
+            "grounding_complete": bool(
+                semantic["chart_grounding"]["visual_evidence"]
+                or semantic["chart_grounding"]["ocr_evidence"]
+            ),
+            "relation_consistent": not bool(semantic["semantic_conflicts"]),
+            "context_relation_grounded": bool(semantic["document_relation"].get("context_quotes")),
+            "method_assessment_grounded": bool(
+                semantic["method_assessment"].get("preferred_method")
+                and semantic["method_assessment"].get("preferred_method") != "unknown"
             ),
         }
         return structured, semantic, confidence
@@ -322,7 +354,8 @@ def _compact_chart_evidence(
         "caption": str(caption or "")[:500],
         "document_context": {
             "section": str(layout.get("section") or "")[:200],
-            "reference": str(context.get("reference_context") or "")[:800],
+            "reference": str(context.get("reference_context") or "")[:1600],
+            "nearby_text": str(layout.get("nearby_text") or "")[:2400],
         },
         "program_ocr": {
             "status": structured.get("ocr_status"),
@@ -362,9 +395,115 @@ def _compact_chart_item(value: Any) -> dict[str, Any] | str:
     }
 
 
+def _chart_claim_allowed_numbers(structured: dict[str, Any]) -> set[str]:
+    values = [str(structured.get("title") or "")]
+    values.extend(_chart_item_text(item) for item in structured.get("legends", []))
+    values.extend(_chart_item_text(item) for item in structured.get("readable_data_points", []))
+    for axis_name in ("x_axis", "y_axis"):
+        axis = structured.get(axis_name) if isinstance(structured.get(axis_name), dict) else {}
+        values.append(str(axis.get("label") or ""))
+    return {token for value in values for token in NUMBER_RE.findall(value)}
+
+
+def _validated_chart_main_message(
+    value: Any,
+    allowed_numbers: set[str],
+    claim_allowed_numbers: set[str],
+    ocr_text: str,
+) -> dict[str, Any]:
+    item = value if isinstance(value, dict) else {}
+    statement = str(item.get("statement") or "").strip()
+    visual = _safe_numeric_items(item.get("visual_evidence"), allowed_numbers)
+    ocr = _source_quotes(item.get("ocr_evidence"), ocr_text)
+    required = set(NUMBER_RE.findall(statement))
+    if not statement or not (visual or ocr) or not required.issubset(claim_allowed_numbers):
+        return {}
+    return {"statement": statement, "visual_evidence": visual, "ocr_evidence": ocr}
+
+
+def _validated_chart_document_relation(value: Any, media_context: dict[str, Any]) -> dict[str, Any]:
+    item = value if isinstance(value, dict) else {}
+    relation = str(item.get("relation") or "unclear").strip().lower()
+    statement = str(item.get("statement") or "").strip()
+    quotes = _source_quotes(item.get("context_quotes"), _flatten_text(media_context))
+    if relation not in {"supports", "illustrates", "qualifies", "contradicts"} or not statement or not quotes:
+        return {}
+    allowed_numbers = set(NUMBER_RE.findall("\n".join(quotes)))
+    if not set(NUMBER_RE.findall(statement)).issubset(allowed_numbers):
+        return {}
+    return {"relation": relation, "statement": statement, "context_quotes": quotes}
+
+
+def _validated_chart_method_assessment(
+    value: Any,
+    semantic: dict[str, Any],
+    media_context: dict[str, Any],
+    allowed_numbers: set[str],
+    claim_allowed_numbers: set[str],
+    ocr_text: str,
+) -> dict[str, Any]:
+    item = value if isinstance(value, dict) else {}
+    preferred = str(item.get("preferred_method") or "unknown").strip()
+    criterion = str(item.get("criterion") or "").strip()
+    direction = str(item.get("direction") or "unknown").strip().lower()
+    statement = str(item.get("statement") or "").strip()
+    if not preferred or preferred.casefold() == "unknown" or direction not in {
+        "higher_is_better", "lower_is_better", "explicit_text_preference"
+    }:
+        return {}
+    known_series = {
+        _normalize_chart_series(_chart_item_text(candidate))
+        for key in ("series", "legends")
+        for candidate in semantic.get(key, [])
+        if _chart_item_text(candidate)
+    }
+    if _normalize_chart_series(preferred) not in known_series:
+        return {}
+    quotes = _source_quotes(item.get("context_quotes"), _flatten_text(media_context))
+    if not quotes or not _context_supports_method_preference(direction, preferred, quotes):
+        return {}
+    visual = _safe_numeric_items(item.get("visual_evidence"), allowed_numbers)
+    ocr = _source_quotes(item.get("ocr_evidence"), ocr_text)
+    if not statement or not criterion or not (visual or ocr):
+        return {}
+    supported_numbers = claim_allowed_numbers.union(NUMBER_RE.findall("\n".join(quotes)))
+    if not set(NUMBER_RE.findall(statement)).issubset(supported_numbers):
+        return {}
+    if _normalize_chart_series(preferred) not in _normalize_chart_series(statement):
+        return {}
+    return {
+        "preferred_method": preferred,
+        "criterion": criterion,
+        "direction": direction,
+        "statement": statement,
+        "visual_evidence": visual,
+        "ocr_evidence": ocr,
+        "context_quotes": quotes,
+    }
+
+
+def _context_supports_method_preference(direction: str, preferred: str, quotes: list[str]) -> bool:
+    text = " ".join(quotes).casefold()
+    comparative = re.search(
+        r"\b(?:better|best|outperform|outperforms|higher|lower|reduce|reduces|reduced|"
+        r"increase|increases|decrease|decreases|minimi[sz]|maximi[sz]|improv|stable|stability)\w*\b",
+        text,
+    )
+    if not comparative:
+        return False
+    if direction == "explicit_text_preference":
+        return _normalize_chart_series(preferred) in _normalize_chart_series(text)
+    return True
+
+
+def _normalize_chart_series(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
+
+
 def _validated_chart_trends(
     value: Any,
     allowed_numbers: set[str],
+    claim_allowed_numbers: set[str],
     ocr_text: str,
     default_grounding: dict[str, Any],
 ) -> list[dict[str, Any]]:
@@ -376,6 +515,9 @@ def _validated_chart_trends(
         trend = str(item.get("trend") or "").strip()
         basis = str(item.get("evidence") or "").strip()
         if not series or not trend or not basis or not _numbers_supported(item, allowed_numbers):
+            continue
+        claim_numbers = set(NUMBER_RE.findall(" ".join((series, trend, basis))))
+        if not claim_numbers.issubset(claim_allowed_numbers):
             continue
         visual_evidence = _safe_numeric_items(item.get("visual_evidence"), allowed_numbers)
         ocr_evidence = _source_quotes(item.get("ocr_evidence"), ocr_text)
@@ -396,24 +538,114 @@ def _validated_chart_trends(
     return result
 
 
+def _remove_conflicting_chart_trends(
+    trends: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    conflicts: set[int] = set()
+    messages = []
+    directions: dict[str, dict[str, list[int]]] = {}
+    for index, trend in enumerate(trends):
+        series = _normalize_chart_series(trend.get("series"))
+        text = str(trend.get("trend") or "").casefold()
+        direction = "increase" if re.search(r"\b(?:increase|increasing|rise|rising|upward)\b", text) else (
+            "decrease" if re.search(r"\b(?:decrease|decreasing|fall|falling|downward)\b", text) else ""
+        )
+        if direction:
+            directions.setdefault(series, {}).setdefault(direction, []).append(index)
+    for series, values in directions.items():
+        if values.get("increase") and values.get("decrease"):
+            conflicts.update(values["increase"] + values["decrease"])
+            messages.append(f"conflicting_trend_direction:{series}")
+
+    series_names = [_normalize_chart_series(trend.get("series")) for trend in trends]
+    relations: dict[tuple[str, str, str], list[int]] = {}
+    for index, trend in enumerate(trends):
+        subject = series_names[index]
+        evidence = _normalize_chart_series(json.dumps(trend.get("grounding") or {}, ensure_ascii=False))
+        for other in set(series_names):
+            if not other or other == subject or other not in evidence:
+                continue
+            if "below" in evidence:
+                relations.setdefault((subject, "<", other), []).append(index)
+            if "above" in evidence:
+                relations.setdefault((subject, ">", other), []).append(index)
+    for (left, operator, right), indexes in list(relations.items()):
+        reverse = (right, operator, left)
+        if reverse in relations:
+            conflicts.update(indexes + relations[reverse])
+            messages.append(f"conflicting_relative_order:{left}:{operator}:{right}")
+    return [trend for index, trend in enumerate(trends) if index not in conflicts], sorted(set(messages))
+
+
+def _merge_chart_claim_grounding(semantic: dict[str, Any]) -> None:
+    chart_grounding = semantic.get("chart_grounding") if isinstance(semantic.get("chart_grounding"), dict) else {}
+    visual = list(chart_grounding.get("visual_evidence") or [])
+    ocr = list(chart_grounding.get("ocr_evidence") or [])
+    context = list(chart_grounding.get("context_evidence") or [])
+    main = semantic.get("main_message") if isinstance(semantic.get("main_message"), dict) else {}
+    visual.extend(main.get("visual_evidence") or [])
+    ocr.extend(main.get("ocr_evidence") or [])
+    for trend in semantic.get("qualitative_trends", []):
+        grounding = trend.get("grounding") if isinstance(trend.get("grounding"), dict) else {}
+        visual.extend(grounding.get("visual_evidence") or [])
+        ocr.extend(grounding.get("ocr_evidence") or [])
+    method = semantic.get("method_assessment") if isinstance(semantic.get("method_assessment"), dict) else {}
+    visual.extend(method.get("visual_evidence") or [])
+    ocr.extend(method.get("ocr_evidence") or [])
+    context.extend(method.get("context_quotes") or [])
+    relation = semantic.get("document_relation") if isinstance(semantic.get("document_relation"), dict) else {}
+    context.extend(relation.get("context_quotes") or [])
+    semantic["chart_grounding"] = {
+        "visual_evidence": _dedupe_json_items(visual),
+        "ocr_evidence": list(dict.fromkeys(str(item) for item in ocr)),
+        "context_evidence": list(dict.fromkeys(str(item) for item in context)),
+    }
+
+
 def _chart_summary_evidence(
     semantic: dict[str, Any],
     structured: dict[str, Any],
 ) -> dict[str, Any]:
     claims: list[dict[str, Any]] = []
+    semantic_series = list(dict.fromkeys(
+        text
+        for text in (
+            [_chart_item_text(item) for item in semantic.get("series", [])]
+            + [str(item.get("series") or "") for item in semantic.get("qualitative_trends", [])]
+        )
+        if text and text.casefold() != "unknown"
+    ))
     chart_grounding = semantic.get("chart_grounding") if isinstance(semantic.get("chart_grounding"), dict) else {}
     visual_evidence = list(chart_grounding.get("visual_evidence") or [])
     ocr_evidence = list(chart_grounding.get("ocr_evidence") or [])
-    description = _chart_description_claim(semantic)
-    if description and (visual_evidence or ocr_evidence):
+    main = semantic.get("main_message") if isinstance(semantic.get("main_message"), dict) else {}
+    if main.get("statement"):
         claims.append({
             "claim_id": "claim_0",
-            "kind": "chart_description",
-            "statement": description,
-            "basis": "Validated chart type, axes, legends, and series.",
-            "visual_evidence": visual_evidence,
-            "ocr_evidence": ocr_evidence,
+            "kind": "main_point",
+            "statement": main["statement"],
+            "basis": "Validated main chart message.",
+            "series": semantic_series,
+            "visual_evidence": list(main.get("visual_evidence") or []),
+            "ocr_evidence": list(main.get("ocr_evidence") or []),
+            "context_evidence": [],
         })
+    else:
+        description = _chart_description_claim(semantic)
+        if description and (visual_evidence or ocr_evidence):
+            claims.append({
+                "claim_id": "claim_0",
+                "kind": "main_point",
+                "statement": description,
+                "basis": "Validated chart type, axes, legends, and series.",
+                "series": [
+                    text for text in (_chart_item_text(item) for item in semantic.get("series", []))
+                    if text.casefold() != "unknown"
+                ],
+                "visual_evidence": visual_evidence,
+                "ocr_evidence": ocr_evidence,
+                "context_evidence": [],
+            })
     for trend in semantic.get("qualitative_trends", [])[:CHART_MAX_TRENDS]:
         grounding = trend.get("grounding") if isinstance(trend.get("grounding"), dict) else {}
         statement = " ".join(
@@ -426,8 +658,34 @@ def _chart_summary_evidence(
             "kind": "qualitative_trend",
             "statement": statement,
             "basis": str(trend.get("evidence") or ""),
+            "series": [str(trend.get("series") or "")],
             "visual_evidence": list(grounding.get("visual_evidence") or []),
             "ocr_evidence": list(grounding.get("ocr_evidence") or []),
+            "context_evidence": [],
+        })
+    relation = semantic.get("document_relation") if isinstance(semantic.get("document_relation"), dict) else {}
+    if relation.get("statement"):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "document_relation",
+            "statement": relation["statement"],
+            "basis": relation.get("relation"),
+            "series": semantic_series,
+            "visual_evidence": [],
+            "ocr_evidence": [],
+            "context_evidence": list(relation.get("context_quotes") or []),
+        })
+    method = semantic.get("method_assessment") if isinstance(semantic.get("method_assessment"), dict) else {}
+    if method.get("statement"):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "method_assessment",
+            "statement": method["statement"],
+            "basis": method.get("criterion"),
+            "series": [method.get("preferred_method")],
+            "visual_evidence": list(method.get("visual_evidence") or []),
+            "ocr_evidence": list(method.get("ocr_evidence") or []),
+            "context_evidence": list(method.get("context_quotes") or []),
         })
     return {
         "program_ocr": {
@@ -435,7 +693,8 @@ def _chart_summary_evidence(
             "x_axis_label": (structured.get("x_axis") or {}).get("label") or "",
             "y_axis_label": (structured.get("y_axis") or {}).get("label") or "",
         },
-        "validated_claims": claims[: CHART_MAX_TRENDS + 1],
+        "known_series": semantic_series,
+        "validated_claims": claims[: CHART_MAX_TRENDS + 3],
     }
 
 
@@ -477,24 +736,55 @@ def _validated_chart_summary(
         for item in summary_evidence.get("validated_claims", [])
         if item.get("claim_id")
     }
+    known_series = {
+        _normalize_chart_series(value): str(value)
+        for value in summary_evidence.get("known_series", [])
+        if _normalize_chart_series(value)
+    }
     grounding = []
     for item in _json_list(response.get("summary_sentences")):
         if not isinstance(item, dict):
             continue
         text = str(item.get("text") or "").strip()
+        role = str(item.get("role") or "").strip().lower()
         claim_ids = [str(value) for value in _json_list(item.get("supporting_claim_ids"))]
+        if role not in {"main_point", "trend", "document_relation", "method_assessment"}:
+            continue
         if not text or not claim_ids or any(claim_id not in claims for claim_id in claim_ids):
             continue
         cited_claims = [claims[claim_id] for claim_id in claim_ids]
+        cited_kinds = {str(claim.get("kind") or "") for claim in cited_claims}
+        expected_kinds = {
+            "main_point": {"main_point"},
+            "trend": {"qualitative_trend"},
+            "document_relation": {"document_relation"},
+            "method_assessment": {"method_assessment"},
+        }[role]
+        if not cited_kinds.issubset(expected_kinds):
+            continue
+        if cited_kinds.intersection({"document_relation", "method_assessment"}):
+            if len(cited_claims) != 1 or text != str(cited_claims[0].get("statement") or ""):
+                continue
+        normalized_text = _normalize_chart_series(text)
+        mentioned_series = {name for name in known_series if name and name in normalized_text}
+        cited_series = {
+            _normalize_chart_series(series)
+            for claim in cited_claims
+            for series in claim.get("series", [])
+            if _normalize_chart_series(series)
+        }
+        if not mentioned_series.issubset(cited_series):
+            continue
         supported_numbers = {
             token
             for claim in cited_claims
             for token in NUMBER_RE.findall(json.dumps(claim, ensure_ascii=False))
         }
         required_numbers = set(NUMBER_RE.findall(text))
-        if not required_numbers.issubset(allowed_numbers) or not required_numbers.issubset(supported_numbers):
+        if not required_numbers.issubset(supported_numbers):
             continue
         grounding.append({
+            "role": role,
             "claim": text,
             "supporting_claim_ids": claim_ids,
             "supporting_claims": [claim.get("statement") for claim in cited_claims],
@@ -504,39 +794,41 @@ def _validated_chart_summary(
             "ocr_evidence": list(dict.fromkeys(
                 str(item) for claim in cited_claims for item in claim.get("ocr_evidence", [])
             )),
+            "context_evidence": list(dict.fromkeys(
+                str(item) for claim in cited_claims for item in claim.get("context_evidence", [])
+            )),
         })
-    if not grounding:
-        legacy = _safe_numeric_text(response.get("grounded_summary"), allowed_numbers)
-        if legacy and claims:
-            cited_claims = list(claims.values())
-            supported_numbers = set(NUMBER_RE.findall(json.dumps(cited_claims, ensure_ascii=False)))
-            if set(NUMBER_RE.findall(legacy)).issubset(supported_numbers):
-                grounding.append({
-                    "claim": legacy,
-                    "supporting_claim_ids": list(claims),
-                    "supporting_claims": [claim.get("statement") for claim in cited_claims],
-                    "visual_evidence": _dedupe_json_items(
-                        item for claim in cited_claims for item in claim.get("visual_evidence", [])
-                    ),
-                    "ocr_evidence": list(dict.fromkeys(
-                        str(item) for claim in cited_claims for item in claim.get("ocr_evidence", [])
-                    )),
-                })
     return " ".join(item["claim"] for item in grounding), grounding
 
 
 def _fallback_chart_summary(summary_evidence: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
     grounding = []
-    for claim in summary_evidence.get("validated_claims", [])[:2]:
+    role_by_kind = {
+        "main_point": "main_point",
+        "qualitative_trend": "trend",
+        "document_relation": "document_relation",
+        "method_assessment": "method_assessment",
+    }
+    selected = []
+    for kind in ("main_point", "qualitative_trend", "document_relation", "method_assessment"):
+        match = next(
+            (claim for claim in summary_evidence.get("validated_claims", []) if claim.get("kind") == kind),
+            None,
+        )
+        if match:
+            selected.append(match)
+    for claim in selected:
         statement = str(claim.get("statement") or "").strip()
         if not statement:
             continue
         grounding.append({
+            "role": role_by_kind.get(str(claim.get("kind") or ""), "main_point"),
             "claim": statement,
             "supporting_claim_ids": [str(claim.get("claim_id"))],
             "supporting_claims": [statement],
             "visual_evidence": list(claim.get("visual_evidence") or []),
             "ocr_evidence": list(claim.get("ocr_evidence") or []),
+            "context_evidence": list(claim.get("context_evidence") or []),
         })
     return " ".join(item["claim"] for item in grounding), grounding
 
@@ -549,6 +841,7 @@ def _chart_summary_numeric_provenance_complete(summary: str, grounding: list[dic
             "supporting_claims": item.get("supporting_claims") or [],
             "visual_evidence": item.get("visual_evidence") or [],
             "ocr_evidence": item.get("ocr_evidence") or [],
+            "context_evidence": item.get("context_evidence") or [],
         }, ensure_ascii=False))
     }
     return set(NUMBER_RE.findall(str(summary or ""))).issubset(supported)
