@@ -12,3 +12,6 @@ exp/
 AGENTS.md
 docx/
 tests/
+!tests/
+tests/*
+!tests/test_phase3_steps_0_2.py

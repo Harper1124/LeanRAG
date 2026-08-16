@@ -39,6 +39,18 @@ multimodal:
   parser: mineru
   mineru_backend: pipeline
 
+  # Phase 3 first-round build (Step 0-2 only). These thresholds are the
+  # single authority used by the media entity/relation extractor.
+  phase3:
+    enabled: true
+    output_dir: "phase3"
+    media_entity_min_confidence: 0.75
+    media_relation_min_confidence: 0.75
+    require_grounding: true
+    schema_version: "phase3.canonical.v1"
+    generator_version: "leanrag.phase3.steps0-2.v1"
+    llm_max_attempts: 2
+
   max_token_size: 1024
   overlap_token_size: 128
 
