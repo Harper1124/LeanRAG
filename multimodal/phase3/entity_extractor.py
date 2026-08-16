@@ -40,8 +40,9 @@ Rules:
 - entity_type must be one of MODEL, DATASET, METRIC, METHOD, COMPONENT, ORGANIZATION, PERSON, LOCATION, CONCEPT, OTHER.
 - Each entity and relation must cite one or more valid evidence_ref_indices from 0 through {max_ref_index}.
 - Relation endpoints use entity key values declared in the same response.
+- confidence is evidence support, not a default value. Use 0.90-1.00 only when the entity or relation and its exact description are explicit in GRAPH_TEXT; 0.75-0.89 when explicit but locally ambiguous; below 0.75 when uncertain. Never copy the example score mechanically.
 - Return exactly one JSON object and no prose, using this schema:
-{{"entities":[{{"key":"e1","entity_name":"...","entity_type":"MODEL","description":"...","confidence":0.0,"aliases":[],"evidence_ref_indices":[0]}}],"relations":[{{"source_key":"e1","target_key":"e2","relation_type":"USES","description":"...","confidence":0.0,"evidence_ref_indices":[0]}}]}}
+{{"entities":[{{"key":"e1","entity_name":"Example Model","entity_type":"MODEL","description":"Example Model uses Example Method.","confidence":0.92,"aliases":[],"evidence_ref_indices":[0]}},{{"key":"e2","entity_name":"Example Method","entity_type":"METHOD","description":"Example Model uses Example Method.","confidence":0.92,"aliases":[],"evidence_ref_indices":[0]}}],"relations":[{{"source_key":"e1","target_key":"e2","relation_type":"USES","description":"Example Model uses Example Method.","confidence":0.90,"evidence_ref_indices":[0]}}]}}
 
 EVIDENCE_REF_LOCATORS (metadata only; do not treat it as factual content):
 {evidence_ref_locators}
@@ -91,6 +92,7 @@ def extract_media_graph(
             continue
         materialized = None
         last_error = ""
+        last_raw = ""
         for attempt in range(1, max_attempts + 1):
             prompt = EXTRACTION_PROMPT.format(
                 max_ref_index=len(unit.evidence_refs) - 1,
@@ -105,9 +107,14 @@ def extract_media_graph(
                 graph_text=unit.graph_text,
             )
             if attempt > 1:
-                prompt += f"\nPrevious response failed validation: {last_error}\nReturn a corrected JSON object only."
+                prompt += (
+                    f"\nThe previous response failed validation: {last_error}\n"
+                    f"Previous response (possibly truncated):\n{last_raw[:2000]}\n"
+                    "Correct that specific error. Return the complete corrected JSON object only."
+                )
             try:
                 raw = _call_llm(llm_callable, prompt)
+                last_raw = _response_excerpt(raw)
                 response = _parse_and_validate_root(raw)
                 entities, local_keys, entity_trace = _materialize_entities(
                     unit, response["entities"], modality, entity_min_confidence
@@ -316,9 +323,23 @@ def _semantic_source_refs(unit: MediaSemanticUnit, indices: list[int]) -> list[S
 
 def _call_llm(func: Callable, prompt: str) -> Any:
     try:
-        return func(prompt)
+        return func(
+            prompt=prompt,
+            query=prompt,
+            temperature=0.0,
+            response_format={"type": "json_object"},
+        )
     except TypeError:
-        return func(prompt=prompt, query=prompt, temperature=0.0)
+        return func(prompt)
+
+
+def _response_excerpt(value: Any) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    try:
+        return json.dumps(value, ensure_ascii=False, sort_keys=True)
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def _parse_and_validate_root(value: Any) -> dict[str, list[dict[str, Any]]]:
@@ -400,7 +421,16 @@ def _merge_source_refs(left: list[SourceReference], right: list[SourceReference]
 
 
 def _appears_in_graph(name: str, graph_text: str) -> bool:
-    return normalized_name_key(name) in normalize_text(graph_text).casefold()
+    needle = _conservative_match_text(name)
+    haystack = _conservative_match_text(graph_text)
+    return bool(needle) and re.search(rf"(?<!\w){re.escape(needle)}(?!\w)", haystack) is not None
+
+
+def _conservative_match_text(value: Any) -> str:
+    text = normalize_text(value).casefold()
+    text = re.sub(r"\bw\s*/\s*o\b", " without ", text)
+    text = re.sub(r"\bw\s*/\b", " with ", text)
+    return re.sub(r"(?:[^\w]|_)+", " ", text, flags=re.UNICODE).strip()
 
 
 def _description_appears_in_graph(description: str, graph_text: str) -> bool:

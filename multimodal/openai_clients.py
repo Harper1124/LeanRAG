@@ -34,11 +34,15 @@ def make_chat_func(config: dict[str, Any]):
         if system_prompt:
             messages.append({"role": "system", "content": system_prompt})
         messages.append({"role": "user", "content": query})
-        response = client.chat.completions.create(
+        request = dict(
             model=model,
             messages=messages,
             temperature=kwargs.get("temperature", config.get("temperature", 0.1)),
         )
+        response_format = kwargs.get("response_format")
+        if response_format is not None:
+            request["response_format"] = response_format
+        response = client.chat.completions.create(**request)
         return response.choices[0].message.content
 
     return chat

@@ -30,6 +30,11 @@ LAYOUT_OBJECTS = {
     "axis", "axes", "line", "lines", "legend", "legends", "rectangle", "rectangles",
     "arrow", "arrows", "circle", "circles", "box", "boxes", "shape", "shapes",
 }
+IDENTITY_COLUMN_RE = re.compile(
+    r"\b(?:model|method|dataset|system|approach|component|category|task|metric|benchmark|name)\b",
+    re.I,
+)
+TABLE_FACT_LIMIT = 16
 
 
 @dataclass
@@ -141,6 +146,7 @@ class MediaSemanticUnitBuilder:
     def _build_table(self, item: JoinedMedia) -> _BuildContent:
         processed = item.processed
         semantic = _dict(processed.get("semantic_content"))
+        structured = _dict(processed.get("structured_content"))
         context = _dict(processed.get("media_context"))
         direct = _dict(context.get("direct_evidence"))
         retrieval: list[str] = ["Modality: table"]
@@ -156,13 +162,16 @@ class MediaSemanticUnitBuilder:
             retrieval.append(f"Purpose: {title}")
             refs.append(_media_ref(item, GroundingKind.VISUAL_FACT.value, "/semantic_content/title_and_purpose", "table_title"))
 
-        claims: list[tuple[str, list[list[int]], str]] = []
+        claims, reconstruction_warnings = _reconstruct_table_facts(structured, semantic)
+        if claims:
+            warnings.append("table_facts_reconstructed_from_structured_cells")
+        warnings.extend(reconstruction_warnings)
         for index, comparison in enumerate(_list(semantic.get("comparisons"))):
             if not isinstance(comparison, dict):
                 continue
             statement = _clean_excerpt(comparison.get("statement"), 400)
             cells = _valid_cells(comparison.get("source_cells"))
-            if statement and cells:
+            if statement and cells and not claims:
                 claims.append((statement, cells, f"/semantic_content/comparisons/{index}"))
         for index, grounding in enumerate(_list(semantic.get("cell_grounding"))):
             if not isinstance(grounding, dict):
@@ -171,9 +180,9 @@ class MediaSemanticUnitBuilder:
                 grounding.get("claim") or grounding.get("meaning") or grounding.get("semantic"), 400
             )
             cells = _valid_cells(grounding.get("source_cells"))
-            if statement and cells:
+            if statement and cells and not claims:
                 claims.append((statement, cells, f"/semantic_content/cell_grounding/{index}"))
-        claims = _dedupe_claims(claims)[:16]
+        claims = _dedupe_claims(claims)[:TABLE_FACT_LIMIT]
         for statement, cells, path in claims:
             retrieval.append(f"Grounded table fact: {statement}")
             graph.append(statement)
@@ -326,6 +335,118 @@ def _valid_cells(value: Any) -> list[list[int]]:
         if normalized not in result:
             result.append(normalized)
     return result
+
+
+def _reconstruct_table_facts(
+    structured: dict[str, Any], semantic: dict[str, Any]
+) -> tuple[list[tuple[str, list[list[int]], str]], list[str]]:
+    """Build complete, cell-grounded row facts without semantic inference."""
+    cells = []
+    for raw in _list(structured.get("cells")):
+        if not isinstance(raw, dict):
+            continue
+        try:
+            row, col = int(raw["row"]), int(raw["col"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        text = normalize_text(raw.get("text"))
+        if row >= 0 and col >= 0 and text:
+            cells.append((row, col, text))
+    columns = [normalize_text(value) for value in _list(structured.get("column_keys")) if normalize_text(value)]
+    if not cells or not columns:
+        return [], []
+
+    header_depth = max(1, len(_list(structured.get("header_hierarchy"))))
+    header_cells = [cell for cell in cells if cell[0] < header_depth]
+    header_coords: dict[str, list[int]] = {}
+    for column in columns:
+        match = next((cell for cell in header_cells if cell[2].casefold() == column.casefold()), None)
+        if match:
+            header_coords[column.casefold()] = [match[0], match[1]]
+
+    important_rows = {
+        int(item["row"])
+        for item in _list(semantic.get("important_cells"))
+        if isinstance(item, dict) and isinstance(item.get("row"), int)
+    }
+    rows: dict[int, list[tuple[int, int, str]]] = {}
+    for cell in cells:
+        if cell[0] >= header_depth:
+            rows.setdefault(cell[0], []).append(cell)
+
+    reconstructed = []
+    reconstruction_warnings: set[str] = set()
+    identity_column = bool(IDENTITY_COLUMN_RE.search(columns[0]))
+    for row, row_cells in sorted(rows.items(), key=lambda pair: pair[0]):
+        ordered = sorted(row_cells, key=lambda cell: cell[1])
+        if len(ordered) < len(columns):
+            if len(ordered) > 1:
+                reconstruction_warnings.add("table_rows_skipped_due_to_ambiguous_alignment")
+            continue
+        coordinates = [cell[1] for cell in ordered]
+        if coordinates != list(range(coordinates[0], coordinates[0] + len(coordinates))):
+            reconstruction_warnings.add("table_rows_skipped_due_to_ambiguous_alignment")
+            continue
+        leading = ordered[:-len(columns)]
+        data = ordered[-len(columns):]
+        if identity_column:
+            subject_cell = data[0]
+            subject = subject_cell[2]
+            metric_pairs = list(zip(columns[1:], data[1:]))
+            context_cells = leading
+        else:
+            if not leading:
+                continue
+            subject_cell = leading[-1]
+            subject = " / ".join(cell[2] for cell in leading)
+            metric_pairs = list(zip(columns, data))
+            context_cells = leading
+        if not subject or _looks_like_missing_value(subject):
+            continue
+
+        clauses = []
+        grounding_cells = [[cell[0], cell[1]] for cell in context_cells]
+        if [subject_cell[0], subject_cell[1]] not in grounding_cells:
+            grounding_cells.append([subject_cell[0], subject_cell[1]])
+        for column, value_cell in metric_pairs[:8]:
+            value = value_cell[2]
+            if _looks_like_missing_value(value):
+                continue
+            if _shot_setting_without_measurement(value, column):
+                reconstruction_warnings.add("table_cells_skipped_due_to_incomplete_value")
+                continue
+            clauses.append(f"{column} = {value}")
+            header_coord = header_coords.get(column.casefold())
+            if header_coord and header_coord not in grounding_cells:
+                grounding_cells.append(header_coord)
+            value_coord = [value_cell[0], value_cell[1]]
+            if value_coord not in grounding_cells:
+                grounding_cells.append(value_coord)
+        if clauses:
+            reconstructed.append((
+                f"{subject}: {'; '.join(clauses)}.",
+                grounding_cells,
+                "/structured_content/cells",
+                row in important_rows,
+                row,
+            ))
+
+    prioritized = sorted(reconstructed, key=lambda item: (not item[3], item[4]))[:TABLE_FACT_LIMIT]
+    prioritized.sort(key=lambda item: item[4])
+    return (
+        [(statement, coords, path) for statement, coords, path, _, _ in prioritized],
+        sorted(reconstruction_warnings),
+    )
+
+
+def _looks_like_missing_value(value: str) -> bool:
+    return normalize_text(value).casefold() in {"", "-", "--", "—", "n/a", "na", "none", "unknown"}
+
+
+def _shot_setting_without_measurement(value: str, column: str) -> bool:
+    setting_only = re.fullmatch(r"\d+\s*-\s*shot", normalize_text(value), re.I) is not None
+    setting_column = re.search(r"\b(?:shot|shots|setting)\b", normalize_text(column), re.I) is not None
+    return setting_only and not setting_column
 
 
 def _numbers_supported_by_table_claims(text: str, semantic: dict[str, Any]) -> bool:

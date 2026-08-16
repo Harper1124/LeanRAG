@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import json
+import sys
 import tempfile
 import unittest
 from dataclasses import asdict
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
+from multimodal.openai_clients import make_chat_func
 from multimodal.phase3.entity_extractor import extract_media_graph
 from multimodal.phase3.input_adapter import (
     JoinedMedia,
@@ -114,6 +118,42 @@ def _processed_table(media_id: str = "table-1") -> dict:
     }
 
 
+def _processed_structured_table(media_id: str = "table-structured") -> dict:
+    result = _processed_table(media_id)
+    result["structured_content"] = {
+        "table_parse_available": True,
+        "header_hierarchy": [["", "Wins", "Ties", "Win rate"]],
+        "column_keys": ["Wins", "Ties", "Win rate"],
+        "cells": [
+            {"row": 0, "col": 1, "text": "Wins"},
+            {"row": 0, "col": 2, "text": "Ties"},
+            {"row": 0, "col": 3, "text": "Win rate"},
+            {"row": 1, "col": 0, "text": "Overall"},
+            {"row": 1, "col": 1, "text": "482"},
+            {"row": 1, "col": 2, "text": "329"},
+            {"row": 1, "col": 3, "text": "61.7%"},
+            {"row": 2, "col": 0, "text": "Advice"},
+            {"row": 2, "col": 1, "text": "53"},
+            {"row": 2, "col": 2, "text": "30"},
+            {"row": 2, "col": 3, "text": "63.6%"},
+            {"row": 3, "col": 0, "text": "Ambiguous group"},
+            {"row": 3, "col": 1, "text": "Model X"},
+            {"row": 3, "col": 3, "text": "99"},
+            {"row": 3, "col": 4, "text": "88%"},
+            {"row": 4, "col": 0, "text": "Incomplete"},
+            {"row": 4, "col": 1, "text": "10"},
+            {"row": 4, "col": 2, "text": "2-shot"},
+            {"row": 4, "col": 3, "text": "70%"},
+        ],
+    }
+    result["semantic_content"]["important_cells"] = [{"row": 2, "col": 3, "value": "63.6%"}]
+    result["semantic_content"]["comparisons"] = []
+    result["semantic_content"]["cell_grounding"] = [
+        {"claim": "Wins", "source_cells": [[0, 1]], "source_values": ["Wins"]}
+    ]
+    return result
+
+
 def _joined(media_id: str, modality: str, processed: dict) -> JoinedMedia:
     return JoinedMedia(media_id=media_id, media_type=modality, media=_media(media_id, modality), processed=processed)
 
@@ -219,6 +259,23 @@ class Phase3ContractTest(unittest.TestCase):
         self.assertTrue(numeric_refs)
         self.assertTrue(all(ref.grounding.locator.get("cells") for ref in numeric_refs))
 
+    def test_structured_table_reconstructs_complete_row_facts_with_multi_cell_grounding(self):
+        unit = MediaSemanticUnitBuilder().build(
+            _joined("table-structured", "table", _processed_structured_table())
+        )
+        self.assertIn("Advice: Wins = 53; Ties = 30; Win rate = 63.6%.", unit.graph_text)
+        self.assertNotEqual(unit.graph_text.strip(), "Wins")
+        self.assertNotIn("Ambiguous group", unit.graph_text)
+        self.assertNotIn("Ties = 2-shot", unit.graph_text)
+        self.assertIn("table_rows_skipped_due_to_ambiguous_alignment", unit.generation.warnings)
+        self.assertIn("table_cells_skipped_due_to_incomplete_value", unit.generation.warnings)
+        advice_ref = next(
+            ref for ref in unit.evidence_refs
+            if ref.grounding.locator.get("cells") and [2, 3] in ref.grounding.locator["cells"]
+        )
+        self.assertEqual(advice_ref.grounding.locator["json_path"], "/structured_content/cells")
+        self.assertGreaterEqual(len(advice_ref.grounding.locator["cells"]), 7)
+
     def test_chart_ungrounded_numeric_ranking_is_rejected(self):
         unit = MediaSemanticUnitBuilder().build(_joined("chart-1", "chart", _processed_chart(grounded=False)))
         self.assertNotIn("highest", unit.graph_text.lower())
@@ -226,6 +283,32 @@ class Phase3ContractTest(unittest.TestCase):
 
 
 class Phase3ExtractionTest(unittest.TestCase):
+    def test_prompt_requests_json_mode_and_retry_contains_targeted_error(self):
+        calls = []
+
+        def retrying(**kwargs):
+            calls.append(kwargs)
+            return "not json" if len(calls) == 1 else _valid_llm_response()
+
+        result = extract_media_graph([_unit()], retrying, {"img-1": "image"}, 0.75, 0.75)
+        self.assertEqual(len(result.entities), 2)
+        self.assertEqual(calls[0]["response_format"], {"type": "json_object"})
+        self.assertIn("Invalid LLM JSON", calls[1]["prompt"])
+        self.assertIn("not json", calls[1]["prompt"])
+        self.assertNotIn('"confidence":0.0', calls[0]["prompt"])
+
+    def test_entity_name_matching_allows_only_conservative_separator_normalization(self):
+        unit = _unit("The stop-sign detector uses QK-norm.")
+        response = {
+            "entities": [
+                {"key": "e1", "entity_name": "stop_sign detector", "entity_type": "COMPONENT", "description": "The stop-sign detector uses QK-norm.", "confidence": 0.9, "aliases": [], "evidence_ref_indices": [0]},
+                {"key": "e2", "entity_name": "QK norm", "entity_type": "METHOD", "description": "The stop-sign detector uses QK-norm.", "confidence": 0.9, "aliases": [], "evidence_ref_indices": [0]},
+            ],
+            "relations": [],
+        }
+        result = extract_media_graph([unit], lambda **kwargs: response, {"img-1": "image"}, 0.75, 0.75)
+        self.assertEqual({item.entity_name for item in result.entities}, {"stop_sign detector", "QK norm"})
+
     def test_visual_layout_objects_are_filtered(self):
         unit = _unit("Model A is shown beside an axis.")
         response = {
@@ -239,6 +322,27 @@ class Phase3ExtractionTest(unittest.TestCase):
         self.assertEqual([item.entity_name for item in result.entities], ["Model A"])
         self.assertTrue(any(item.get("reason") == "pure_visual_layout_object" for item in result.trace))
 
+
+class Phase3OpenAIClientTest(unittest.TestCase):
+    def test_chat_client_forwards_json_response_format_to_ollama_compatible_api(self):
+        captured = {}
+
+        class FakeCompletions:
+            def create(self, **kwargs):
+                captured.update(kwargs)
+                return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content='{"entities":[],"relations":[]}'))])
+
+        fake_client = SimpleNamespace(chat=SimpleNamespace(completions=FakeCompletions()))
+        fake_openai = SimpleNamespace(OpenAI=lambda **kwargs: fake_client)
+        with patch.dict(sys.modules, {"openai": fake_openai}):
+            chat = make_chat_func({"base_url": "http://127.0.0.1:11444/v1", "model": "qwen2.5:7b", "api_key": "ollama"})
+            response = chat("extract", response_format={"type": "json_object"})
+
+        self.assertEqual(response, '{"entities":[],"relations":[]}')
+        self.assertEqual(captured["response_format"], {"type": "json_object"})
+
+
+class Phase3ExtractionValidationTest(unittest.TestCase):
     def test_relation_endpoints_must_be_retained_entities(self):
         response = _valid_llm_response()
         response["entities"] = response["entities"][:1]
