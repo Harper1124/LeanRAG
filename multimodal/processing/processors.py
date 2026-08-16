@@ -9,10 +9,13 @@ from typing import Any
 from ..generation.table_utils import parse_table
 from ..schema import MMMedia
 from .chart_ocr import extract_chart_ocr, parse_chart_layout, text_only_ocr_result
-from .prompts import CHART_PROMPT, IMAGE_PROMPT, TABLE_PROMPT
+from .prompts import CHART_PROMPT, IMAGE_PROMPT, TABLE_COMPARISON_PROMPT, TABLE_SUMMARY_PROMPT
 
 
 NUMBER_RE = re.compile(r"(?<![A-Za-z])[-+]?\d+(?:[.,]\d+)*(?:[eE][-+]?\d+)?%?")
+TABLE_MAX_CANDIDATE_ROWS = 12
+TABLE_MAX_COMPARISONS = 6
+TABLE_MAX_SUMMARY_FACTS = 8
 
 
 class ImageProcessor:
@@ -160,18 +163,36 @@ class TableProcessor:
 
     def process(self, media: MMMedia, media_context: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         structured = _parse_table_evidence(media)
-        response = _call_json_model(
+        compact_evidence = _compact_table_evidence(structured, media.caption)
+        comparison_response = _call_json_model(
             self.llm_func,
-            TABLE_PROMPT.replace("{structured}", _json_for_prompt(structured)).replace(
-                "{context}", _json_for_prompt(media_context)
-            ),
+            TABLE_COMPARISON_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence)),
         )
-        semantic = _validated_table_semantics(response, structured, media.caption)
+        semantic = _validated_table_semantics(comparison_response, structured, media.caption)
+        summary_evidence = _table_summary_evidence(compact_evidence, semantic, structured)
+        summary_response = _call_json_model(
+            self.llm_func,
+            TABLE_SUMMARY_PROMPT.replace("{evidence}", _json_for_prompt(summary_evidence)),
+        ) if self.llm_func and summary_evidence.get("grounded_facts") else {}
+        grounded_summary, summary_grounding = _validated_table_summary(
+            summary_response,
+            structured,
+            summary_evidence,
+        )
+        if not grounded_summary:
+            grounded_summary, summary_grounding = _fallback_table_summary(summary_evidence, structured)
+        semantic["grounded_summary"] = grounded_summary
+        semantic["summary_grounding"] = summary_grounding
+        semantic["cell_grounding"] = _dedupe_grounding(
+            list(semantic.get("cell_grounding") or []) + summary_grounding
+        )
         confidence = {
             "overall": semantic["confidence"],
             "source_parse": structured["parse_confidence"],
             "language_model_available": bool(self.llm_func),
-            "model_response_valid": bool(response),
+            "model_response_valid": bool(comparison_response),
+            "comparison_response_valid": bool(comparison_response),
+            "summary_response_valid": bool(summary_response),
             "numeric_provenance_complete": _table_numeric_provenance_complete(semantic, structured),
         }
         return structured, semantic, confidence
@@ -235,11 +256,241 @@ def _parse_table_evidence(media: MMMedia) -> dict[str, Any]:
     }
 
 
+def _compact_table_evidence(structured: dict[str, Any], caption: str) -> dict[str, Any]:
+    """Select a bounded, deterministic set of rows without duplicating the raw table."""
+    rows: dict[int, list[dict[str, Any]]] = {}
+    for cell in structured.get("cells", []):
+        try:
+            row, col = int(cell["row"]), int(cell["col"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        text = str(cell.get("text") or "").strip()
+        if text:
+            rows.setdefault(row, []).append({"row": row, "col": col, "value": text})
+    for cells in rows.values():
+        cells.sort(key=lambda item: item["col"])
+
+    header_rows = [0] if 0 in rows else []
+    data_rows = [row for row in sorted(rows) if row not in header_rows]
+    reasons: dict[int, set[str]] = {row: set() for row in data_rows}
+    if len(data_rows) <= TABLE_MAX_CANDIDATE_ROWS:
+        for row in data_rows:
+            reasons[row].add("complete_table")
+    else:
+        for row in data_rows[:2]:
+            reasons[row].add("leading_row")
+        for row in data_rows[-2:]:
+            reasons[row].add("trailing_row")
+        for row in data_rows:
+            label = str(rows[row][0].get("value") or "").casefold()
+            if re.search(r"\b(overall|total|average|avg|mean|baseline|aggregate|all)\b", label):
+                reasons[row].add("aggregate_or_baseline")
+        numeric_by_col: dict[int, list[tuple[float, int]]] = {}
+        for row in data_rows:
+            for cell in rows[row]:
+                numeric = _single_numeric_value(cell["value"])
+                if numeric is not None:
+                    numeric_by_col.setdefault(cell["col"], []).append((numeric, row))
+        for values in numeric_by_col.values():
+            if len(values) < 2:
+                continue
+            minimum = min(value for value, _ in values)
+            maximum = max(value for value, _ in values)
+            for value, row in values:
+                if value == minimum:
+                    reasons[row].add("column_minimum")
+                if value == maximum:
+                    reasons[row].add("column_maximum")
+
+    ranked_rows = sorted(
+        data_rows,
+        key=lambda row: (-len(reasons[row]), row),
+    )[:TABLE_MAX_CANDIDATE_ROWS]
+    selected_rows = ranked_rows
+    return {
+        "title": str(caption or "").strip(),
+        "shape": {"rows": int(structured.get("n_rows") or 0), "columns": int(structured.get("n_cols") or 0)},
+        "headers": [
+            {"row": row, "cells": rows[row]}
+            for row in header_rows
+        ],
+        "candidate_rows": [
+            {
+                "row": row,
+                "selection_reasons": sorted(reasons[row]) or ["representative_row"],
+                "cells": rows[row],
+            }
+            for row in selected_rows
+        ],
+        "units": list(structured.get("units") or []),
+    }
+
+
+def _single_numeric_value(text: str) -> float | None:
+    tokens = NUMBER_RE.findall(str(text or ""))
+    if len(tokens) != 1:
+        return None
+    normalized = tokens[0].rstrip("%").replace(",", "")
+    try:
+        return float(normalized)
+    except ValueError:
+        return None
+
+
+def _table_summary_evidence(
+    compact: dict[str, Any],
+    semantic: dict[str, Any],
+    structured: dict[str, Any],
+) -> dict[str, Any]:
+    lookup = _table_cell_lookup(structured)
+    facts: list[dict[str, Any]] = []
+    for comparison in semantic.get("comparisons", [])[:TABLE_MAX_COMPARISONS]:
+        coords = _valid_source_cells(comparison.get("source_cells"), lookup)
+        if not coords:
+            continue
+        facts.append({
+            "kind": "validated_comparison",
+            "statement": str(comparison.get("statement") or ""),
+            "source_cells": [[row, col] for row, col in coords],
+            "source_values": [lookup[coord] for coord in coords],
+        })
+    candidate_facts = _candidate_row_facts(compact)
+    if not facts:
+        facts.extend(candidate_facts[:TABLE_MAX_SUMMARY_FACTS])
+    else:
+        facts.extend(candidate_facts[: max(0, TABLE_MAX_SUMMARY_FACTS - len(facts))])
+    for important in semantic.get("important_cells", []):
+        if len(facts) >= TABLE_MAX_SUMMARY_FACTS:
+            break
+        coord = (int(important["row"]), int(important["col"]))
+        if coord not in lookup:
+            continue
+        reason = str(important.get("reason") or "").strip()
+        value = lookup[coord]
+        statement = f"{reason}: {value}" if reason else value
+        facts.append({
+            "kind": "validated_important_cell",
+            "statement": statement,
+            "source_cells": [[coord[0], coord[1]]],
+            "source_values": [value],
+        })
+    return {
+        "title": semantic.get("title_and_purpose") or compact.get("title") or "",
+        "headers": compact.get("headers") or [],
+        "grounded_facts": facts[:TABLE_MAX_SUMMARY_FACTS],
+    }
+
+
+def _candidate_row_facts(compact: dict[str, Any]) -> list[dict[str, Any]]:
+    headers = {
+        int(cell["col"]): str(cell.get("value") or "")
+        for header in compact.get("headers", [])
+        for cell in header.get("cells", [])
+    }
+    facts = []
+    for row in compact.get("candidate_rows", []):
+        cells = list(row.get("cells") or [])
+        if not cells:
+            continue
+        label = str(cells[0].get("value") or "").strip()
+        parts = []
+        for cell in cells[1:]:
+            value = str(cell.get("value") or "").strip()
+            header = headers.get(int(cell["col"]), f"column {cell['col']}")
+            if value:
+                parts.append(f"{header} = {value}")
+        statement = f"{label}: {'; '.join(parts)}" if label and parts else "; ".join(
+            str(cell.get("value") or "") for cell in cells
+        )
+        facts.append({
+            "kind": "programmatic_candidate_row",
+            "statement": statement,
+            "source_cells": [[int(cell["row"]), int(cell["col"])] for cell in cells],
+            "source_values": [str(cell.get("value") or "") for cell in cells],
+        })
+    return facts
+
+
+def _validated_table_summary(
+    response: dict[str, Any],
+    structured: dict[str, Any],
+    summary_evidence: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    lookup = _table_cell_lookup(structured)
+    allowed_cells = {
+        (int(row), int(col))
+        for fact in summary_evidence.get("grounded_facts", [])
+        for row, col in fact.get("source_cells", [])
+    }
+    allowed_cells.update(
+        (int(cell["row"]), int(cell["col"]))
+        for header in summary_evidence.get("headers", [])
+        for cell in header.get("cells", [])
+    )
+    grounding = []
+    for item in _json_list(response.get("summary_sentences")):
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("text") or item.get("statement") or "").strip()
+        coords = _valid_source_cells(item.get("source_cells"), lookup)
+        if not text or not coords or any(coord not in allowed_cells for coord in coords):
+            continue
+        cited_numbers = {token for coord in coords for token in NUMBER_RE.findall(lookup[coord])}
+        if not set(NUMBER_RE.findall(text)).issubset(cited_numbers):
+            continue
+        grounding.append({
+            "claim": text,
+            "source_cells": [[row, col] for row, col in coords],
+            "source_values": [lookup[coord] for coord in coords],
+        })
+    if not grounding:
+        legacy = str(response.get("grounded_summary") or "").strip()
+        if legacy and allowed_cells:
+            supported = {token for coord in allowed_cells for token in NUMBER_RE.findall(lookup[coord])}
+            if set(NUMBER_RE.findall(legacy)).issubset(supported):
+                coords = sorted(allowed_cells)
+                grounding.append({
+                    "claim": legacy,
+                    "source_cells": [[row, col] for row, col in coords],
+                    "source_values": [lookup[coord] for coord in coords],
+                })
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _fallback_table_summary(
+    summary_evidence: dict[str, Any],
+    structured: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    lookup = _table_cell_lookup(structured)
+    facts = list(summary_evidence.get("grounded_facts") or [])
+    comparisons = [fact for fact in facts if fact.get("kind") == "validated_comparison"]
+    selected = (comparisons or facts)[:2]
+    grounding = []
+    for fact in selected:
+        coords = _valid_source_cells(fact.get("source_cells"), lookup)
+        statement = str(fact.get("statement") or "").strip()
+        if not statement or not coords:
+            continue
+        grounding.append({
+            "claim": statement,
+            "source_cells": [[row, col] for row, col in coords],
+            "source_values": [lookup[coord] for coord in coords],
+        })
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _table_cell_lookup(structured: dict[str, Any]) -> dict[tuple[int, int], str]:
+    return {
+        (int(cell["row"]), int(cell["col"])): str(cell.get("text") or "")
+        for cell in structured.get("cells", [])
+    }
+
+
 def _validated_table_semantics(response: dict[str, Any], structured: dict[str, Any], caption: str) -> dict[str, Any]:
-    lookup = {(int(cell["row"]), int(cell["col"])): str(cell.get("text") or "") for cell in structured.get("cells", [])}
+    lookup = _table_cell_lookup(structured)
     all_numbers = {token for value in lookup.values() for token in NUMBER_RE.findall(value)}
     important = []
-    for item in _json_list(response.get("important_cells")):
+    for item in _json_list(response.get("important_cells"))[:8]:
         if not isinstance(item, dict):
             continue
         try:
@@ -255,7 +506,7 @@ def _validated_table_semantics(response: dict[str, Any], structured: dict[str, A
                 "reason": _safe_numeric_text(item.get("reason"), set(NUMBER_RE.findall(value))),
             })
     comparisons = []
-    for item in _json_list(response.get("comparisons")):
+    for item in _json_list(response.get("comparisons"))[:TABLE_MAX_COMPARISONS]:
         if not isinstance(item, dict):
             continue
         coords = _valid_source_cells(item.get("source_cells"), lookup)
@@ -393,6 +644,23 @@ def _table_numeric_provenance_complete(semantic: dict[str, Any], structured: dic
         claim = str(item.get("claim") or item.get("meaning") or "")
         if not set(NUMBER_RE.findall(claim)).issubset(cited):
             return False
+    summary_grounding = semantic.get("summary_grounding", [])
+    for item in summary_grounding:
+        coords = _valid_source_cells(item.get("source_cells"), lookup)
+        if not coords:
+            return False
+        cited = {token for coord in coords for token in NUMBER_RE.findall(lookup[coord])}
+        if not set(NUMBER_RE.findall(str(item.get("claim") or ""))).issubset(cited):
+            return False
+    summary_numbers = set(NUMBER_RE.findall(str(semantic.get("grounded_summary") or "")))
+    supported_summary_numbers = {
+        token
+        for item in summary_grounding
+        for source in item.get("source_values", [])
+        for token in NUMBER_RE.findall(str(source))
+    }
+    if not summary_numbers.issubset(supported_summary_numbers):
+        return False
     return True
 
 
