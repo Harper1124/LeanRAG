@@ -41,21 +41,12 @@ class EvidenceAwareMultimodalProcessor:
                 continue
             context = self.context_builder.build(media)
             structured, semantic, confidence = self.processors[media_type].process(media, context)
-            grounding = _semantic_grounding(media_type, semantic)
-            roles = semantic.get("semantic_role") if isinstance(semantic, dict) else []
-            primary_role = roles[0] if isinstance(roles, list) and roles else ""
-            semantic_confidence = _bounded_confidence(
-                semantic.get("semantic_confidence", confidence.get("overall", 0.0))
-            )
             record = {
                 "media_id": media.media_id,
                 "media_type": media_type,
                 "media_context": context,
                 "structured_content": structured,
                 "semantic_content": semantic,
-                "grounding": grounding,
-                "semantic_role": primary_role,
-                "semantic_confidence": semantic_confidence,
                 "confidence": confidence,
                 "source": {
                     "page_id": context["layout_context"]["page"],
@@ -121,20 +112,3 @@ def _reject_forbidden_output(value: Any, path: str = "processed_media") -> None:
 
 def _portable_path(value: Any) -> str:
     return str(value or "").replace("\\", "/")
-
-
-def _semantic_grounding(media_type: str, semantic: dict[str, Any]) -> dict[str, Any]:
-    if media_type == "chart":
-        return semantic.get("chart_grounding", {}) if isinstance(semantic.get("chart_grounding"), dict) else {}
-    if media_type == "image":
-        return semantic.get("evidence_source", {}) if isinstance(semantic.get("evidence_source"), dict) else {}
-    if media_type == "table":
-        return {"cell_grounding": semantic.get("cell_grounding", [])}
-    return {}
-
-
-def _bounded_confidence(value: Any) -> float:
-    try:
-        return max(0.0, min(1.0, float(value)))
-    except (TypeError, ValueError):
-        return 0.0

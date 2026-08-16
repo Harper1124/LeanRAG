@@ -36,7 +36,7 @@ Program OCR text, positions, and readable numbers are factual evidence. Program 
 Return this schema:
 {
   "chart_type": "", "title": "", "x_axis": {}, "y_axis": {}, "legends": [], "series": [],
-  "readable_data_points": [], "qualitative_trends": [], "extrema_and_intersections": [],
+  "qualitative_trends": [], "extrema_and_intersections": [],
   "caption_consistency": "", "unreadable_regions": [], "grounded_summary": "", "confidence": 0.0,
   "chart_grounding": {"visual_evidence": [], "ocr_evidence": [], "context_evidence": []},
   "semantic_confidence": 0.0

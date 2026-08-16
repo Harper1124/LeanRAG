@@ -124,8 +124,6 @@ class ChartProcessor:
             "y_axis": _validated_axis(response.get("y_axis"), allowed_numbers),
             "legends": _safe_numeric_items(response.get("legends"), allowed_numbers) or ["unknown"],
             "series": _safe_numeric_items(response.get("series"), allowed_numbers) or ["unknown"],
-            # Readable values are program-derived only; model values are intentionally ignored.
-            "readable_data_points": structured["readable_data_points"],
             "qualitative_trends": _validated_trends(response.get("qualitative_trends"), allowed_numbers),
             "extrema_and_intersections": _safe_numeric_items(response.get("extrema_and_intersections"), allowed_numbers),
             "caption_consistency": _safe_numeric_text(
@@ -207,9 +205,6 @@ def _parse_chart_evidence(
     return {
         **_image_file_metadata(media.path),
         **parsed,
-        "axis_candidates": {"x": parsed.get("x_axis", {}), "y": parsed.get("y_axis", {})},
-        "legend_candidates": parsed.get("legends", []),
-        "ocr_source": parsed.get("ocr_backend", ""),
     }
 
 
@@ -237,7 +232,6 @@ def _parse_table_evidence(media: MMMedia) -> dict[str, Any]:
         "column_keys": [value for value in column_keys if value],
         "units": units,
         "numeric_cells": numeric_cells,
-        "source_kind": parsed.get("format", "none"),
     }
 
 
@@ -304,10 +298,10 @@ def _validated_table_semantics(response: dict[str, Any], structured: dict[str, A
     semantic_confidence = _confidence(response.get("semantic_confidence", response.get("confidence", structured.get("parse_confidence", 0.0))))
     return {
         "title_and_purpose": title_and_purpose,
-        "header_hierarchy": _safe_numeric_items(response.get("header_hierarchy") or structured.get("header_hierarchy"), all_numbers),
-        "row_keys": _safe_numeric_items(response.get("row_keys") or structured.get("row_keys"), all_numbers),
-        "column_keys": _safe_numeric_items(response.get("column_keys") or structured.get("column_keys"), all_numbers),
-        "units": _safe_numeric_items(response.get("units") or structured.get("units"), all_numbers),
+        "header_hierarchy": _safe_numeric_items(response.get("header_hierarchy"), all_numbers),
+        "row_keys": _safe_numeric_items(response.get("row_keys"), all_numbers),
+        "column_keys": _safe_numeric_items(response.get("column_keys"), all_numbers),
+        "units": _safe_numeric_items(response.get("units"), all_numbers),
         "important_cells": important,
         "comparisons": comparisons,
         "grounded_summary": grounded_summary,
