@@ -9,7 +9,7 @@ Evidence policy:
 - Note colors, lighting, and visual style
 - Describe any actions or activities shown
 - Include technical details if relevant (charts, diagrams, etc.)
-- Always use specific names instead of pronouns",
+- Always use specific names instead of pronouns,
 - visual_facts, visible_text, objects, spatial_relations, and image_type must use only pixels visible in the image.
 - Caption, footnote, OCR, nearby text, section, and references are text evidence. Use them only for caption_consistency; never convert them into visual facts.
 - evidence_source.visual must cite visual_facts or visible_text. Caption, footnote, and nearby_text entries must quote the corresponding context source.
@@ -57,6 +57,12 @@ IMAGE_PROMPT = IMAGE_ANALYSIS_PROMPT
 CHART_ANALYSIS_PROMPT = """You are an expert chart analyst.Analyze the supplied chart image and compact OCR evidence, then return one JSON object only.
 
 Program OCR text, positions, and readable numbers are factual evidence. Program axis and legend assignments are candidates, not semantic truth.
+- Describe the overall composition and layout
+- Identify all objects,  text, and visual elements
+- Explain relationships between elements
+- Note colors, lighting, and visual style
+- Include technical details if relevant 
+- Always use specific names instead of pronouns,
 - Use chart pixels with OCR positions to determine real x/y meaning, legend-to-series mapping, and chart meaning.
 - Caption and document context may clarify purpose or conflicts, but they are not evidence for plotted values or trends.
 - Do not copy a candidate role when pixels do not support it. Return "unknown" for an uncertain field.
