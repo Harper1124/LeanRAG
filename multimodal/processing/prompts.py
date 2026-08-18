@@ -1,20 +1,29 @@
 """Phase 2 prompts: structured understanding without graph or retrieval prose."""
 
-IMAGE_PROMPT = """Analyze the supplied document image and return one JSON object only.
+IMAGE_ANALYSIS_PROMPT = """You are an expert image analyst. Provide detailed, accurate descriptions.Analyze the supplied document image and return one JSON object only.
 
 Evidence policy:
-- visual_facts, visible_text, objects, spatial_relations, image_type, and grounded_summary must use only pixels visible in the image.
-- Caption, OCR, nearby text, section, and references are text evidence. Use them only for caption_consistency; never convert them into visual facts.
-- evidence_source.visual must cite visual_facts or visible_text. Caption and nearby_text entries must quote the corresponding context source.
+- Describe the overall composition and layout
+- Identify all objects, people, text, and visual elements
+- Explain relationships between elements
+- Note colors, lighting, and visual style
+- Describe any actions or activities shown
+- Include technical details if relevant (charts, diagrams, etc.)
+- Always use specific names instead of pronouns",
+- visual_facts, visible_text, objects, spatial_relations, and image_type must use only pixels visible in the image.
+- Caption, footnote, OCR, nearby text, section, and references are text evidence. Use them only for caption_consistency; never convert them into visual facts.
+- evidence_source.visual must cite visual_facts or visible_text. Caption, footnote, and nearby_text entries must quote the corresponding context source.
 - Do not infer a visually absent object from the caption. Use \"unknown\" for an unclear object.
-- uncertain_items must list ambiguity. Do not produce entities, graph knowledge, graph_text, retrieval_text, or a long free-form description.
+- Write visual_facts as short, atomic, independently verifiable statements. Prefer 2-6 useful facts over a long description.
+- visible_text must contain only text readable in the pixels, copied as accurately as possible.
+- uncertain_items must list ambiguity. Do not produce a summary, entities, graph knowledge, graph_text, retrieval_text, or a long free-form description.
 
 Return this schema:
 {
   "visual_facts": [], "visible_text": [], "objects": [], "spatial_relations": [],
   "image_type": "photo|diagram|screenshot|map|other",
-  "caption_consistency": "", "grounded_summary": "", "uncertain_items": [], "confidence": 0.0,
-  "evidence_source": {"visual": [], "caption": [], "nearby_text": []},
+  "caption_consistency": "", "uncertain_items": [], "confidence": 0.0,
+  "evidence_source": {"visual": [], "caption": [], "footnote": [], "nearby_text": []},
   "semantic_role": ["example|architecture|experiment|illustration|other"], "semantic_confidence": 0.0
 }
 
@@ -22,7 +31,30 @@ Text/layout context (not visual evidence):
 {context}
 """
 
-CHART_ANALYSIS_PROMPT = """Analyze the supplied chart image and compact OCR evidence, then return one JSON object only.
+IMAGE_SUMMARY_PROMPT = """Select the most useful validated visual claims for a concise image summary and return one JSON object only.
+
+Rules:
+- Use only validated_claims below. Do not use caption, OCR, nearby text, or outside knowledge.
+- Return 1-3 summary sentences when claims are available.
+- Each sentence must cite exactly one supporting_claim_id and copy that claim's statement exactly; do not paraphrase, merge claims, or add details.
+- Prefer an overview visual_fact, then one or two distinctive details. Use visible_text only when it materially helps identify the image.
+- Do not produce entities, graph knowledge, graph_text, or retrieval_text.
+
+Return this schema:
+{
+  "summary_sentences": [
+    {"role": "overview|detail|visible_text", "text": "", "supporting_claim_ids": ["claim_0"]}
+  ]
+}
+
+Validated visual evidence:
+{evidence}
+"""
+
+# Backwards-compatible alias for callers that still import IMAGE_PROMPT.
+IMAGE_PROMPT = IMAGE_ANALYSIS_PROMPT
+
+CHART_ANALYSIS_PROMPT = """You are an expert chart analyst.Analyze the supplied chart image and compact OCR evidence, then return one JSON object only.
 
 Program OCR text, positions, and readable numbers are factual evidence. Program axis and legend assignments are candidates, not semantic truth.
 - Use chart pixels with OCR positions to determine real x/y meaning, legend-to-series mapping, and chart meaning.
@@ -94,7 +126,16 @@ Validated chart evidence:
 # Backward-compatible import for callers outside the Phase 2 pipeline.
 CHART_PROMPT = CHART_ANALYSIS_PROMPT
 
-TABLE_COMPARISON_PROMPT = """Extract a small set of useful, verifiable facts from the compact table evidence and return one JSON object only.
+TABLE_COMPARISON_PROMPT = """You are an expert data analyst.Extract a small set of useful, verifiable facts from the compact table evidence and return one JSON object only.
+
+detailed_description": "A comprehensive analysis of the table including:
+- Table structure and organization
+  - Column headers and their meanings
+  - Key data points and patterns
+  - Statistical insights and trends
+  - Relationships between data elements
+  - Significance of the data presented
+  Always use specific names and values instead of general references.,
 
 Evidence policy:
 - The supplied cells are the sole factual source for table values.

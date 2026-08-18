@@ -56,6 +56,7 @@ class MultimodalContextBuilder:
         return {
             "direct_evidence": {
                 "caption": media.caption or "",
+                "footnote": media.footnote or "",
                 "ocr": media.ocr_text or "",
                 "table_source": media.table_markdown or media.table_html or "",
             },

@@ -115,6 +115,7 @@ def build_mm_chunks_from_mineru(
                     mapped_type=item_type,
                     type=item_type,
                     caption=caption,
+                    footnote=footnote,
                     ocr_text=ocr_text,
                     summary=summary,
                     table_html=table_html if item_type == "table" else "",

@@ -349,7 +349,7 @@ def _build_text_node(chunk: MMChunk) -> MMNode:
 
 
 def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode:
-    text_parts = [media.caption, media.ocr_text, media.summary, media.table_markdown, media.table_html]
+    text_parts = [media.caption, media.footnote, media.ocr_text, media.summary, media.table_markdown, media.table_html]
     text_for_embedding = "\n".join(part.strip() for part in text_parts if str(part or "").strip())
     if not text_for_embedding:
         nearby_text = " ".join(chunk_by_id[chunk_id].text for chunk_id in media.nearby_chunk_ids if chunk_id in chunk_by_id)
@@ -363,6 +363,7 @@ def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode
         "original_type": media.original_type,
         "mapped_type": media.mapped_type,
         "type": media.type,
+        "footnote": media.footnote,
         "table_html": media.table_html,
         "table_markdown": media.table_markdown,
     }

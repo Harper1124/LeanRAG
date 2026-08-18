@@ -37,6 +37,7 @@ class MMMedia:
     mapped_type: MediaType | str = ""
     type: MediaType | str = ""
     caption: str = ""
+    footnote: str = ""
     ocr_text: str = ""
     summary: str = ""
     table_html: str = ""

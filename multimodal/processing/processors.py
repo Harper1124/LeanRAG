@@ -12,7 +12,8 @@ from .chart_ocr import extract_chart_ocr, parse_chart_layout, text_only_ocr_resu
 from .prompts import (
     CHART_ANALYSIS_PROMPT,
     CHART_SUMMARY_PROMPT,
-    IMAGE_PROMPT,
+    IMAGE_ANALYSIS_PROMPT,
+    IMAGE_SUMMARY_PROMPT,
     TABLE_COMPARISON_PROMPT,
     TABLE_SUMMARY_PROMPT,
 )
@@ -43,11 +44,24 @@ class ImageProcessor:
 
     def process(self, media: MMMedia, media_context: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         structured = _image_file_metadata(media.path)
-        response = _call_json_model(
+        compact_evidence = _compact_image_evidence(media, media_context)
+        response, analysis_diagnostic = _call_json_model_diagnostic(
             self.vlm_func,
-            IMAGE_PROMPT.replace("{context}", _json_for_prompt(media_context)),
+            IMAGE_ANALYSIS_PROMPT.replace("{context}", _json_for_prompt(compact_evidence, max_chars=12000)),
             image_path=media.path,
         )
+        analysis_diagnostics = [analysis_diagnostic]
+        analysis_attempts = 1
+        analysis_schema_valid = _image_analysis_schema_valid(response)
+        if self.vlm_func and not analysis_schema_valid:
+            response, analysis_diagnostic = _call_json_model_diagnostic(
+                self.vlm_func,
+                IMAGE_ANALYSIS_PROMPT.replace("{context}", _json_for_prompt(compact_evidence, max_chars=12000)),
+                image_path=media.path,
+            )
+            analysis_diagnostics.append(analysis_diagnostic)
+            analysis_attempts = 2
+            analysis_schema_valid = _image_analysis_schema_valid(response)
         semantic = {
             "visual_facts": _string_list(response.get("visual_facts")),
             "visible_text": _string_list(response.get("visible_text")),
@@ -55,7 +69,8 @@ class ImageProcessor:
             "spatial_relations": _json_list(response.get("spatial_relations")),
             "image_type": _choice(response.get("image_type"), {"photo", "diagram", "screenshot", "map", "other"}, "other"),
             "caption_consistency": str(response.get("caption_consistency") or ""),
-            "grounded_summary": str(response.get("grounded_summary") or ""),
+            "grounded_summary": "",
+            "summary_grounding": [],
             "uncertain_items": _string_list(response.get("uncertain_items")),
             "confidence": _confidence(response.get("confidence")),
         }
@@ -67,6 +82,11 @@ class ImageProcessor:
             "caption": _source_quotes(
                 requested_sources.get("caption"),
                 str(media_context.get("direct_evidence", {}).get("caption") or ""),
+                fallback_to_source=True,
+            ),
+            "footnote": _source_quotes(
+                requested_sources.get("footnote"),
+                str(media_context.get("direct_evidence", {}).get("footnote") or ""),
                 fallback_to_source=True,
             ),
             "nearby_text": _source_quotes(
@@ -85,15 +105,177 @@ class ImageProcessor:
         semantic["semantic_confidence"] = _confidence(
             response.get("semantic_confidence", semantic["confidence"])
         )
-        if not response:
+        if not analysis_schema_valid:
             semantic["uncertain_items"].append("VLM analysis unavailable or returned invalid JSON")
+
+        summary_evidence = _image_summary_evidence(semantic)
+        if self.vlm_func and summary_evidence.get("validated_claims"):
+            summary_response, summary_diagnostic = _call_json_model_diagnostic(
+                self.vlm_func,
+                IMAGE_SUMMARY_PROMPT.replace("{evidence}", _json_for_prompt(summary_evidence)),
+            )
+            summary_diagnostics = [summary_diagnostic]
+            summary_attempts = 1
+            summary_schema_valid = _image_summary_schema_valid(summary_response)
+            if not summary_schema_valid:
+                summary_response, summary_diagnostic = _call_json_model_diagnostic(
+                    self.vlm_func,
+                    IMAGE_SUMMARY_PROMPT.replace("{evidence}", _json_for_prompt(summary_evidence)),
+                )
+                summary_diagnostics.append(summary_diagnostic)
+                summary_attempts = 2
+                summary_schema_valid = _image_summary_schema_valid(summary_response)
+        else:
+            summary_response = {}
+            summary_diagnostics = [{
+                "status": "skipped_no_grounded_claims",
+                "error": "",
+                "response_excerpt": "",
+            }]
+            summary_attempts = 0
+            summary_schema_valid = False
+        grounded_summary, summary_grounding = _validated_image_summary(summary_response, summary_evidence)
+        summary_mode = "model_selected_claims"
+        if not grounded_summary:
+            grounded_summary, summary_grounding = _fallback_image_summary(summary_evidence)
+            summary_mode = "deterministic_fallback" if grounded_summary else "unavailable"
+        semantic["grounded_summary"] = grounded_summary
+        semantic["summary_grounding"] = summary_grounding
         confidence = {
             "overall": semantic["confidence"],
             "visual_model_available": bool(self.vlm_func),
             "model_response_valid": bool(response),
+            "analysis_schema_valid": analysis_schema_valid,
+            "analysis_attempts": analysis_attempts,
+            "analysis_response_status": analysis_diagnostics[-1]["status"],
+            "analysis_response_error": analysis_diagnostics[-1]["error"],
+            "analysis_response_excerpt": analysis_diagnostics[-1]["response_excerpt"],
+            "analysis_attempt_diagnostics": analysis_diagnostics,
+            "summary_response_valid": bool(summary_response) and summary_schema_valid,
+            "summary_attempts": summary_attempts,
+            "summary_response_status": summary_diagnostics[-1]["status"],
+            "summary_response_error": summary_diagnostics[-1]["error"],
+            "summary_response_excerpt": summary_diagnostics[-1]["response_excerpt"],
+            "summary_attempt_diagnostics": summary_diagnostics,
+            "summary_mode": summary_mode,
+            "summary_grounding_complete": bool(grounded_summary and summary_grounding),
+            "image_path_available": bool(structured.get("path_available")),
             "evidence_separation": "visual fields use image pixels; caption/OCR/nearby text remain in media_context",
         }
         return structured, semantic, confidence
+
+
+def _compact_image_evidence(media: MMMedia, media_context: dict[str, Any]) -> dict[str, Any]:
+    context = media_context if isinstance(media_context, dict) else {}
+    direct = context.get("direct_evidence") if isinstance(context.get("direct_evidence"), dict) else {}
+    layout = context.get("layout_context") if isinstance(context.get("layout_context"), dict) else {}
+    return {
+        "image_path": str(media.path or ""),
+        "caption": str(direct.get("caption") or media.caption or "")[:800],
+        "footnote": str(direct.get("footnote") or media.footnote or "")[:800],
+        "ocr": str(direct.get("ocr") or media.ocr_text or "")[:1600],
+        "section_path": str(layout.get("section") or "")[:300],
+        "nearby_text": str(layout.get("nearby_text") or "")[:2400],
+        "reference_context": str(context.get("reference_context") or "")[:1600],
+        "uncertainty": str(context.get("uncertainty") or "")[:500],
+    }
+
+
+def _image_analysis_schema_valid(response: Any) -> bool:
+    if not isinstance(response, dict):
+        return False
+    required = {"visual_facts", "visible_text", "image_type", "uncertain_items"}
+    return required.issubset(response)
+
+
+def _image_summary_schema_valid(response: Any) -> bool:
+    return isinstance(response, dict) and bool(_json_list(response.get("summary_sentences")))
+
+
+def _image_summary_evidence(semantic: dict[str, Any]) -> dict[str, Any]:
+    claims: list[dict[str, Any]] = []
+    for index, statement in enumerate(_string_list(semantic.get("visual_facts"))[:8]):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "visual_fact",
+            "statement": statement,
+            "source_path": f"/semantic_content/visual_facts/{index}",
+        })
+    for index, statement in enumerate(_string_list(semantic.get("visible_text"))[:6]):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "visible_text",
+            "statement": statement,
+            "source_path": f"/semantic_content/visible_text/{index}",
+        })
+    return {
+        "image_type": str(semantic.get("image_type") or "other"),
+        "semantic_role": list(semantic.get("semantic_role") or []),
+        "validated_claims": claims,
+    }
+
+
+def _validated_image_summary(
+    response: dict[str, Any],
+    summary_evidence: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    claims_by_id = {
+        str(item.get("claim_id")): item
+        for item in summary_evidence.get("validated_claims", [])
+        if isinstance(item, dict) and item.get("claim_id")
+    }
+    grounding = []
+    seen_ids = set()
+    for item in _json_list(response.get("summary_sentences"))[:3]:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip().lower()
+        text = str(item.get("text") or "").strip()
+        claim_ids = [str(value) for value in _json_list(item.get("supporting_claim_ids"))]
+        if role not in {"overview", "detail", "visible_text"} or len(claim_ids) != 1:
+            continue
+        claim_id = claim_ids[0]
+        claim = claims_by_id.get(claim_id)
+        if not claim or claim_id in seen_ids or text != str(claim.get("statement") or "").strip():
+            continue
+        if role == "visible_text" and claim.get("kind") != "visible_text":
+            continue
+        if role != "visible_text" and claim.get("kind") != "visual_fact":
+            continue
+        seen_ids.add(claim_id)
+        grounding.append(_image_summary_grounding_item(text, role, claim))
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _fallback_image_summary(summary_evidence: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+    claims = [
+        item for item in summary_evidence.get("validated_claims", [])
+        if isinstance(item, dict) and item.get("kind") == "visual_fact"
+    ][:3]
+    if not claims:
+        claims = [
+            item for item in summary_evidence.get("validated_claims", [])
+            if isinstance(item, dict) and item.get("kind") == "visible_text"
+        ][:2]
+    grounding = []
+    for index, claim in enumerate(claims):
+        statement = str(claim.get("statement") or "").strip()
+        if not statement:
+            continue
+        role = "visible_text" if claim.get("kind") == "visible_text" else ("overview" if index == 0 else "detail")
+        grounding.append(_image_summary_grounding_item(statement, role, claim))
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _image_summary_grounding_item(text: str, role: str, claim: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "claim": text,
+        "role": role,
+        "supporting_claim_ids": [str(claim.get("claim_id"))],
+        "source_kind": str(claim.get("kind") or "visual_fact"),
+        "source_paths": [str(claim.get("source_path") or "")],
+        "source_values": [str(claim.get("statement") or "")],
+    }
 
 
 class ChartProcessor:
