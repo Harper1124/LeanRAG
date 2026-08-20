@@ -48,6 +48,45 @@ def make_chat_func(config: dict[str, Any]):
     return chat
 
 
+def make_async_chat_func(config: dict[str, Any]):
+    """Create the async OpenAI-compatible callable expected by GraphExtraction."""
+    from openai import AsyncOpenAI
+
+    client = AsyncOpenAI(api_key=resolve_api_key(config), base_url=config["base_url"])
+    model = config["model"]
+
+    async def chat(query: str, system_prompt: str = "", **kwargs):
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.extend(kwargs.get("history_messages") or [])
+        messages.append({"role": "user", "content": query})
+        response = await client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=kwargs.get("temperature", config.get("temperature", 0.1)),
+        )
+        return response.choices[0].message.content
+
+    return chat
+
+
+def make_embedding_func(config: dict[str, Any]):
+    """Create a batched OpenAI-compatible embedding callable."""
+    from openai import OpenAI
+
+    client = OpenAI(api_key=resolve_api_key(config), base_url=config["base_url"])
+    model = config.get("embedding_model") or config["model"]
+
+    def embed(texts: list[str]):
+        import numpy as np
+
+        response = client.embeddings.create(input=texts, model=model)
+        return np.asarray([item.embedding for item in response.data], dtype=float)
+
+    return embed
+
+
 def make_vlm_func(config: dict[str, Any]):
     # 生成一个图文模型函数，接口兼容 OpenAI chat.completions 的 image_url 消息格式。
     from openai import OpenAI

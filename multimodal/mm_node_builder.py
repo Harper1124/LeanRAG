@@ -19,14 +19,21 @@ def build_phase1_mm_graph(
     edge_seed_file: str = "mm_edges_seed.jsonl",
     trace_file: str = "mm_node_build_trace.json",
     validate: bool = True,
+    entity_file: str = "entity.jsonl",
+    media_retrieval_text: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     working = Path(working_dir)
     chunks = load_dataclasses(working / "mm_chunk.json", MMChunk)
     media_items = load_dataclasses(working / "mm_media.json", MMMedia) if (working / "mm_media.json").exists() else []
-    entities = read_jsonl(working / "entity.jsonl") if (working / "entity.jsonl").exists() else []
+    entity_path = working / entity_file
+    entities = read_jsonl(entity_path) if entity_path.exists() else []
     extra_pages = _collect_mineru_pages(working)
 
     nodes, indexes = build_mm_nodes(chunks, media_items, entities, extra_pages=extra_pages)
+    for node in nodes:
+        media_id = (node.raw_ref or {}).get("media_id") if node.node_type == "media" else None
+        if media_id and media_retrieval_text and media_retrieval_text.get(media_id):
+            node.text_for_embedding = media_retrieval_text[media_id]
     edges = build_mm_edges(chunks, media_items, nodes, indexes)
 
     node_path = working / node_file

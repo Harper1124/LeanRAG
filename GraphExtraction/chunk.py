@@ -1,10 +1,11 @@
 import os
 import json
-from _utils import split_string_by_multi_markers,_handle_single_entity_extraction,\
-    _handle_single_relationship_extraction,clean_str,pack_user_ass_to_openai_messages
-import sys
-sys.path.append("/data/zyz/LeanRAG")
-from tools.utils import InstanceManager,write_jsonl
+try:  # package import (python -m multimodal.media_graph_pipeline)
+    from ._utils import split_string_by_multi_markers, _handle_single_entity_extraction, \
+        _handle_single_relationship_extraction, clean_str, pack_user_ass_to_openai_messages
+except ImportError:  # legacy direct script execution
+    from _utils import split_string_by_multi_markers, _handle_single_entity_extraction, \
+        _handle_single_relationship_extraction, clean_str, pack_user_ass_to_openai_messages
 from collections import Counter, defaultdict
 from prompt import PROMPTS
 import asyncio
@@ -32,7 +33,7 @@ def get_chunk(chunk_file):
     chunks = {item["hash_code"]: item["text"] for item in corpus}
     return chunks
 
-async def triple_extraction(chunks,use_llm_func,output_dir):
+async def triple_extraction(chunks, use_llm_func, output_dir=None, write_func=None):
     """
     对所有 chunk 异步执行实体和关系抽取。
 
@@ -130,12 +131,12 @@ async def triple_extraction(chunks,use_llm_func,output_dir):
     )
     print()  # clear the progress bar
 
-    # fetch all entities from results
-    all_entities = {}
+    # Keep one row per chunk evidence. Cross-chunk name/endpoint fusion belongs to
+    # the deterministic merge stage; overwriting a dict key here loses source_id.
+    all_entities = []
     for item in entity_results:
-        for k, v in item[0].items():
-            value = v[0]
-            all_entities[k] = v[0]
+        for values in item[0].values():
+            all_entities.extend(values)
     context_entities = {key[0]: list(x[0].keys()) for key, x in zip(ordered_chunks, entity_results)}
     already_processed = 0
     async def _process_single_content_relation(chunk_key_dp,use_llm_func):           # for each chunk, run the func
@@ -219,19 +220,21 @@ async def triple_extraction(chunks,use_llm_func,output_dir):
         *[_process_single_content_relation(c,use_llm_func) for c in ordered_chunks]
     )
     print()
-    all_relations = {}
+    all_relations = []
     for item in relation_results:
-        for k, v in item[1].items():
-            all_relations[k] = v
+        for values in item[1].values():
+            all_relations.append(values)
     save_entity=[]
     save_relation=[]
-    for k,v in copy.deepcopy(all_entities).items():
-    #     del v['embedding']
-        save_entity.append(v)
-    for k,v in copy.deepcopy(all_relations).items():
-        save_relation.append(v)
-    write_jsonl(save_entity, f"{output_dir}/entity.jsonl")
-    write_jsonl(save_relation, f"{output_dir}/relation.jsonl")
+    save_entity.extend(copy.deepcopy(all_entities))
+    save_relation.extend(copy.deepcopy(all_relations))
+    if output_dir is not None:
+        os.makedirs(output_dir, exist_ok=True)
+        if write_func is None:
+            from tools.utils import write_jsonl as write_func
+        write_func(save_entity, os.path.join(output_dir, "entity.jsonl"))
+        write_func(save_relation, os.path.join(output_dir, "relation.jsonl"))
+    return save_entity, save_relation
    
             
     
@@ -240,6 +243,8 @@ async def triple_extraction(chunks,use_llm_func,output_dir):
     
     
 if __name__ == "__main__":
+    from tools.utils import InstanceManager
+
     MODEL = "qwen3_14b"
     num=4
     instanceManager=InstanceManager(

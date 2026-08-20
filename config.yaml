@@ -86,6 +86,9 @@ multimodal:
   graph_max_workers: 2
   graph_embedding_max_workers: 1
 
+  media_graph:
+    description_token_limit: 512
+
   retrieval:
     mode: "mm_hybrid"
     topk_text: 8

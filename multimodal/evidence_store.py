@@ -16,12 +16,13 @@ def build_evidence_vector_store(
     working_dir: str,
     embedding_func: Callable,
     dim: int,
+    retrieval_text_by_media: dict[str, str] | None = None,
 ) -> None:
     """Build an optional Milvus Lite index for image/table textual evidence."""
     import numpy as np
 
     working = Path(working_dir)
-    records = media_records_for_index(media_items)
+    records = media_records_for_index(media_items, retrieval_text_by_media)
     write_json(records, working / "evidence_records.json")
     if not records:
         return
@@ -114,16 +115,23 @@ def search_evidence(
     return scored[:topk]
 
 
-def _media_record(item: MMMedia) -> dict:
+def _media_record(item: MMMedia, retrieval_text: str | None = None) -> dict:
     # 保留原始媒体字段，并额外拼出可嵌入检索的 text 字段。
     record = dataclass_to_dict(item)
-    record["text"] = _media_text(item)
+    record["text"] = retrieval_text or _media_text(item)
     return record
 
 
-def media_records_for_index(media_items: list[MMMedia]) -> list[dict]:
+def media_records_for_index(
+    media_items: list[MMMedia], retrieval_text_by_media: dict[str, str] | None = None
+) -> list[dict]:
     """Build embedding records while retaining noise only in mm_media metadata."""
-    return [_media_record(item) for item in media_items if is_indexable_media(item) and _media_text(item)]
+    retrieval_text_by_media = retrieval_text_by_media or {}
+    return [
+        _media_record(item, retrieval_text_by_media.get(item.media_id))
+        for item in media_items
+        if is_indexable_media(item) and (retrieval_text_by_media.get(item.media_id) or _media_text(item))
+    ]
 
 
 def _milvus_record(index: int, record: dict) -> dict:

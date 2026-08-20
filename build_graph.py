@@ -13,8 +13,10 @@ from openai import AsyncOpenAI, OpenAI
 from _cluster_utils import Hierarchical_Clustering
 from tools.utils import write_jsonl,InstanceManager
 from database_utils import build_vector_search,create_db_table_mysql,insert_data_to_mysql
+from multimodal.phase3.input_adapter import atomic_write_jsonl
 import requests
 import multiprocessing
+from pathlib import Path
 logger=logging.getLogger(__name__)
 
 """
@@ -32,7 +34,7 @@ logger=logging.getLogger(__name__)
 - MySQL 数据库表：entities / relations / communities，供 query_graph.py 结构化检索。
 """
 
-with open('config.yaml', 'r') as file:
+with Path(os.getenv("LEANRAG_CONFIG", Path(__file__).with_name("config.yaml"))).open('r', encoding="utf-8") as file:
     config = yaml.safe_load(file)
 MODEL = config['deepseek']['model']
 DEEPSEEK_API_KEY = os.getenv(config['deepseek'].get('api_key_env', ''), config['deepseek'].get('api_key', ''))
@@ -43,15 +45,15 @@ EMBEDDING_API_KEY = os.getenv(config['glm'].get('api_key_env', ''), config['glm'
 TOTAL_TOKEN_COST = 0
 TOTAL_API_CALL_COST = 0
 
-def get_common_rag_res(WORKING_DIR):
+def get_common_rag_res(WORKING_DIR, entity_path=None, relation_path=None):
     """
     读取实体和关系抽取结果，并整理成后续聚类需要的字典结构。
 
     entity.jsonl 中同名实体可能出现多次；这里会把同名实体合并，并把描述和 source_id
     拼接起来。relation.jsonl 则按 (src_tgt, tgt_src) 作为边的唯一 key。
     """
-    entity_path=f"{WORKING_DIR}/entity.jsonl"
-    relation_path=f"{WORKING_DIR}/relation.jsonl"
+    entity_path = str(entity_path or Path(WORKING_DIR) / "entity.jsonl")
+    relation_path = str(relation_path or Path(WORKING_DIR) / "relation.jsonl")
     # i=0
     e_dic={}
     with open(entity_path,"r")as f:
@@ -85,15 +87,21 @@ def get_common_rag_res(WORKING_DIR):
             src_tgt=str(line['src_tgt'])
             tgt_src=str(line['tgt_src'])
             description=line['description']
-            weight=1
+            weight=float(line.get('weight', 1))
             source_id=line['source_id']
-            r_dic[(src_tgt,tgt_src)]={
-                'src_tgt':str(src_tgt),
-                'tgt_src':str(tgt_src),
-                'description':description,
-                'weight':weight,
-                'source_id':source_id
-            }
+            key = (src_tgt, tgt_src)
+            if key not in r_dic:
+                r_dic[key] = {
+                    'src_tgt': str(src_tgt), 'tgt_src': str(tgt_src),
+                    'description': description, 'weight': weight, 'source_id': source_id,
+                }
+            else:
+                current = r_dic[key]
+                descriptions = sorted(set(filter(None, [current['description'], description])))
+                current['description'] = " | ".join(descriptions)
+                sources = sorted(set(filter(None, (current['source_id'] + "|" + source_id).split("|"))))
+                current['source_id'] = "|".join(sources)
+                current['weight'] = max(float(current['weight']), weight, float(len(sources)))
             # e_dic[src_tgt]['degree']+=1
             # e_dic[tgt_src]['degree']+=1
             # i+=1
@@ -146,7 +154,7 @@ def truncate_text(text, max_tokens=4096):
         tokens = tokens[:max_tokens]
     truncated_text = tokenizer.decode(tokens)
     return truncated_text
-def embedding_data(entity_results, max_workers: int = 8):
+def embedding_data(entity_results, max_workers: int = 8, embeddings_func=None):
     """
     为所有原始实体批量生成向量。
 
@@ -163,7 +171,13 @@ def embedding_data(entity_results, max_workers: int = 8):
         for i in range(num_embeddings_batches)
     ]
 
-    if max_workers <= 1:
+    if embeddings_func is not None:
+        for batch in tqdm(batches, total=len(batches)):
+            vectors = embeddings_func([truncate_text(item['description']) for item in batch])
+            for item, vector in zip(batch, vectors):
+                item['vector'] = np.asarray(vector)
+            entity_with_embeddings.extend(batch)
+    elif max_workers <= 1:
         for batch in tqdm(batches, total=len(batches)):
             result = embedding_init(batch)
             entity_with_embeddings.extend(result)
@@ -195,16 +209,27 @@ def hierarchical_clustering(global_config):
     5. 去掉无法 JSON 序列化的 numpy vector，保存 JSON 文件。
     6. 创建并写入 MySQL 表，供 query_graph.py 按 parent/path/relation 检索。
     """
-    entity_results,relation_results=get_common_rag_res(global_config['working_dir'])
-    all_entities=embedding_data(entity_results, max_workers=int(global_config.get("embedding_max_workers", 1)))
+    working_dir = global_config['working_dir']
+    entity_results, relation_results = get_common_rag_res(
+        working_dir,
+        global_config.get('entity_path'),
+        global_config.get('relation_path'),
+    )
+    all_entities=embedding_data(
+        entity_results,
+        max_workers=int(global_config.get("embedding_max_workers", 1)),
+        embeddings_func=global_config.get('embeddings_func'),
+    )
     hierarchical_cluster = Hierarchical_Clustering()
     all_entities,generate_relations,community =hierarchical_cluster.perform_clustering(global_config=global_config,entities=all_entities,relations=relation_results,\
-        WORKING_DIR=WORKING_DIR,max_workers=global_config['max_workers'])
-    try :
-        all_entities[-1]['vector']=embedding(all_entities[-1]['description'])
-        build_vector_search(all_entities, f"{WORKING_DIR}")
-    except Exception as e:
-        print(f"Error in build_vector_search: {e}")
+        WORKING_DIR=working_dir,max_workers=global_config['max_workers'])
+    top = all_entities[-1]
+    top_description = top['description'] if isinstance(top, dict) else top[0]['description']
+    embed_func = global_config.get('embeddings_func') or embedding
+    top_vector = embed_func([top_description])
+    if isinstance(top, dict):
+        top['vector'] = top_vector
+    build_vector_search(all_entities, working_dir)
     for layer in all_entities:
         if type(layer) != list :
             if "vector" in layer.keys():
@@ -221,8 +246,8 @@ def hierarchical_clustering(global_config):
     save_community=[
     v for k, v in community.items()
 ]
-    write_jsonl(save_relation, f"{global_config['working_dir']}/generate_relations.json")
-    write_jsonl(save_community, f"{global_config['working_dir']}/community.json")
+    atomic_write_jsonl(save_relation, Path(global_config['working_dir']) / "generate_relations.json")
+    atomic_write_jsonl(save_community, Path(global_config['working_dir']) / "community.json")
     create_db_table_mysql(global_config['working_dir'])
     insert_data_to_mysql(global_config['working_dir'])
     

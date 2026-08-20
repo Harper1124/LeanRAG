@@ -5,6 +5,7 @@ import threading
 import time
 import jieba
 import os
+import tempfile
 import numpy as np
 from openai import OpenAI
 import requests
@@ -120,9 +121,23 @@ def write_jsonl(data, path, mode="a",encoding='utf-8'):
         for d in data:
             f.write(json.dumps(d, ensure_ascii=False) + "\n")
 def write_jsonl_force(data, path, mode="w+",encoding='utf-8'):
-    with open(path, mode, encoding=encoding) as f:
-        for d in data:
-            f.write(json.dumps(d, ensure_ascii=False) + "\n")
+    target = os.path.abspath(path)
+    parent = os.path.dirname(target)
+    os.makedirs(parent, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix=f".{os.path.basename(target)}.", suffix=".tmp", dir=parent)
+    try:
+        with os.fdopen(descriptor, "w", encoding=encoding, newline="\n") as f:
+            for d in data:
+                f.write(json.dumps(d, ensure_ascii=False) + "\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(temporary, target)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except FileNotFoundError:
+            pass
+        raise
 def check_test(entities):## 初期用于检测是否有边界错误
     e_l=[]
     for layer in entities:
