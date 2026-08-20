@@ -397,10 +397,27 @@ class ChartProcessor:
             summary_evidence,
             claim_allowed_numbers,
         )
+        summary_mode = "validated_model" if grounded_summary else ""
         if not grounded_summary:
             grounded_summary, summary_grounding = _fallback_chart_summary(summary_evidence)
+            if grounded_summary:
+                summary_mode = "validated_fallback"
+        if not grounded_summary:
+            grounded_summary = _unvalidated_chart_summary(
+                response,
+                semantic,
+                structured,
+                media.caption,
+            )
+            summary_grounding = []
+            summary_mode = "unvalidated_fallback"
         semantic["grounded_summary"] = grounded_summary
         semantic["summary_grounding"] = summary_grounding
+        summary_validated = summary_mode in {"validated_model", "validated_fallback"}
+        grounding_complete = bool(
+            semantic["chart_grounding"]["visual_evidence"]
+            or semantic["chart_grounding"]["ocr_evidence"]
+        )
         confidence = {
             "overall": semantic["confidence"],
             "programmatic_parse": structured["parse_confidence"],
@@ -417,13 +434,12 @@ class ChartProcessor:
             "summary_response_status": summary_diagnostic["status"],
             "summary_response_error": summary_diagnostic["error"],
             "summary_response_excerpt": summary_diagnostic["response_excerpt"],
+            "summary_mode": summary_mode,
+            "summary_validated": summary_validated,
             "summary_numeric_provenance_complete": _chart_summary_numeric_provenance_complete(
                 grounded_summary, summary_grounding
             ),
-            "grounding_complete": bool(
-                semantic["chart_grounding"]["visual_evidence"]
-                or semantic["chart_grounding"]["ocr_evidence"]
-            ),
+            "grounding_complete": grounding_complete,
             "relation_consistent": not bool(semantic["semantic_conflicts"]),
             "context_relation_grounded": bool(semantic["document_relation"].get("context_quotes")),
             "method_assessment_grounded": bool(
@@ -1013,6 +1029,66 @@ def _fallback_chart_summary(summary_evidence: dict[str, Any]) -> tuple[str, list
             "context_evidence": list(claim.get("context_evidence") or []),
         })
     return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _unvalidated_chart_summary(
+    response: dict[str, Any],
+    semantic: dict[str, Any],
+    structured: dict[str, Any],
+    caption: str,
+) -> str:
+    """Temporary recall-first fallback; its output must never be treated as grounded."""
+    candidates: list[str] = []
+
+    def add(value: Any) -> None:
+        if isinstance(value, dict):
+            value = value.get("statement") or value.get("text") or value.get("claim") or ""
+        text = " ".join(str(value or "").split()).strip()
+        if text:
+            candidates.append(text)
+
+    add(response.get("main_message"))
+    for trend in _json_list(response.get("qualitative_trends"))[:2]:
+        if isinstance(trend, dict):
+            statement = trend.get("statement")
+            if statement:
+                add(statement)
+                continue
+            series = " ".join(str(trend.get("series") or "").split()).strip()
+            direction = " ".join(str(trend.get("trend") or "").split()).strip()
+            if series and direction:
+                add(f"{series}: {direction}")
+        else:
+            add(trend)
+    add(response.get("document_relation"))
+    add(response.get("method_assessment"))
+    add(response.get("grounded_summary"))
+
+    unique = []
+    seen = set()
+    for value in candidates:
+        key = re.sub(r"\W+", " ", value.casefold()).strip()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(value)
+    if unique:
+        return " ".join(_as_sentence(value) for value in unique[:4])
+
+    caption_text = " ".join(str(caption or "").split()).strip()
+    if caption_text:
+        return _as_sentence(f"Chart caption: {caption_text}")
+    title = " ".join(str(structured.get("title") or semantic.get("title") or "").split()).strip()
+    if title and title.casefold() != "unknown":
+        return _as_sentence(f"Chart title: {title}")
+    chart_type = " ".join(str(semantic.get("chart_type") or "").split()).strip()
+    if chart_type and chart_type.casefold() != "unknown":
+        return _as_sentence(f"Chart type: {chart_type}")
+    return "Chart image; no validated semantic claims were available."
+
+
+def _as_sentence(value: str) -> str:
+    text = str(value or "").strip()
+    return text if not text or text[-1] in ".!?。！？" else f"{text}."
 
 
 def _chart_summary_numeric_provenance_complete(summary: str, grounding: list[dict[str, Any]]) -> bool:

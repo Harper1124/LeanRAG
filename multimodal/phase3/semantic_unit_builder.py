@@ -210,6 +210,8 @@ class MediaSemanticUnitBuilder:
         direct = _dict(context.get("direct_evidence"))
         chart_grounding = _dict(semantic.get("chart_grounding"))
         has_chart_grounding = any(_list(chart_grounding.get(key)) for key in ("visual_evidence", "ocr_evidence"))
+        processed_confidence = _dict(processed.get("confidence"))
+        summary_validated = bool(processed_confidence.get("summary_validated", has_chart_grounding))
         allowed_numbers = {
             token
             for point in _list(structured.get("readable_data_points"))
@@ -256,16 +258,17 @@ class MediaSemanticUnitBuilder:
             ))
         summary = _clean_excerpt(semantic.get("grounded_summary"), 500)
         if summary:
-            risky = bool(NUMBER_RE.search(summary) or RANK_OR_TREND_RE.search(summary))
-            numbers_supported = set(NUMBER_RE.findall(summary)).issubset(allowed_numbers)
-            if not has_chart_grounding or (risky and not numbers_supported):
-                warnings.append("chart_summary_rejected_without_sufficient_grounding")
-            else:
-                retrieval.append(f"Grounded summary: {summary}")
-                graph.append(summary)
-                refs.append(_media_ref(
-                    item, GroundingKind.CHART_EVIDENCE.value, "/semantic_content/grounded_summary", "chart_summary"
-                ))
+            retrieval.append(f"Chart summary: {summary}")
+            graph.append(summary)
+            refs.append(_media_ref(
+                item,
+                GroundingKind.CHART_EVIDENCE.value,
+                "/semantic_content/grounded_summary",
+                "chart_summary",
+                {"summary_validated": summary_validated},
+            ))
+            if not summary_validated:
+                warnings.append("unvalidated_chart_summary_included")
         if not graph:
             warnings.append("no_grounded_graph_facts")
         if not refs:
