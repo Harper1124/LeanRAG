@@ -18,6 +18,11 @@ def run_docbench_eval(
     config_file: str = "config.yaml",
 ) -> None:
     samples = [sample for sample in load_docbench(dataset_dir) if sample.get("question")]
+    if not samples:
+        raise ValueError(
+            f"No QA samples were loaded from {dataset_dir}. "
+            "Check that qa.jsonl is non-empty, valid JSONL, and contains a question field."
+        )
     if limit is not None:
         samples = samples[:limit]
 
@@ -30,11 +35,11 @@ def run_docbench_eval(
 
     with output_path.open("w", encoding="utf-8") as pred_f, trace_path.open("w", encoding="utf-8") as trace_f:
         for sample in samples:
-            working_dir = Path(working_root) / sample["doc_id"]
-            if working_dir.exists():
+            working_dir, attempted_dirs = _resolve_working_dir(Path(working_root), sample)
+            if working_dir is not None:
                 full_row = _query_sample(sample, working_dir, mm_defaults, full_config)
             else:
-                full_row = _missing_workspace_row(sample, working_dir)
+                full_row = _missing_workspace_row(sample, attempted_dirs)
 
             trace = full_row.get("trace") or {}
             pred_row = compact_row(full_row)
@@ -65,7 +70,12 @@ def _query_sample(sample: dict[str, Any], working_dir: Path, mm_defaults: dict, 
         "global_max_tables_per_query": 24,
         "answer_with_vlm_when_media": True,
     })
-    prediction, trace = query_mm_graph(config, None, sample["question"], doc_id=sample["doc_id"])
+    prediction, trace = query_mm_graph(
+        config,
+        None,
+        sample["question"],
+        doc_id=_workspace_doc_id(working_dir, sample["doc_id"]),
+    )
     return _prediction_row(sample, prediction, trace)
 
 
@@ -92,7 +102,7 @@ def _prediction_row(sample: dict[str, Any], prediction: str, trace: dict[str, An
     }
 
 
-def _missing_workspace_row(sample: dict[str, Any], working_dir: Path) -> dict[str, Any]:
+def _missing_workspace_row(sample: dict[str, Any], attempted_dirs: list[Path]) -> dict[str, Any]:
     return {
         "doc_id": sample["doc_id"],
         "question_id": sample.get("question_id", ""),
@@ -111,8 +121,40 @@ def _missing_workspace_row(sample: dict[str, Any], working_dir: Path) -> dict[st
         "text_evidence": [],
         "visual_evidence": [],
         "table_evidence": [],
-        "trace": {"error": f"working_dir not found: {working_dir}"},
+        "trace": {"error": "working_dir not found; tried: " + ", ".join(str(path) for path in attempted_dirs)},
     }
+
+
+def _resolve_working_dir(working_root: Path, sample: dict[str, Any]) -> tuple[Path | None, list[Path]]:
+    """Support both benchmark-filename and filename-stem workspace layouts."""
+    raw_doc_id = str(sample.get("doc_id") or "").strip()
+    pdf_name = Path(str(sample.get("pdf_path") or "")).name
+    names = [raw_doc_id, Path(raw_doc_id).stem, pdf_name, Path(pdf_name).stem]
+    attempted: list[Path] = []
+    seen: set[str] = set()
+    for name in names:
+        if not name or name in seen:
+            continue
+        seen.add(name)
+        candidate = working_root / name
+        attempted.append(candidate)
+        if candidate.is_dir():
+            return candidate, attempted
+    return None, attempted
+
+
+def _workspace_doc_id(working_dir: Path, fallback: str) -> str:
+    manifest_path = working_dir / "manifest.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
+        value = manifest.get("doc_id") if isinstance(manifest, dict) else None
+        if value not in (None, ""):
+            return str(value)
+    except (OSError, ValueError, TypeError):
+        pass
+    # The directory name is the best representation of ids used in its graph
+    # artifacts when an old manifest has no doc_id.
+    return working_dir.name or str(fallback)
 
 
 def _metadata_first(sample: dict[str, Any], *keys: str) -> object:

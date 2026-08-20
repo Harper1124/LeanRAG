@@ -22,6 +22,11 @@ def score_mmlongbench_doc(
     evaluation_model_config: dict[str, Any] | None = None,
 ) -> dict:
     gold = {(row["doc_id"], row["question_id"]): row for row in load_docbench(dataset_dir) if row.get("question")}
+    if not gold:
+        raise ValueError(
+            f"No gold QA samples were loaded from {dataset_dir}. "
+            "Refusing to write a misleading zero-sample score report."
+        )
     predictions = read_jsonl(predictions_file)
     answer_extractor = None
     if extract_answers:

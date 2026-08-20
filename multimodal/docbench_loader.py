@@ -47,14 +47,13 @@ def load_docbench(dataset_dir: str) -> list[dict]:
         else:
             resolved_pdf = _match_pdf_by_name(pdfs, doc_id)
             doc_id = doc_id or (resolved_pdf.stem if resolved_pdf else f"doc_{index:06d}")
+        # Query-only evaluation only needs an existing LeanRAG workspace.  A
+        # server may intentionally keep qa.jsonl and built artifacts while
+        # archiving the source PDFs, so do not silently discard its QA rows.
+        # Build commands will still receive the intended path and fail with a
+        # useful parser/file error if the PDF is genuinely required.
         if resolved_pdf is None:
-            continue
-        # Benchmark metadata commonly stores ``doc_id`` as the PDF filename
-        # (for example ``2405.09818v1.pdf``), while LeanRAG workspaces and
-        # graph nodes use the filename stem.  Keeping the suffix here makes
-        # evaluation look for ``working_root/2405.09818v1.pdf`` and filters
-        # every graph candidate by the wrong document id.
-        doc_id = _normalize_doc_id(doc_id, resolved_pdf)
+            resolved_pdf = _unresolved_pdf_path(root, pdf_path, doc_id)
         question_id = _first(row, ["question_id", "qid", "qa_id"], f"q_{index:06d}")
         samples.append(
             {
@@ -77,7 +76,7 @@ _KNOWN_KEYS = {
 
 
 def _find_pdfs(root: Path) -> dict[str, Path]:
-    return {path.stem: path for path in root.rglob("*.pdf")}
+    return {path.stem: path for path in root.rglob("*.pdf") if path.is_file()}
 
 
 def _find_qa_rows(root: Path) -> list[dict[str, Any]]:
@@ -166,12 +165,12 @@ def _first(row: dict[str, Any], keys: list[str], default: Any = None) -> Any:
 def _resolve_path(root: Path, raw_path: str) -> Path | None:
     # 支持绝对路径、相对数据集根目录路径，以及仅给文件名时的递归匹配。
     path = Path(raw_path)
-    if path.is_absolute() and path.exists():
+    if path.is_absolute() and path.is_file():
         return path
     candidate = root / path
-    if candidate.exists():
+    if candidate.is_file():
         return candidate
-    matches = list(root.rglob(path.name))
+    matches = [match for match in root.rglob(path.name) if match.is_file()]
     return matches[0] if matches else None
 
 
@@ -187,13 +186,14 @@ def _match_pdf_by_name(pdfs: dict[str, Path], doc_id: str | None) -> Path | None
     return None
 
 
-def _normalize_doc_id(doc_id: Any, resolved_pdf: Path) -> str:
-    """Return the stable internal document id used by workspace artifacts."""
-    value = str(doc_id or "").strip()
-    if not value:
-        return resolved_pdf.stem
-    # Only strip a PDF suffix.  Other dots may be a meaningful part of an id
-    # (``2405.09818v1`` is the canonical example).
-    if Path(value).suffix.lower() == ".pdf":
-        return Path(value).stem
-    return value
+def _unresolved_pdf_path(root: Path, pdf_path: Any, doc_id: Any) -> Path:
+    """Preserve a useful source path without requiring the PDF to exist."""
+    if pdf_path not in (None, ""):
+        path = Path(str(pdf_path))
+        return path if path.is_absolute() else root / path
+    filename = str(doc_id or "").strip()
+    if not filename:
+        filename = "unknown.pdf"
+    elif Path(filename).suffix.lower() != ".pdf":
+        filename += ".pdf"
+    return root / "pdfs" / Path(filename).name
