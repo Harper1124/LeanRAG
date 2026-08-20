@@ -49,6 +49,12 @@ def load_docbench(dataset_dir: str) -> list[dict]:
             doc_id = doc_id or (resolved_pdf.stem if resolved_pdf else f"doc_{index:06d}")
         if resolved_pdf is None:
             continue
+        # Benchmark metadata commonly stores ``doc_id`` as the PDF filename
+        # (for example ``2405.09818v1.pdf``), while LeanRAG workspaces and
+        # graph nodes use the filename stem.  Keeping the suffix here makes
+        # evaluation look for ``working_root/2405.09818v1.pdf`` and filters
+        # every graph candidate by the wrong document id.
+        doc_id = _normalize_doc_id(doc_id, resolved_pdf)
         question_id = _first(row, ["question_id", "qid", "qa_id"], f"q_{index:06d}")
         samples.append(
             {
@@ -179,3 +185,15 @@ def _match_pdf_by_name(pdfs: dict[str, Path], doc_id: str | None) -> Path | None
         if stem.lower() == doc_id_lower or stem.lower() in doc_id_lower or doc_id_lower in stem.lower():
             return path
     return None
+
+
+def _normalize_doc_id(doc_id: Any, resolved_pdf: Path) -> str:
+    """Return the stable internal document id used by workspace artifacts."""
+    value = str(doc_id or "").strip()
+    if not value:
+        return resolved_pdf.stem
+    # Only strip a PDF suffix.  Other dots may be a meaningful part of an id
+    # (``2405.09818v1`` is the canonical example).
+    if Path(value).suffix.lower() == ".pdf":
+        return Path(value).stem
+    return value
