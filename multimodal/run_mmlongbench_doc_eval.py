@@ -31,6 +31,7 @@ def run_mmlongbench_doc_eval(
     evaluation_base_url: str | None = None,
     evaluation_api_key: str = "",
     evaluation_api_key_env: str | None = None,
+    skip_hierarchy: bool = False,
 ) -> dict:
     from .build_docbench import _load_config
 
@@ -59,6 +60,7 @@ def run_mmlongbench_doc_eval(
             docbench_dir=dataset_dir,
             working_root=working_root,
             build_graph=not skip_graph,
+            build_hierarchy=not skip_graph and not skip_hierarchy,
             force=force,
             use_media_caption=bool(mm_config.get("use_media_caption", False)),
             use_table_summary=bool(mm_config.get("use_table_summary", False)),
@@ -146,6 +148,11 @@ def main() -> None:
     parser.add_argument("--no_predict", action="store_true")
     parser.add_argument("--no_score", action="store_true")
     parser.add_argument("--skip_graph", action="store_true")
+    parser.add_argument(
+        "--skip_hierarchy",
+        action="store_true",
+        help="Build graph inputs but defer the only hierarchy build to Phase A.",
+    )
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--max_docs", type=int, default=None)
     parser.add_argument("--limit", type=int, default=None)
@@ -174,6 +181,7 @@ def main() -> None:
         limit=args.limit,
         config_file=args.config,
         skip_graph=args.skip_graph,
+        skip_hierarchy=args.skip_hierarchy,
         force=args.force,
         extract_answers=args.extract_answers,
         evaluation_model=args.evaluation_model,

@@ -142,6 +142,7 @@ class MediaGraphPipelineIntegrationTests(unittest.TestCase):
             self.assertFalse((working / "graph_build_error.json").exists())
             manifest = json.loads((working / "manifest.json").read_text(encoding="utf-8"))
             self.assertEqual(manifest["graph_status"], "built")
+            self.assertEqual(manifest["hierarchy_status"], "completed")
             self.assertEqual(manifest["graph_input"], "phase3/merged_graph")
 
     def test_pipeline_builds_merged_graph_idempotently_without_touching_text_graph(self):

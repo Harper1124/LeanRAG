@@ -278,6 +278,7 @@ def _record_hierarchy_success(working: Path) -> None:
     if not isinstance(value, dict) or "graph_status" not in value:
         return
     value["graph_status"] = "built"
+    value["hierarchy_status"] = "completed"
     value["graph_input"] = "phase3/merged_graph"
     atomic_write_json(value, workspace_manifest)
 
