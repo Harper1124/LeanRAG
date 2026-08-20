@@ -13,7 +13,7 @@ import yaml
 from tools.utils import InstanceManager
 from openai import  OpenAI
 from database_utils import build_vector_search,search_vector_search,find_tree_root,\
-    search_nodes_link,search_nodes,search_community,search_chunks,get_text_units,find_path
+    search_nodes_link,search_nodes,search_community,search_chunks,get_text_units,get_source_units,find_path
 from prompt import GRAPH_FIELD_SEP, PROMPTS
 from itertools import combinations
 
@@ -177,8 +177,15 @@ def format_text_units(text_units):
             "modality": item.get("modality", "text"),
             "page": item.get("page"),
             "asset_path": item.get("asset_path"),
+            "source_path": item.get("source_path") or item.get("path"),
             "summary": item.get("summary", ""),
             "text": item.get("text", ""),
+            "media_id": item.get("media_id"),
+            "caption": item.get("caption", ""),
+            "ocr_text": item.get("ocr_text", ""),
+            "table_html": item.get("table_html", ""),
+            "table_markdown": item.get("table_markdown", ""),
+            "source_resolution": item.get("source_resolution"),
         })
     return json.dumps(evidence_blocks, ensure_ascii=False, indent=2)
 
@@ -214,8 +221,16 @@ def query_graph(global_config,db,query):
     aggregation_descriptions,aggregation=get_aggregation_description(global_config,reasoning_path)
     # chunks=search_chunks(global_config['working_dir'],aggregation)
     # 第四步：根据召回实体的 source_id 回查原文 chunk，补充最细粒度证据。
-    text_units=get_text_units(global_config['working_dir'],chunks,chunks_file,k=5)
+    source_units = get_source_units(
+        global_config['working_dir'], chunks, chunks_file,
+        text_k=int(global_config.get('text_topk', 5)),
+        media_k=int(global_config.get('media_topk', 5)),
+        include_media=bool(global_config.get('use_media_source_evidence', True)),
+    )
+    text_units = source_units["text_evidence"]
+    media_units = source_units["media_evidence"]
     structured_text_units=format_text_units(text_units)
+    structured_media_units=format_text_units(media_units)
     describe=f"""
     entity_information:
     {entity_descriptions}
@@ -225,6 +240,8 @@ def query_graph(global_config,db,query):
     {reasoning_path_information_description}
     text_units:
     {structured_text_units}
+    media_units:
+    {structured_media_units}
     """
     e=time.time()
     

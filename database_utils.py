@@ -5,6 +5,7 @@ import numpy as np
 from pymilvus  import MilvusClient
 import pymysql
 from collections import Counter
+from multimodal.retrieval.source_resolver import complete_source_id, resolve_source_evidence
 
 
 def _load_mysql_config():
@@ -202,7 +203,7 @@ def create_db_table_mysql(working_dir):
     cur.execute("drop table if exists entities;")
     # 建表
     cur.execute("create table entities\
-        (entity_name varchar(500), description varchar(10000),source_id varchar(1000),\
+        (entity_name varchar(500), description varchar(10000),source_id TEXT,\
             degree int,parent varchar(1000),level int ,INDEX en(entity_name))character set utf8mb4 COLLATE utf8mb4_unicode_ci;")
     
     cur.execute("drop table if exists relations;")
@@ -244,7 +245,7 @@ def insert_data_to_mysql(working_dir):
                     description=entity['description']
                     # if "|Here" in description:
                     #     description=description.split("|Here")[0]
-                    source_id="|".join(entity['source_id'].split("|")[:5])
+                    source_id=complete_source_id(entity.get('source_id', ''))
                    
                     degree=entity['degree']
                     parent=entity['parent']
@@ -253,7 +254,7 @@ def insert_data_to_mysql(working_dir):
                 entity=local_entity
                 entity_name=entity['entity_name']
                 description=entity['description']
-                source_id="|".join(entity['source_id'].split("|")[:5])
+                source_id=complete_source_id(entity.get('source_id', ''))
                 degree=entity['degree']
                 parent=entity['parent']
                 val.append((entity_name,description,source_id,degree,parent,level))
@@ -491,38 +492,19 @@ def get_text_units(working_dir,chunks_set,chunks_file,k=5):
     一个实体可能来自多个 chunk，source_id 之间用 | 拼接。这里会统计 chunk hash 出现频次，
     优先选择被多个召回实体共同指向的 chunk，因为它们更可能是高价值证据。
     """
-    db_name=_quote_identifier(_mysql_db_name(working_dir))
-    chunks_list=_flatten_chunk_ids(chunks_set)
-    counter = Counter(chunks_list)
+    return get_source_units(working_dir, chunks_set, chunks_file, text_k=k, media_k=0)["text_evidence"]
 
-    # 筛选出出现多次的元素
-    # duplicates = [item for item, count in counter.items() if count > 2]
-    duplicates = [item for item, _ in sorted(
-    [(item, count) for item, count in counter.items() if count > 1],
-    key=lambda x: x[1],
-    reverse=True
-        )[:k]]
-    if len(duplicates)< k:
-        used = set(duplicates)
-        for item, _ in counter.items():
-            if item not in used:
-                duplicates.append(item)
-                used.add(item)
-            if len(duplicates) == k:
-                break
-    
-    with open (chunks_file,'r',encoding='utf-8')as f:
-        chunks_data= json.load(f)
-    chunks_dict={item["hash_code"]: _normalize_evidence_chunk(item) for item in chunks_data}
 
-    text_units=[]
-    for chunks in duplicates:
-        evidence = chunks_dict.get(chunks)
-        if evidence is None:
-            continue
-        evidence["score"] = counter.get(chunks, 0)
-        text_units.append(evidence)
-    return text_units
+def get_source_units(working_dir, source_ids, chunks_file=None, text_k=5, media_k=5, include_media=True):
+    """Resolve source IDs by type so media IDs are never sent through a text-only lookup."""
+    return resolve_source_evidence(
+        working_dir=working_dir,
+        source_values=source_ids,
+        chunks_file=chunks_file,
+        max_text=text_k,
+        max_media=media_k,
+        include_media=include_media,
+    )
     
 def search_community(entity_name,working_dir):
     """按聚合实体名称查询 communities 表，返回建图阶段生成的聚合摘要和 findings。"""

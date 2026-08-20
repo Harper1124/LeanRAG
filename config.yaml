@@ -57,6 +57,7 @@ multimodal:
   use_media_caption: true
   use_table_summary: true
   use_media_vector_store: true
+  use_media_source_evidence: true
 
   media_attach_topk: 3
   evidence_topk: 5
