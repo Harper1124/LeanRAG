@@ -259,6 +259,23 @@ def _default_hierarchy_runner(working: Path, entity_path: Path, relation_path: P
     })
 
 
+def _record_hierarchy_success(working: Path) -> None:
+    """Remove stale lightweight failure state after the merged hierarchy succeeds."""
+    (working / "graph_build_error.json").unlink(missing_ok=True)
+    workspace_manifest = working / "manifest.json"
+    if not workspace_manifest.exists():
+        return
+    try:
+        value = json.loads(workspace_manifest.read_text(encoding="utf-8-sig"))
+    except (OSError, json.JSONDecodeError):
+        return
+    if not isinstance(value, dict) or "graph_status" not in value:
+        return
+    value["graph_status"] = "built"
+    value["graph_input"] = "phase3/merged_graph"
+    atomic_write_json(value, workspace_manifest)
+
+
 def run_media_graph_pipeline(
     working_dir: str | Path, config: dict[str, Any] | None = None, llm_mode: str = "none",
     skip_hierarchy: bool = False, force: bool = False,
@@ -306,6 +323,8 @@ def run_media_graph_pipeline(
         if not force and manifest_path.exists() and all(path.exists() for path in expected):
             old = json.loads(manifest_path.read_text(encoding="utf-8-sig"))
             if old.get("input_fingerprint") == fingerprint and old.get("status") == "completed":
+                if not skip_hierarchy:
+                    _record_hierarchy_success(working)
                 old["reused"] = True
                 return old
         manifest["input_fingerprint"] = fingerprint
@@ -364,6 +383,7 @@ def run_media_graph_pipeline(
                 raise MediaGraphPipelineError("hierarchy requires --llm-mode configured (or --skip-hierarchy)")
             (hierarchy_runner or _default_hierarchy_runner)(working, merged / "entity.jsonl",
                                                             merged / "relation.jsonl", config, chat, embedding)
+            _record_hierarchy_success(working)
             manifest["stages"]["hierarchy"] = {"status": "completed", "input": "phase3/merged_graph"}
 
         if rebuild_retrieval:
@@ -396,6 +416,22 @@ def run_media_graph_pipeline(
                                "legacy_media_relation": "phase3/legacy_media_graph/relation.jsonl",
                                "merged_entity": "phase3/merged_graph/entity.jsonl",
                                "merged_relation": "phase3/merged_graph/relation.jsonl"}
+        if not skip_hierarchy:
+            manifest["outputs"].update({
+                "all_entities": "all_entities.json",
+                "community": "community.json",
+                "generate_relations": "generate_relations.json",
+                "entity_vector_store": "milvus_demo.db",
+            })
+        if rebuild_retrieval:
+            manifest["outputs"].update({
+                "mm_nodes": "mm_nodes.jsonl",
+                "mm_edges_seed": "mm_edges_seed.jsonl",
+                "mm_edges": "mm_edges.jsonl",
+            })
+            for candidate in ("evidence_milvus.db", "evidence_vectors.json", "evidence_records.json"):
+                if (working / candidate).exists():
+                    manifest["outputs"][candidate.rsplit(".", 1)[0]] = candidate
         atomic_write_json(manifest, manifest_path)
         return manifest
     except Exception as exc:

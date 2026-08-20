@@ -41,7 +41,9 @@ def build_phase1_mm_graph(
     write_jsonl([dataclass_to_dict(node) for node in nodes], node_path)
     write_jsonl([dataclass_to_dict(edge) for edge in edges], edge_path)
 
-    report = validate_phase1_outputs(working, node_path, edge_path) if validate else {}
+    report = validate_phase1_outputs(
+        working, node_path, edge_path, entity_file=entity_file
+    ) if validate else {}
     trace = {
         "status": "built",
         "node_file": str(node_path),
@@ -231,13 +233,17 @@ def validate_phase1_outputs(
     working_dir: str | Path,
     node_path: str | Path | None = None,
     edge_path: str | Path | None = None,
+    entity_file: str | Path = "entity.jsonl",
 ) -> dict[str, Any]:
     working = Path(working_dir)
     node_path = Path(node_path or working / "mm_nodes.jsonl")
     edge_path = Path(edge_path or working / "mm_edges_seed.jsonl")
     chunks = load_dataclasses(working / "mm_chunk.json", MMChunk)
     media_items = load_dataclasses(working / "mm_media.json", MMMedia) if (working / "mm_media.json").exists() else []
-    entities = read_jsonl(working / "entity.jsonl") if (working / "entity.jsonl").exists() else []
+    entity_path = Path(entity_file)
+    if not entity_path.is_absolute():
+        entity_path = working / entity_path
+    entities = read_jsonl(entity_path) if entity_path.exists() else []
     nodes = read_jsonl(node_path)
     edges = read_jsonl(edge_path)
 
