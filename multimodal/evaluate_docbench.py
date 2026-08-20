@@ -182,6 +182,7 @@ def compact_row(
     max_visual_evidence: int = 3,
     max_table_evidence: int = 3,
 ) -> dict[str, Any]:
+    trace = row.get("trace") if isinstance(row.get("trace"), dict) else {}
     return _drop_empty({
         "doc_id": row.get("doc_id"),
         "question_id": row.get("question_id"),
@@ -190,6 +191,9 @@ def compact_row(
         "answer_format": row.get("answer_format"),
         "evidence_source": row.get("evidence_source") or row.get("evidence_sources"),
         "prediction": row.get("prediction"),
+        # Preserve page coverage from the full trace even though evidence text
+        # is deliberately truncated in the compact prediction file.
+        "retrieved_pages": _evidence_pages(trace),
         "text_evidence": [
             _slim_text_evidence(item, text_limit)
             for item in _as_list(row.get("text_evidence"))[:max_text_evidence]
@@ -203,6 +207,27 @@ def compact_row(
             for item in _as_list(row.get("table_evidence"))[:max_table_evidence]
         ],
     })
+
+
+def _evidence_pages(trace: dict[str, Any]) -> list[int]:
+    pages: set[int] = set()
+    for key in ("text_evidence", "visual_evidence", "table_evidence"):
+        for item in _as_list(trace.get(key)):
+            if not isinstance(item, dict):
+                continue
+            for field in ("page", "page_id", "page_start", "page_end"):
+                try:
+                    if item.get(field) is not None:
+                        pages.add(int(item[field]))
+                except (TypeError, ValueError):
+                    pass
+            try:
+                start, end = int(item["page_start"]), int(item["page_end"])
+                if end >= start and end - start <= 20:
+                    pages.update(range(start, end + 1))
+            except (KeyError, TypeError, ValueError):
+                pass
+    return sorted(page for page in pages if page >= 1)
 
 
 def _slim_text_evidence(item: Any, text_limit: int) -> Any:

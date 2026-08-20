@@ -11,7 +11,4 @@ results/
 exp/
 AGENTS.md
 docx/
-tests/
-tests/*
-test_*.py
 

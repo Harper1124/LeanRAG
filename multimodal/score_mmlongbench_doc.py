@@ -425,7 +425,7 @@ def _expand_pages(pages: set[int], tolerance: int) -> set[int]:
 
 
 def _extract_pages(pred: dict) -> set[int]:
-    pages = set()
+    pages = {_safe_int(value) for value in pred.get("retrieved_pages", []) or []}
     evidence_groups = [pred.get("text_evidence", []), pred.get("visual_evidence", []), pred.get("table_evidence", [])]
     trace = pred.get("trace") or {}
     evidence_groups.extend([trace.get("text_evidence", []), trace.get("visual_evidence", []), trace.get("table_evidence", [])])

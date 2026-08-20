@@ -33,6 +33,7 @@ LAYOUT_RELATION_TYPES = {
     "media_same_page_media", "page_next_page", "page_prev_page",
 }
 DEFAULT_DESCRIPTION_TOKEN_LIMIT = 512
+HIERARCHY_OUTPUTS = ("all_entities.json", "community.json", "generate_relations.json", "milvus_demo.db")
 
 
 class MediaGraphPipelineError(RuntimeError):
@@ -92,6 +93,8 @@ def semantic_units_to_graph_chunks(units: Iterable[Any]) -> tuple[list[dict[str,
         media_id = str(data.get("media_id") or "").strip()
         graph_text = normalize_description(data.get("graph_text"))
         if graph_text:
+            if not media_id:
+                raise ValueError("semantic unit with non-empty graph_text is missing media_id")
             chunks.append({"hash_code": media_id, "text": graph_text})
         else:
             trace.append({"media_id": media_id, "event": "empty_graph_text_skipped"})
@@ -217,6 +220,9 @@ def _normalize_extraction_output(
     for raw in relations:
         for row in raw if isinstance(raw, list) else [raw]:
             if isinstance(row, dict):
+                relation_kind = str(row.get("relation_type") or row.get("source") or "").strip().lower()
+                if relation_kind in LAYOUT_RELATION_TYPES:
+                    continue
                 normalized_relations.append({
                     "src_tgt": normalize_entity_name(row.get("src_tgt") or row.get("src_id")),
                     "tgt_src": normalize_entity_name(row.get("tgt_src") or row.get("tgt_id")),
@@ -276,6 +282,12 @@ def _record_hierarchy_success(working: Path) -> None:
     atomic_write_json(value, workspace_manifest)
 
 
+def _require_hierarchy_outputs(working: Path) -> None:
+    missing = [str(working / name) for name in HIERARCHY_OUTPUTS if not (working / name).exists()]
+    if missing:
+        raise MediaGraphPipelineError(f"hierarchy runner returned without required outputs: {missing}")
+
+
 def run_media_graph_pipeline(
     working_dir: str | Path, config: dict[str, Any] | None = None, llm_mode: str = "none",
     skip_hierarchy: bool = False, force: bool = False,
@@ -317,7 +329,7 @@ def run_media_graph_pipeline(
                     legacy_media / "entity.jsonl", legacy_media / "relation.jsonl",
                     merged / "entity.jsonl", merged / "relation.jsonl"]
         if not skip_hierarchy:
-            expected.extend(working / name for name in ("all_entities.json", "community.json", "generate_relations.json"))
+            expected.extend(working / name for name in HIERARCHY_OUTPUTS)
         if rebuild_retrieval:
             expected.extend(working / name for name in ("mm_nodes.jsonl", "mm_edges_seed.jsonl", "mm_edges.jsonl"))
         if not force and manifest_path.exists() and all(path.exists() for path in expected):
@@ -383,6 +395,7 @@ def run_media_graph_pipeline(
                 raise MediaGraphPipelineError("hierarchy requires --llm-mode configured (or --skip-hierarchy)")
             (hierarchy_runner or _default_hierarchy_runner)(working, merged / "entity.jsonl",
                                                             merged / "relation.jsonl", config, chat, embedding)
+            _require_hierarchy_outputs(working)
             _record_hierarchy_success(working)
             manifest["stages"]["hierarchy"] = {"status": "completed", "input": "phase3/merged_graph"}
 
