@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import mimetypes
@@ -25,7 +26,12 @@ def make_chat_func(config: dict[str, Any]):
     # 生成一个普通文本聊天函数，供 mm_query 以 use_llm_func 形式调用。
     from openai import OpenAI
 
-    client = OpenAI(api_key=resolve_api_key(config), base_url=config["base_url"])
+    client = OpenAI(
+        api_key=resolve_api_key(config),
+        base_url=config["base_url"],
+        timeout=float(config.get("timeout", 1800)),
+        max_retries=int(config.get("max_retries", 2)),
+    )
     model = config["model"]
 
     def chat(query: str, system_prompt: str = "", **kwargs):
@@ -52,8 +58,16 @@ def make_async_chat_func(config: dict[str, Any]):
     """Create the async OpenAI-compatible callable expected by GraphExtraction."""
     from openai import AsyncOpenAI
 
-    client = AsyncOpenAI(api_key=resolve_api_key(config), base_url=config["base_url"])
+    client = AsyncOpenAI(
+        api_key=resolve_api_key(config),
+        base_url=config["base_url"],
+        timeout=float(config.get("timeout", 1800)),
+        max_retries=int(config.get("max_retries", 2)),
+    )
     model = config["model"]
+    semaphore = asyncio.Semaphore(
+        max(1, int(config.get("max_concurrency", 1)))
+    )
 
     async def chat(query: str, system_prompt: str = "", **kwargs):
         messages = []
@@ -61,11 +75,15 @@ def make_async_chat_func(config: dict[str, Any]):
             messages.append({"role": "system", "content": system_prompt})
         messages.extend(kwargs.get("history_messages") or [])
         messages.append({"role": "user", "content": query})
-        response = await client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=kwargs.get("temperature", config.get("temperature", 0.1)),
-        )
+        async with semaphore:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=kwargs.get(
+                    "temperature",
+                    config.get("temperature", 0.1),
+                ),
+            )
         return response.choices[0].message.content
 
     return chat
@@ -75,7 +93,12 @@ def make_embedding_func(config: dict[str, Any]):
     """Create a batched OpenAI-compatible embedding callable."""
     from openai import OpenAI
 
-    client = OpenAI(api_key=resolve_api_key(config), base_url=config["base_url"])
+    client = OpenAI(
+        api_key=resolve_api_key(config),
+        base_url=config["base_url"],
+        timeout=float(config.get("timeout", 1800)),
+        max_retries=int(config.get("max_retries", 2)),
+    )
     model = config.get("embedding_model") or config["model"]
 
     def embed(texts: list[str]):
@@ -91,7 +114,12 @@ def make_vlm_func(config: dict[str, Any]):
     # 生成一个图文模型函数，接口兼容 OpenAI chat.completions 的 image_url 消息格式。
     from openai import OpenAI
 
-    client = OpenAI(api_key=resolve_api_key(config), base_url=config["base_url"])
+    client = OpenAI(
+        api_key=resolve_api_key(config),
+        base_url=config["base_url"],
+        timeout=float(config.get("timeout", 1800)),
+        max_retries=int(config.get("max_retries", 2)),
+    )
     model = config["model"]
 
     def vlm(query: str | None = None, context: str = "", image_paths: list[str] | None = None, **kwargs):

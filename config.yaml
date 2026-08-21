@@ -1,9 +1,11 @@
 
 glm:
   model: "bge-m3"
+  embedding_model: "bge-m3"
   api_key: "ollama"
   base_url: "http://127.0.0.1:11444/v1"
-  embedding_model: "bge-m3"
+  timeout: 1800
+  max_retries: 2
 
 deepseek:
 
@@ -13,6 +15,9 @@ deepseek:
 
   api_key: "ollama"
   base_url: "http://127.0.0.1:11444/v1"
+  timeout: 1800
+  max_retries: 2
+  max_concurrency: 1
 
 evaluation_model:
   model: "qwen2.5:7b"
