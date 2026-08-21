@@ -257,6 +257,7 @@ def validate_phase1_outputs(
     edge_types = {edge.get("edge_type") for edge in edges}
 
     errors = []
+    warnings = []
     for media in (item for item in media_items if is_indexable_media(item)):
         node = media_nodes_by_id.get(media.media_id)
         if not node:
@@ -271,8 +272,29 @@ def validate_phase1_outputs(
             errors.append(f"media node missing raw_ref.media_id for {media.media_id}")
         if media.modality == "image" and "path" not in raw_ref:
             errors.append(f"image media node missing raw_ref.path for {media.media_id}")
-        if media.modality == "table" and not (raw_ref.get("table_markdown") or raw_ref.get("table_html")):
-            errors.append(f"table media node missing table markdown/html for {media.media_id}")
+        if media.modality == "table":
+            missing_table_fields = [
+                field for field in ("table_markdown", "table_html") if field not in raw_ref
+            ]
+            if missing_table_fields:
+                errors.append(
+                    f"table media node missing preserved fields {missing_table_fields} for {media.media_id}"
+                )
+            elif not (raw_ref.get("table_markdown") or raw_ref.get("table_html")):
+                fallback_evidence = (
+                    raw_ref.get("path")
+                    or node.get("ocr_text")
+                    or node.get("caption")
+                    or node.get("summary")
+                )
+                if fallback_evidence:
+                    warnings.append(
+                        f"visual-only table has no markdown/html; using image/text evidence for {media.media_id}"
+                    )
+                else:
+                    errors.append(
+                        f"table media node has neither structured nor visual/text evidence for {media.media_id}"
+                    )
     for page in pages:
         if not any(node.get("node_type") == "page" and node.get("page_id") == page for node in nodes):
             errors.append(f"missing page node for page {page}")
@@ -290,6 +312,7 @@ def validate_phase1_outputs(
     report = {
         "ok": not errors,
         "errors": errors,
+        "warnings": warnings,
         "counts": {
             "nodes": len(nodes),
             "edges": len(edges),
