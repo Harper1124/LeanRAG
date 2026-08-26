@@ -305,9 +305,22 @@ def validate_phase1_outputs(
         name = entity.get("entity_name")
         if name and name not in entity_nodes_by_name:
             errors.append(f"missing entity node for {name}")
-    for required_edge in ("page_contains_node", "media_near_text"):
-        if required_edge not in edge_types:
-            errors.append(f"missing edge_type {required_edge}")
+    if "page_contains_node" not in edge_types:
+        errors.append("missing edge_type page_contains_node")
+
+    # A text-only document has no media node and therefore cannot produce a
+    # media_near_text edge.  Require the edge only when at least one indexable
+    # media item actually resolves to a text chunk that the builder can link.
+    expects_media_near_text = False
+    for media in (item for item in media_items if is_indexable_media(item)):
+        nearby = list(media.nearby_chunk_ids or [])
+        if not nearby:
+            nearby = _attached_text_chunks(media.media_id, chunks)
+        if any(chunk_id in text_nodes_by_chunk_id for chunk_id in nearby):
+            expects_media_near_text = True
+            break
+    if expects_media_near_text and "media_near_text" not in edge_types:
+        errors.append("missing edge_type media_near_text")
 
     report = {
         "ok": not errors,
