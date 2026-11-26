@@ -33,7 +33,7 @@ class BuildDocbenchSkipHierarchyTests(unittest.TestCase):
                     "media_type_stats_file": "media_type_stats.json",
                 }.items():
                     path = output / name
-                    path.write_text("[]", encoding="utf-8")
+                    path.write_text("" if path.suffix == ".jsonl" else "[]", encoding="utf-8")
                     paths[key] = str(path)
                 paths["leanrag_chunk_file"] = str(leanrag_chunk)
                 return paths
@@ -69,13 +69,14 @@ class BuildDocbenchSkipHierarchyTests(unittest.TestCase):
             workspace = working_root / "paper.pdf"
             self.assertTrue((workspace / "entity.jsonl").exists())
             self.assertTrue((workspace / "relation.jsonl").exists())
+            self.assertTrue((workspace / "mm_edges.jsonl").exists())
             phase1.assert_called_once()
             hierarchy.assert_not_called()
             self.assertEqual(manifests[0]["graph_status"], "prepared")
             self.assertEqual(manifests[0]["hierarchy_status"], "skipped")
 
     def test_prepared_manifest_is_reusable_only_when_hierarchy_is_deferred(self):
-        manifest = {"graph_status": "prepared"}
+        manifest = {"graph_status": "prepared", "figure_grouping_version": build_module.FIGURE_GROUPING_VERSION}
         self.assertTrue(
             build_module._can_reuse_manifest(
                 manifest, force=False, build_graph=True, build_hierarchy=False
@@ -84,6 +85,11 @@ class BuildDocbenchSkipHierarchyTests(unittest.TestCase):
         self.assertFalse(
             build_module._can_reuse_manifest(
                 manifest, force=False, build_graph=True, build_hierarchy=True
+            )
+        )
+        self.assertFalse(
+            build_module._can_reuse_manifest(
+                {"graph_status": "prepared"}, force=False, build_graph=True, build_hierarchy=False
             )
         )
 

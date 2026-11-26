@@ -8,6 +8,60 @@ REF_PATTERN = re.compile(
     r"\b(?P<kind>fig(?:ure)?|table|chart)\s*\.?\s*(?P<number>\d+[a-z]?)\b",
     re.IGNORECASE,
 )
+FIGURE_PREFIX = re.compile(r"\b(?:fig(?:ure)?s?|charts?)(?![a-z])\.?\s*", re.I)
+FIGURE_TARGET = re.compile(
+    r"(?P<number>[a-z]?\d+(?:\.\d+)*)(?:\s*\((?P<labels>[a-z](?:\s*[-–—,]\s*[a-z])*)\)|(?P<suffix>[a-z]))?(?!\w|\.\d)",
+    re.I,
+)
+FIGURE_SEPARATOR = re.compile(r"\s*(?P<range>[-–—]+)|\s*(?:,\s*(?:and\b\s*)?|\band\b\s*|&\s*)", re.I)
+
+
+def extract_figure_refs(text: str, known_numbers: set[str]) -> list[dict[str, str]]:
+    """Parse numbered Figure references in body text, including lists and ranges."""
+    refs = []
+    seen: set[tuple[str, str]] = set()
+    for prefix in FIGURE_PREFIX.finditer(text or ""):
+        target = FIGURE_TARGET.match(text, prefix.end())
+        if not target:
+            continue
+        targets = _figure_targets(target)
+        end = target.end()
+        while separator := FIGURE_SEPARATOR.match(text, end):
+            following = FIGURE_TARGET.match(text, separator.end())
+            if following is None:
+                break
+            following_targets = _figure_targets(following)
+            current = following_targets[0]
+            previous = targets[-1]
+            if separator["range"] and not previous[1] and not current[1]:
+                lower, upper = previous[0], current[0]
+                if lower.isdecimal() and upper.isdecimal():
+                    numbers = sorted((n for n in known_numbers if n.isdecimal()), key=int)
+                    targets.extend((n, "") for n in numbers if int(lower) < int(n) < int(upper))
+            targets.extend(following_targets)
+            end = following.end()
+        raw = text[prefix.start():end]
+        for number, panel in targets:
+            key = (number, panel)
+            if key not in seen:
+                seen.add(key)
+                refs.append({"number": number, "panel": panel, "raw": raw})
+    return refs
+
+
+def _figure_targets(match: re.Match[str]) -> list[tuple[str, str]]:
+    number = match["number"].lower()
+    labels = match["labels"]
+    if not labels:
+        return [(number, (match["suffix"] or "").lower())]
+    panels = []
+    for part in labels.lower().split(","):
+        ends = re.split(r"\s*[-–—]\s*", part.strip())
+        if len(ends) == 2 and ends[0] <= ends[1]:
+            panels.extend(chr(code) for code in range(ord(ends[0]), ord(ends[1]) + 1))
+        else:
+            panels.extend(ends)
+    return [(number, panel) for panel in panels]
 
 
 def extract_media_refs(text: str) -> list[dict[str, str]]:

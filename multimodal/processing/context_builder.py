@@ -4,7 +4,7 @@ import re
 from collections import defaultdict
 from typing import Any
 
-from ..retrieval.media_ref import extract_media_refs
+from ..retrieval.media_ref import extract_figure_refs, extract_media_refs
 from ..schema import MMChunk, MMMedia
 
 
@@ -95,6 +95,11 @@ class MultimodalContextBuilder:
         return {key: list(dict.fromkeys(value)) for key, value in result.items()}
 
     def _nearby_chunks(self, media: MMMedia, media_node: dict[str, Any]) -> list[MMChunk]:
+        if media.figure_reference_matches is not None:
+            return [
+                self.chunk_by_id[chunk_id] for chunk_id in media.nearby_chunk_ids
+                if chunk_id in media.figure_reference_matches and chunk_id in self.chunk_by_id
+            ]
         chunks = []
         node_id = str(media_node.get("node_id") or "")
         for text_node_id in self.neighbors.get(node_id, []):
@@ -127,6 +132,8 @@ class MultimodalContextBuilder:
         return None
 
     def _reference_context(self, media: MMMedia, chunks: list[MMChunk]) -> str:
+        if media.figure_reference_matches is not None:
+            return self._figure_reference_context(media.figure_reference_matches, chunks)
         caption_refs = extract_media_refs(media.caption or "")
         expected = {(ref["kind"], ref["number"]) for ref in caption_refs}
         sentences = []
@@ -140,4 +147,18 @@ class MultimodalContextBuilder:
                 clean = " ".join(sentence.split())
                 if clean and clean not in sentences:
                     sentences.append(clean)
+        return "\n".join(sentences)[:2000]
+
+    def _figure_reference_context(
+        self, matches: dict[str, list[dict[str, str]]], chunks: list[MMChunk]
+    ) -> str:
+        sentences: dict[str, None] = {}
+        for chunk in chunks:
+            expected = {(ref["number"], ref["panel"]) for ref in matches.get(chunk.chunk_id, [])}
+            known_numbers = {number for number, _ in expected}
+            parts = re.split(r"(?<!Fig\.)(?<!Figs\.)(?<=[.!?。！？])[^\S\n]+", chunk.text, flags=re.I)
+            for sentence in parts:
+                refs = extract_figure_refs(sentence, known_numbers)
+                if any((ref["number"], ref["panel"]) in expected for ref in refs):
+                    sentences[" ".join(sentence.split())] = None
         return "\n".join(sentences)[:2000]

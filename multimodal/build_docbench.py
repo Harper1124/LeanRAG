@@ -10,6 +10,8 @@ from pathlib import Path
 
 from .chunk_builder import build_mm_chunks_from_mineru, media_type_statistics, save_mm_artifacts
 from .docbench_loader import load_docbench
+from .figure_grouping import FIGURE_GROUPING_VERSION
+from .graph.mm_edge_builder import build_phase4_edges
 from .io_utils import save_dataclasses, write_json, write_jsonl
 from .media_captioner import caption_images, summarize_tables
 from .media_linker import link_media_to_chunks, link_media_to_entities
@@ -90,6 +92,8 @@ def build_docbench(
             if build_hierarchy:
                 graph_status = _try_build_leanrag_graph(working_dir, model_config or {})
                 hierarchy_status = "completed" if graph_status == "built" else graph_status
+        if build_graph or (working_dir / "mm_edges.jsonl").exists():
+            build_phase4_edges(working_dir)
 
         manifest = {
             "doc_id": doc_id,
@@ -102,6 +106,7 @@ def build_docbench(
             "leanrag_chunk_file": artifact_paths["leanrag_chunk_file"],
             "media_type_stats_file": artifact_paths["media_type_stats_file"],
             "media_type_counts": media_stats,
+            "figure_grouping_version": FIGURE_GROUPING_VERSION,
             "working_dir": str(working_dir),
             "entity_vector_db": str(working_dir / "milvus_demo.db"),
             "evidence_vector_db": str(working_dir / "evidence_milvus.db"),
@@ -133,7 +138,7 @@ def _can_reuse_manifest(
     build_graph: bool,
     build_hierarchy: bool = True,
 ) -> bool:
-    if force or not manifest:
+    if force or manifest.get("figure_grouping_version") != FIGURE_GROUPING_VERSION:
         return False
     if build_graph and build_hierarchy:
         # 需要立即构建层级图时，只有完整图构建成功的 manifest 才能复用。

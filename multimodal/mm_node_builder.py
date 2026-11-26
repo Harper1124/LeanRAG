@@ -188,14 +188,17 @@ def build_mm_edges(
         media_node_id = indexes["media"].get(media.media_id)
         if not media_node_id:
             continue
-        nearby = list(media.nearby_chunk_ids or [])
-        if not nearby:
-            nearby = _attached_text_chunks(media.media_id, chunks)
-        for chunk_id in nearby:
+        for chunk_id in _linked_text_chunk_ids(media, chunks):
             text_node_id = indexes["text_by_chunk_id"].get(chunk_id)
             if not text_node_id:
                 continue
             weight = float((media.attach_scores or {}).get(chunk_id, 1.0))
+            references = (media.figure_reference_matches or {}).get(chunk_id, [])
+            evidence = {"source": "mineru_layout", "reason": "media nearby_chunk_ids or attached_media_ids"}
+            metadata = {"media_id": media.media_id, "chunk_id": chunk_id}
+            if references:
+                evidence = {"source": "figure_reference", "reason": "explicit numbered Figure reference"}
+                metadata.update({"figure_id": media.figure_id, "references": references})
             _add_edge(
                 edges,
                 seen,
@@ -205,10 +208,9 @@ def build_mm_edges(
                 "text",
                 "media_near_text",
                 weight=weight,
-                evidence={"source": "mineru_layout", "reason": "media nearby_chunk_ids or attached_media_ids"},
+                evidence=evidence,
                 metadata={
-                    "media_id": media.media_id,
-                    "chunk_id": chunk_id,
+                    **metadata,
                     "media_page": media.page,
                     "text_page": node_by_id[text_node_id].page_id,
                 },
@@ -222,9 +224,14 @@ def build_mm_edges(
                 "media",
                 "media_near_text",
                 weight=weight,
-                evidence={"source": "mineru_layout", "reason": "reverse edge for bidirectional near relation"},
-                metadata={"media_id": media.media_id, "chunk_id": chunk_id},
+                evidence=evidence if references else {"source": "mineru_layout", "reason": "reverse edge for bidirectional near relation"},
+                metadata=metadata,
             )
+            if references:
+                _add_edge(
+                    edges, seen, text_node_id, media_node_id, "text", "media", "text_refers_to_media",
+                    weight=weight, evidence=evidence, metadata=metadata,
+                )
 
     return edges
 
@@ -308,17 +315,11 @@ def validate_phase1_outputs(
     if "page_contains_node" not in edge_types:
         errors.append("missing edge_type page_contains_node")
 
-    # A text-only document has no media node and therefore cannot produce a
-    # media_near_text edge.  Require the edge only when at least one indexable
-    # media item actually resolves to a text chunk that the builder can link.
-    expects_media_near_text = False
-    for media in (item for item in media_items if is_indexable_media(item)):
-        nearby = list(media.nearby_chunk_ids or [])
-        if not nearby:
-            nearby = _attached_text_chunks(media.media_id, chunks)
-        if any(chunk_id in text_nodes_by_chunk_id for chunk_id in nearby):
-            expects_media_near_text = True
-            break
+    expects_media_near_text = any(
+        chunk_id in text_nodes_by_chunk_id
+        for item in media_items if is_indexable_media(item)
+        for chunk_id in _linked_text_chunk_ids(item, chunks)
+    )
     if expects_media_near_text and "media_near_text" not in edge_types:
         errors.append("missing edge_type media_near_text")
 
@@ -391,6 +392,8 @@ def _build_text_node(chunk: MMChunk) -> MMNode:
             "source_path": chunk.source_path,
             "order": chunk.order,
             "attached_media_ids": chunk.attached_media_ids,
+            "is_figure_caption": chunk.is_figure_caption,
+            "figure_references": chunk.figure_references,
         },
         bbox=chunk.bbox,
         source="mineru",
@@ -425,6 +428,14 @@ def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode
         raw_ref=raw_ref,
         metadata={
             "media_type": media.mapped_type,
+            "figure_id": media.figure_id,
+            "panel_label": media.panel_label,
+            "original_caption": media.original_caption,
+            "figure_group_status": media.figure_group_status,
+            "candidate_figure_id": media.candidate_figure_id,
+            "candidate_caption": media.candidate_caption,
+            "candidate_alternatives": media.candidate_alternatives,
+            "figure_reference_matches": media.figure_reference_matches,
             "modality": media.modality,
             "nearby_chunk_ids": media.nearby_chunk_ids,
             "attached_entity_names": media.attached_entity_names,
@@ -516,8 +527,11 @@ def _collect_mineru_pages(working_dir: Path) -> list[int]:
     return sorted(page for page in pages if page > 0)
 
 
-def _attached_text_chunks(media_id: str, chunks: list[MMChunk]) -> list[str]:
-    return [chunk.chunk_id for chunk in chunks if media_id in (chunk.attached_media_ids or [])]
+def _linked_text_chunk_ids(media: MMMedia, chunks: list[MMChunk]) -> list[str]:
+    nearby = media.nearby_chunk_ids or []
+    if media.figure_reference_matches is not None:
+        return [chunk_id for chunk_id in nearby if chunk_id in media.figure_reference_matches]
+    return nearby or [chunk.chunk_id for chunk in chunks if media.media_id in (chunk.attached_media_ids or [])]
 
 
 def _add_edge(
