@@ -19,14 +19,21 @@ def build_phase1_mm_graph(
     edge_seed_file: str = "mm_edges_seed.jsonl",
     trace_file: str = "mm_node_build_trace.json",
     validate: bool = True,
+    entity_file: str = "entity.jsonl",
+    media_retrieval_text: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     working = Path(working_dir)
     chunks = load_dataclasses(working / "mm_chunk.json", MMChunk)
     media_items = load_dataclasses(working / "mm_media.json", MMMedia) if (working / "mm_media.json").exists() else []
-    entities = read_jsonl(working / "entity.jsonl") if (working / "entity.jsonl").exists() else []
+    entity_path = working / entity_file
+    entities = read_jsonl(entity_path) if entity_path.exists() else []
     extra_pages = _collect_mineru_pages(working)
 
     nodes, indexes = build_mm_nodes(chunks, media_items, entities, extra_pages=extra_pages)
+    for node in nodes:
+        media_id = (node.raw_ref or {}).get("media_id") if node.node_type == "media" else None
+        if media_id and media_retrieval_text and media_retrieval_text.get(media_id):
+            node.text_for_embedding = media_retrieval_text[media_id]
     edges = build_mm_edges(chunks, media_items, nodes, indexes)
 
     node_path = working / node_file
@@ -34,7 +41,9 @@ def build_phase1_mm_graph(
     write_jsonl([dataclass_to_dict(node) for node in nodes], node_path)
     write_jsonl([dataclass_to_dict(edge) for edge in edges], edge_path)
 
-    report = validate_phase1_outputs(working, node_path, edge_path) if validate else {}
+    report = validate_phase1_outputs(
+        working, node_path, edge_path, entity_file=entity_file
+    ) if validate else {}
     trace = {
         "status": "built",
         "node_file": str(node_path),
@@ -224,13 +233,17 @@ def validate_phase1_outputs(
     working_dir: str | Path,
     node_path: str | Path | None = None,
     edge_path: str | Path | None = None,
+    entity_file: str | Path = "entity.jsonl",
 ) -> dict[str, Any]:
     working = Path(working_dir)
     node_path = Path(node_path or working / "mm_nodes.jsonl")
     edge_path = Path(edge_path or working / "mm_edges_seed.jsonl")
     chunks = load_dataclasses(working / "mm_chunk.json", MMChunk)
     media_items = load_dataclasses(working / "mm_media.json", MMMedia) if (working / "mm_media.json").exists() else []
-    entities = read_jsonl(working / "entity.jsonl") if (working / "entity.jsonl").exists() else []
+    entity_path = Path(entity_file)
+    if not entity_path.is_absolute():
+        entity_path = working / entity_path
+    entities = read_jsonl(entity_path) if entity_path.exists() else []
     nodes = read_jsonl(node_path)
     edges = read_jsonl(edge_path)
 
@@ -244,6 +257,7 @@ def validate_phase1_outputs(
     edge_types = {edge.get("edge_type") for edge in edges}
 
     errors = []
+    warnings = []
     for media in (item for item in media_items if is_indexable_media(item)):
         node = media_nodes_by_id.get(media.media_id)
         if not node:
@@ -258,8 +272,29 @@ def validate_phase1_outputs(
             errors.append(f"media node missing raw_ref.media_id for {media.media_id}")
         if media.modality == "image" and "path" not in raw_ref:
             errors.append(f"image media node missing raw_ref.path for {media.media_id}")
-        if media.modality == "table" and not (raw_ref.get("table_markdown") or raw_ref.get("table_html")):
-            errors.append(f"table media node missing table markdown/html for {media.media_id}")
+        if media.modality == "table":
+            missing_table_fields = [
+                field for field in ("table_markdown", "table_html") if field not in raw_ref
+            ]
+            if missing_table_fields:
+                errors.append(
+                    f"table media node missing preserved fields {missing_table_fields} for {media.media_id}"
+                )
+            elif not (raw_ref.get("table_markdown") or raw_ref.get("table_html")):
+                fallback_evidence = (
+                    raw_ref.get("path")
+                    or node.get("ocr_text")
+                    or node.get("caption")
+                    or node.get("summary")
+                )
+                if fallback_evidence:
+                    warnings.append(
+                        f"visual-only table has no markdown/html; using image/text evidence for {media.media_id}"
+                    )
+                else:
+                    errors.append(
+                        f"table media node has neither structured nor visual/text evidence for {media.media_id}"
+                    )
     for page in pages:
         if not any(node.get("node_type") == "page" and node.get("page_id") == page for node in nodes):
             errors.append(f"missing page node for page {page}")
@@ -270,13 +305,27 @@ def validate_phase1_outputs(
         name = entity.get("entity_name")
         if name and name not in entity_nodes_by_name:
             errors.append(f"missing entity node for {name}")
-    for required_edge in ("page_contains_node", "media_near_text"):
-        if required_edge not in edge_types:
-            errors.append(f"missing edge_type {required_edge}")
+    if "page_contains_node" not in edge_types:
+        errors.append("missing edge_type page_contains_node")
+
+    # A text-only document has no media node and therefore cannot produce a
+    # media_near_text edge.  Require the edge only when at least one indexable
+    # media item actually resolves to a text chunk that the builder can link.
+    expects_media_near_text = False
+    for media in (item for item in media_items if is_indexable_media(item)):
+        nearby = list(media.nearby_chunk_ids or [])
+        if not nearby:
+            nearby = _attached_text_chunks(media.media_id, chunks)
+        if any(chunk_id in text_nodes_by_chunk_id for chunk_id in nearby):
+            expects_media_near_text = True
+            break
+    if expects_media_near_text and "media_near_text" not in edge_types:
+        errors.append("missing edge_type media_near_text")
 
     report = {
         "ok": not errors,
         "errors": errors,
+        "warnings": warnings,
         "counts": {
             "nodes": len(nodes),
             "edges": len(edges),
@@ -349,7 +398,7 @@ def _build_text_node(chunk: MMChunk) -> MMNode:
 
 
 def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode:
-    text_parts = [media.caption, media.ocr_text, media.summary, media.table_markdown, media.table_html]
+    text_parts = [media.caption, media.footnote, media.ocr_text, media.summary, media.table_markdown, media.table_html]
     text_for_embedding = "\n".join(part.strip() for part in text_parts if str(part or "").strip())
     if not text_for_embedding:
         nearby_text = " ".join(chunk_by_id[chunk_id].text for chunk_id in media.nearby_chunk_ids if chunk_id in chunk_by_id)
@@ -363,6 +412,7 @@ def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode
         "original_type": media.original_type,
         "mapped_type": media.mapped_type,
         "type": media.type,
+        "footnote": media.footnote,
         "table_html": media.table_html,
         "table_markdown": media.table_markdown,
     }

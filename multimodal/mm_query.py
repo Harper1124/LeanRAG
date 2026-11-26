@@ -82,7 +82,18 @@ def query_mm_graph(
     mm_retrieval_trace = _run_phase2_direct_recall(global_config, query, doc_id) if _use_mm_hybrid(global_config) else _empty_direct_trace()
     mm_retrieval_trace = _run_phase4_graph_expansion(global_config, mm_retrieval_trace, doc_id)
     # 优先走 LeanRAG 的图/向量检索；检索失败时再退回关键词检索。
-    text_evidence, graph_evidence, selected_entities = _retrieve_text_evidence(global_config, query, chunks)
+    text_evidence, source_media_evidence, graph_evidence, selected_entities, source_resolution = _retrieve_text_evidence(
+        global_config, query, chunks, mm_retrieval_trace
+    )
+    mm_retrieval_trace = _inject_source_candidates(
+        mm_retrieval_trace,
+        source_resolution.get("text_evidence", []),
+        source_resolution.get("media_evidence", []),
+        global_config,
+    )
+    mm_retrieval_trace["source_resolution"] = {
+        key: value for key, value in source_resolution.items() if key not in {"text_evidence", "media_evidence"}
+    }
     if not text_evidence:
         text_evidence = _keyword_retrieve(query, chunks, topk=global_config.get("text_topk", 5))
 
@@ -91,8 +102,14 @@ def query_mm_graph(
 
     # 媒体证据同时使用两条通道：文本 chunk 回填，以及页码/全局/语义视觉直检。
     visual_evidence, table_evidence = _media_for_text_evidence(text_evidence, chunks, media_items)
-    visual_evidence = _merge_evidence(direct_visual, visual_evidence, "media_id")[: _media_limit(global_config, query, "image")]
-    table_evidence = _merge_evidence(direct_tables, table_evidence, "media_id")[: _media_limit(global_config, query, "table")]
+    source_visual = [item for item in source_media_evidence if _media_type(item) in {"image", "chart", "figure"}]
+    source_tables = [item for item in source_media_evidence if _media_type(item) == "table"]
+    visual_evidence = _merge_evidence(source_visual, _merge_evidence(direct_visual, visual_evidence, "media_id"), "media_id")[
+        : _media_limit(global_config, query, "image")
+    ]
+    table_evidence = _merge_evidence(source_tables, _merge_evidence(direct_tables, table_evidence, "media_id"), "media_id")[
+        : _media_limit(global_config, query, "table")
+    ]
     context = _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence, global_config)
 
     phase3_answer, phase3_trace = _run_phase3_answer_pipeline(global_config, db, query, mm_retrieval_trace)
@@ -114,6 +131,7 @@ def query_mm_graph(
         "visual_evidence": visual_evidence,
         "table_evidence": table_evidence,
         "selected_entities": selected_entities,
+        "source_resolution": mm_retrieval_trace.get("source_resolution", {}),
     }
     trace.update(mm_retrieval_trace)
     trace.update(phase3_trace)
@@ -241,6 +259,79 @@ def _retrieved_nodes_by_type(merged_candidates: list[dict[str, Any]], global_con
         "aggregate": 12,
     }
     return {key: value[: limits[key]] for key, value in retrieved.items()}
+
+
+def _inject_source_candidates(
+    retrieval_trace: dict[str, Any],
+    text_evidence: list[dict[str, Any]],
+    media_evidence: list[dict[str, Any]],
+    global_config: dict[str, Any],
+) -> dict[str, Any]:
+    if not text_evidence and not media_evidence:
+        return retrieval_trace
+    from .retrieval.candidate_merge import merge_candidates
+
+    source_candidates = [
+        _source_candidate(item, "text") for item in text_evidence
+    ] + [
+        _source_candidate(item, "media") for item in media_evidence
+    ]
+    fusion = global_config.get("fusion") or {}
+    merged = merge_candidates(
+        list(retrieval_trace.get("merged_candidates") or []) + source_candidates,
+        multi_hit_bonus=float(fusion.get("multi_hit_bonus", 0.10)),
+    )
+    retrieval_trace["merged_candidates"] = merged
+    retrieval_trace["retrieved_nodes_by_type"] = _retrieved_nodes_by_type(merged, global_config)
+    return retrieval_trace
+
+
+def _source_candidate(item: dict[str, Any], kind: str) -> dict[str, Any]:
+    if kind == "text":
+        local_id = str(item.get("chunk_id") or item.get("hash_code") or "")
+        doc_id = str(item.get("doc_id") or "document")
+        return {
+            "node_id": f"{doc_id}::text::{_safe_node_id(local_id)}",
+            "node_type": "text",
+            "doc_id": doc_id,
+            "page_id": item.get("page_start") if item.get("page_start") is not None else item.get("page"),
+            "score": float(item.get("score") or 1.0),
+            "retriever": "entity_source_resolver",
+            "source": "entity_source_id",
+            "raw_ref": {"chunk_id": item.get("chunk_id"), "hash_code": item.get("hash_code")},
+            "metadata": {"text": item.get("text"), "source_resolution": "entity_source_id"},
+            "text_for_embedding": item.get("text") or "",
+            "debug": {"origin_entities": item.get("origin_entities") or []},
+        }
+    media_id = str(item.get("media_id") or "")
+    doc_id = str(item.get("doc_id") or "document")
+    media_type = _media_type(item)
+    raw_ref = {
+        key: item.get(key) for key in (
+            "media_id", "path", "mapped_type", "type", "caption", "ocr_text", "summary",
+            "table_html", "table_markdown", "bbox", "page",
+        )
+    }
+    return {
+        "node_id": f"{doc_id}::media::{_safe_node_id(media_id)}",
+        "node_type": "media",
+        "doc_id": doc_id,
+        "page_id": item.get("page"),
+        "score": float(item.get("score") or 1.0),
+        "retriever": "entity_source_resolver",
+        "source": "entity_source_id",
+        "raw_ref": raw_ref,
+        "metadata": {"media_type": media_type, "modality": media_type, "source_resolution": "entity_source_id"},
+        "text_for_embedding": "\n".join(str(item.get(key) or "") for key in ("caption", "summary", "ocr_text")),
+        "caption": item.get("caption") or "",
+        "ocr_text": item.get("ocr_text") or "",
+        "summary": item.get("summary") or "",
+        "debug": {"origin_entities": item.get("origin_entities") or []},
+    }
+
+
+def _safe_node_id(value: str) -> str:
+    return value.replace("/", "_").replace("\\", "_").replace(" ", "_")
 
 
 def _run_phase3_answer_pipeline(global_config: dict, db, query: str, retrieval_trace: dict) -> tuple[str | None, dict]:
@@ -408,36 +499,49 @@ def _context_aggregation_enabled(global_config: dict) -> bool:
     return False
 
 
-def _retrieve_text_evidence(global_config: dict, query: str, chunks: list[MMChunk]):
-    # 复用原 LeanRAG 的 entity vector search，再通过 source_id 找回文本 chunk。
+def _retrieve_text_evidence(
+    global_config: dict, query: str, chunks: list[MMChunk], retrieval_trace: dict[str, Any] | None = None
+):
+    # 复用实体向量召回，再按 source 类型分别回查 text chunk 与 media。
+    selected = []
     try:
-        from database_utils import get_text_units, search_vector_search
+        from database_utils import search_vector_search
     except Exception:
-        return [], [], []
+        search_vector_search = None
     embedding_func = global_config.get("embeddings_func")
-    if not embedding_func:
-        return [], [], []
-    try:
-        query_embedding = embedding_func(query)
-        entity_results = search_vector_search(
-            global_config["working_dir"],
-            query_embedding,
-            topk=global_config.get("topk", 10),
-            level_mode=global_config.get("level_mode", 2),
-        )
-        source_ids = [item[-1] for item in entity_results]
-        chunk_file = global_config.get("chunks_file") or str(Path(global_config["working_dir"]) / "leanrag_chunk.json")
-        text_units = get_text_units(global_config["working_dir"], source_ids, chunk_file, k=global_config.get("text_topk", 5))
-        chunk_by_hash = {chunk.hash_code: chunk for chunk in chunks}
-        evidence = []
-        for item in text_units:
-            # get_text_units 只返回 hash/text 等 LeanRAG 字段时，用 mm_chunk 补回页码、bbox、媒体 id。
-            chunk = chunk_by_hash.get(item.get("hash_code"))
-            evidence.append(_chunk_evidence(chunk, item.get("score", 0)) if chunk else item)
-        selected = [{"entity_name": item[0], "parent": item[1], "description": item[2], "source_id": item[3]} for item in entity_results]
-        return evidence, [], selected
-    except Exception:
-        return [], [], []
+    if embedding_func and search_vector_search:
+        try:
+            query_embedding = embedding_func(query)
+            entity_results = search_vector_search(
+                global_config["working_dir"], query_embedding,
+                topk=global_config.get("topk", 10), level_mode=global_config.get("level_mode", 2),
+            )
+            selected.extend(
+                {"entity_name": item[0], "parent": item[1], "description": item[2], "source_id": item[3]}
+                for item in entity_results
+            )
+        except Exception:
+            pass
+    for candidate in (retrieval_trace or {}).get("merged_candidates") or []:
+        if candidate.get("node_type") != "entity":
+            continue
+        raw_ref = candidate.get("raw_ref") or {}
+        if raw_ref.get("source_id"):
+            selected.append({"entity_name": raw_ref.get("entity_name"), "source_id": raw_ref.get("source_id")})
+    from .retrieval.source_resolver import resolve_source_evidence
+
+    budget = global_config.get("evidence_budget") or {}
+    include_media = bool(global_config.get("use_media_source_evidence", True))
+    media_budget = int(budget.get("max_media_nodes", global_config.get("max_images_per_query", 4)))
+    media_budget += int(budget.get("max_table_nodes", global_config.get("max_tables_per_query", 4)))
+    resolution = resolve_source_evidence(
+        global_config["working_dir"], selected,
+        chunks_file=global_config.get("chunks_file") or str(Path(global_config["working_dir"]) / "leanrag_chunk.json"),
+        max_text=int(budget.get("max_text_nodes", global_config.get("text_topk", 5))),
+        max_media=media_budget,
+        include_media=include_media,
+    )
+    return resolution["text_evidence"], resolution["media_evidence"], [], selected, resolution
 
 
 def _keyword_retrieve(query: str, chunks: list[MMChunk], topk: int = 5) -> list[dict]:
@@ -467,7 +571,7 @@ def _media_for_text_evidence(text_evidence: list[dict], chunks: list[MMChunk], m
             continue
         counter.update(chunk.attached_media_ids)
     media = [media_by_id[media_id] for media_id, _ in counter.most_common() if media_id in media_by_id]
-    visual = [_media_evidence(item, counter[item.media_id]) for item in media if item.modality == "image"]
+    visual = [_media_evidence(item, counter[item.media_id]) for item in media if item.modality in {"image", "chart"}]
     tables = [_media_evidence(item, counter[item.media_id]) for item in media if item.modality == "table"]
     return visual, tables
 
@@ -487,7 +591,7 @@ def _direct_media_retrieve(global_config: dict, query: str, chunks: list[MMChunk
         topk = max(_media_limit(global_config, query, "image"), _media_limit(global_config, query, "table"))
         media = _keyword_media_retrieve(query, media_items, topk=topk)
 
-    visual = [_media_evidence(item, _media_query_score(query, item)) for item in media if item.modality == "image"]
+    visual = [_media_evidence(item, _media_query_score(query, item)) for item in media if item.modality in {"image", "chart"}]
     tables = [_media_evidence(item, _media_query_score(query, item)) for item in media if item.modality == "table"]
     if mode == "global":
         visual.sort(key=lambda item: (item.get("page") or 0, item.get("media_id") or ""))
@@ -616,6 +720,10 @@ def _media_evidence(media: MMMedia, score: float = 0.0) -> dict:
     return item
 
 
+def _media_type(item: dict[str, Any]) -> str:
+    return str(item.get("mapped_type") or item.get("type") or item.get("modality") or "generic").lower()
+
+
 def _format_context(text_evidence, graph_evidence, visual_evidence, table_evidence, global_config: dict | None = None) -> str:
     # Keep traces complete, but send a compact answer-facing evidence view to the model.
     global_config = global_config or {}
@@ -635,9 +743,9 @@ def _slim_text_evidence(item: dict, max_chars: int) -> dict:
 
 
 def _slim_media_evidence(item: dict, max_chars: int, include_table: bool) -> dict:
-    keys = ["media_id", "doc_id", "modality", "page", "path", "caption", "ocr_text", "summary", "bbox", "score"]
+    keys = ["media_id", "doc_id", "modality", "mapped_type", "page", "path", "caption", "ocr_text", "summary", "bbox", "score", "source_resolution"]
     if include_table:
-        keys.append("table_markdown")
+        keys.extend(["table_markdown", "table_html"])
     return {key: _truncate_value(item.get(key), max_chars) for key in keys if key in item}
 
 

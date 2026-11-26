@@ -1,9 +1,11 @@
 
 glm:
   model: "bge-m3"
+  embedding_model: "bge-m3"
   api_key: "ollama"
   base_url: "http://127.0.0.1:11444/v1"
-  embedding_model: "bge-m3"
+  timeout: 1800
+  max_retries: 2
 
 deepseek:
 
@@ -13,6 +15,9 @@ deepseek:
 
   api_key: "ollama"
   base_url: "http://127.0.0.1:11444/v1"
+  timeout: 1800
+  max_retries: 2
+  max_concurrency: 1
 
 evaluation_model:
   model: "qwen2.5:7b"
@@ -39,12 +44,25 @@ multimodal:
   parser: mineru
   mineru_backend: pipeline
 
+  # Phase 3 first-round build (Step 0-2 only). These thresholds are the
+  # single authority used by the media entity/relation extractor.
+  phase3:
+    enabled: true
+    output_dir: "phase3"
+    media_entity_min_confidence: 0.75
+    media_relation_min_confidence: 0.75
+    require_grounding: true
+    schema_version: "phase3.canonical.v1"
+    generator_version: "leanrag.phase3.steps0-2.v1"
+    llm_max_attempts: 2
+
   max_token_size: 1024
   overlap_token_size: 128
 
   use_media_caption: true
   use_table_summary: true
   use_media_vector_store: true
+  use_media_source_evidence: true
 
   media_attach_topk: 3
   evidence_topk: 5
@@ -73,6 +91,9 @@ multimodal:
   embedding_dim: 1024
   graph_max_workers: 2
   graph_embedding_max_workers: 1
+
+  media_graph:
+    description_token_limit: 512
 
   retrieval:
     mode: "mm_hybrid"

@@ -42,24 +42,26 @@ def parse_table(table_html: str = "", table_markdown: str = "") -> dict[str, Any
     html = str(table_html or "").strip()
     markdown = str(table_markdown or "").strip()
     if html:
-        cells, n_rows, n_cols = _parse_html_table(html)
+        cells, n_rows, n_cols, structure = _parse_html_table(html)
         if cells:
             return {
                 "format": "html",
                 "cells": cells,
                 "n_rows": n_rows,
                 "n_cols": n_cols,
+                **structure,
                 "parse_confidence": 1.0,
                 "table_parse_available": True,
             }
     if markdown:
-        cells, n_rows, n_cols = _parse_markdown_table(markdown)
+        cells, n_rows, n_cols, structure = _parse_markdown_table(markdown)
         if cells:
             return {
                 "format": "markdown",
                 "cells": cells,
                 "n_rows": n_rows,
                 "n_cols": n_cols,
+                **structure,
                 "parse_confidence": 0.8,
                 "table_parse_available": True,
             }
@@ -109,11 +111,16 @@ class _HTMLTableParser(HTMLParser):
         self.rows: list[list[str]] = []
         self._row: list[str] | None = None
         self._cell: list[str] | None = None
+        self.has_rowspan = False
+        self.has_colspan = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "tr":
             self._row = []
         elif tag in {"td", "th"} and self._row is not None:
+            attributes = {str(key).lower(): str(value or "") for key, value in attrs}
+            self.has_rowspan = self.has_rowspan or _span_exceeds_one(attributes.get("rowspan"))
+            self.has_colspan = self.has_colspan or _span_exceeds_one(attributes.get("colspan"))
             self._cell = []
 
     def handle_data(self, data: str) -> None:
@@ -130,16 +137,22 @@ class _HTMLTableParser(HTMLParser):
             self._row = None
 
 
-def _parse_html_table(html: str) -> tuple[list[dict[str, Any]], int, int]:
+def _parse_html_table(html: str) -> tuple[list[dict[str, Any]], int, int, dict[str, Any]]:
     parser = _HTMLTableParser()
     try:
         parser.feed(html)
     except Exception:
-        return [], 0, 0
-    return _rows_to_cells(parser.rows)
+        return [], 0, 0, {}
+    cells, n_rows, n_cols = _rows_to_cells(parser.rows)
+    return cells, n_rows, n_cols, {
+        "row_widths": [len(row) for row in parser.rows],
+        "empty_cell_coords": _empty_cell_coords(parser.rows),
+        "has_rowspan": parser.has_rowspan,
+        "has_colspan": parser.has_colspan,
+    }
 
 
-def _parse_markdown_table(markdown: str) -> tuple[list[dict[str, Any]], int, int]:
+def _parse_markdown_table(markdown: str) -> tuple[list[dict[str, Any]], int, int, dict[str, Any]]:
     rows = []
     for line in markdown.splitlines():
         stripped = line.strip()
@@ -149,7 +162,29 @@ def _parse_markdown_table(markdown: str) -> tuple[list[dict[str, Any]], int, int
         if cells and all(re.fullmatch(r":?-{3,}:?", cell or "") for cell in cells):
             continue
         rows.append(cells)
-    return _rows_to_cells(rows)
+    cells, n_rows, n_cols = _rows_to_cells(rows)
+    return cells, n_rows, n_cols, {
+        "row_widths": [len(row) for row in rows],
+        "empty_cell_coords": _empty_cell_coords(rows),
+        "has_rowspan": False,
+        "has_colspan": False,
+    }
+
+
+def _span_exceeds_one(value: str | None) -> bool:
+    try:
+        return int(str(value or "1")) > 1
+    except ValueError:
+        return bool(str(value or "").strip())
+
+
+def _empty_cell_coords(rows: list[list[str]]) -> list[list[int]]:
+    return [
+        [row_idx, col_idx]
+        for row_idx, row in enumerate(rows)
+        for col_idx, text in enumerate(row)
+        if not str(text or "").strip()
+    ]
 
 
 def _rows_to_cells(rows: list[list[str]]) -> tuple[list[dict[str, Any]], int, int]:

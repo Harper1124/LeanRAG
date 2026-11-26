@@ -14,6 +14,8 @@ from multimodal.chunk_builder import (
 from multimodal.evidence_store import media_records_for_index
 from multimodal.media_linker import link_media_to_chunks
 from multimodal.mm_node_builder import build_mm_nodes
+from multimodal.mm_node_builder import build_phase1_mm_graph
+from multimodal.io_utils import write_json
 
 
 class Phase1MediaMappingTest(unittest.TestCase):
@@ -114,6 +116,28 @@ class Phase1MediaMappingTest(unittest.TestCase):
         self.assertEqual(Path(chart.path).name, "chart.jpg")
         self.assertEqual(chart.caption, "A line chart.")
         self.assertEqual(media_type_statistics(media)["noise"], 1)
+
+    def test_visual_only_table_passes_validation_with_warning(self):
+        chunks, media = self._parse(
+            [
+                {"type": "text", "page_idx": 0, "text": "The nearby paragraph describes the table."},
+                {"type": "table", "page_idx": 0, "img_path": "images/table.png", "caption": "Results table"},
+            ],
+            doc_id="visual-table",
+        )
+        chunks, media = link_media_to_chunks(chunks, media, embedding_func=None)
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        root = Path(temp_dir.name)
+        write_json([item.__dict__ for item in chunks], root / "mm_chunk.json")
+        write_json([item.__dict__ for item in media], root / "mm_media.json")
+        (root / "entity.jsonl").write_text("", encoding="utf-8")
+
+        trace = build_phase1_mm_graph(str(root), validate=True)
+
+        self.assertTrue(trace["validation"]["ok"])
+        self.assertEqual(len(trace["validation"]["warnings"]), 1)
+        self.assertIn("visual-only table", trace["validation"]["warnings"][0])
 
 
 if __name__ == "__main__":

@@ -22,6 +22,11 @@ def score_mmlongbench_doc(
     evaluation_model_config: dict[str, Any] | None = None,
 ) -> dict:
     gold = {(row["doc_id"], row["question_id"]): row for row in load_docbench(dataset_dir) if row.get("question")}
+    if not gold:
+        raise ValueError(
+            f"No gold QA samples were loaded from {dataset_dir}. "
+            "Refusing to write a misleading zero-sample score report."
+        )
     predictions = read_jsonl(predictions_file)
     answer_extractor = None
     if extract_answers:
@@ -420,7 +425,7 @@ def _expand_pages(pages: set[int], tolerance: int) -> set[int]:
 
 
 def _extract_pages(pred: dict) -> set[int]:
-    pages = set()
+    pages = {_safe_int(value) for value in pred.get("retrieved_pages", []) or []}
     evidence_groups = [pred.get("text_evidence", []), pred.get("visual_evidence", []), pred.get("table_evidence", [])]
     trace = pred.get("trace") or {}
     evidence_groups.extend([trace.get("text_evidence", []), trace.get("visual_evidence", []), trace.get("table_evidence", [])])

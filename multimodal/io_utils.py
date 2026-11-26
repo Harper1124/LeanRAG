@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import is_dataclass
 from pathlib import Path
 from typing import Iterable, TypeVar
@@ -24,11 +26,10 @@ def read_json(path: str | Path):
 
 
 def write_json(data, path: str | Path) -> None:
-    # 写 JSON 前先递归转换 dataclass/list/dict，并自动创建父目录。
+    # 写 JSON 前先递归转换 dataclass/list/dict，并用同目录临时文件原子替换。
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        json.dump(_jsonable(data), f, ensure_ascii=False, indent=2)
+    _atomic_write(path, json.dumps(_jsonable(data), ensure_ascii=False, indent=2) + "\n")
 
 
 def read_jsonl(path: str | Path) -> list[dict]:
@@ -46,9 +47,22 @@ def write_jsonl(rows: Iterable[dict], path: str | Path) -> None:
     # 逐行写 JSON，适合预测结果和 entity/relation 文件。
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as f:
-        for row in rows:
-            f.write(json.dumps(_jsonable(row), ensure_ascii=False) + "\n")
+    content = "".join(json.dumps(_jsonable(row), ensure_ascii=False) + "\n" for row in rows)
+    _atomic_write(path, content)
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8", newline="\n") as stream:
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        temporary.unlink(missing_ok=True)
+        raise
 
 
 def load_dataclasses(path: str | Path, cls: type[T]) -> list[T]:

@@ -61,6 +61,13 @@ def _count_scope(text: str, global_config: dict[str, Any]) -> dict[str, Any] | N
     if "appendix" in text:
         start = _appendix_start_page(global_config.get("working_dir"))
         if start:
+            if re.search(r"\b(excluding|exclude|except|without|not\s+including)\b", text):
+                return {
+                    "type": "page_range",
+                    "start": 1,
+                    "end": max(0, start - 1),
+                    "label": "main_document_excluding_appendix",
+                }
             return {"type": "page_range", "start": start, "end": 10**9, "label": "appendix"}
         return None
     if re.search(r"\b(in|within|throughout)\s+(this\s+)?(paper|document)\b", text):

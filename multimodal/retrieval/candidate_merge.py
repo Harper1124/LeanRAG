@@ -74,11 +74,15 @@ def merge_candidates(candidates: list[dict[str, Any]], multi_hit_bonus: float = 
             for source in str(item.get("source", "")).split("+")
             if source
         }
+        if "entity_source_resolver" in item["retrievers"]:
+            sources.add("entity_source_id")
         if "graph_expansion" in item["retrievers"]:
             sources.add("graph_expansion")
-        if any(name != "graph_expansion" for name in item["retrievers"]):
+        if any(name not in {"graph_expansion", "entity_source_resolver"} for name in item["retrievers"]):
             sources.add("direct_recall")
-        item["source"] = "+".join(source for source in ("direct_recall", "graph_expansion") if source in sources) or item.get("source", "")
+        item["source"] = "+".join(
+            source for source in ("direct_recall", "entity_source_id", "graph_expansion") if source in sources
+        ) or item.get("source", "")
     return sorted(merged.values(), key=lambda item: item["score"], reverse=True)
 
 

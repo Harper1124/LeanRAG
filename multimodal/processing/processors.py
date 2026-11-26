@@ -9,10 +9,31 @@ from typing import Any
 from ..generation.table_utils import parse_table
 from ..schema import MMMedia
 from .chart_ocr import extract_chart_ocr, parse_chart_layout, text_only_ocr_result
-from .prompts import CHART_PROMPT, IMAGE_PROMPT, TABLE_PROMPT
+from .prompts import (
+    CHART_ANALYSIS_PROMPT,
+    CHART_SUMMARY_PROMPT,
+    IMAGE_ANALYSIS_PROMPT,
+    IMAGE_SUMMARY_PROMPT,
+    TABLE_COMPARISON_PROMPT,
+    TABLE_SUMMARY_PROMPT,
+)
 
 
 NUMBER_RE = re.compile(r"(?<![A-Za-z])[-+]?\d+(?:[.,]\d+)*(?:[eE][-+]?\d+)?%?")
+TABLE_MAX_CANDIDATE_ROWS = 12
+TABLE_MAX_COMPARISONS = 6
+TABLE_MAX_SUMMARY_FACTS = 8
+CHART_MAX_OCR_LINES = 40
+CHART_MAX_TRENDS = 6
+TABLE_COMPARABLE_NUMBER_RE = re.compile(
+    r"^\s*([$€£¥])?\s*([-+]?\d+(?:,\d{3})*(?:\.\d+)?)\s*(%|[kKmMbBtT])?\s*$"
+)
+TABLE_COMPARISON_OPERATORS = {">", "<", ">=", "<=", "==", "!="}
+TABLE_COMPARATIVE_LANGUAGE_RE = re.compile(
+    r"(?:[<>]=?|\b(?:higher|highest|lower|lowest|more|less|greater|smaller|exceed|exceeds|"
+    r"outperform|outperforms|better|worse|equal|equals|same|rank|ranks|top|bottom)\b)",
+    re.I,
+)
 
 
 class ImageProcessor:
@@ -23,11 +44,24 @@ class ImageProcessor:
 
     def process(self, media: MMMedia, media_context: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         structured = _image_file_metadata(media.path)
-        response = _call_json_model(
+        compact_evidence = _compact_image_evidence(media, media_context)
+        response, analysis_diagnostic = _call_json_model_diagnostic(
             self.vlm_func,
-            IMAGE_PROMPT.replace("{context}", _json_for_prompt(media_context)),
+            IMAGE_ANALYSIS_PROMPT.replace("{context}", _json_for_prompt(compact_evidence, max_chars=12000)),
             image_path=media.path,
         )
+        analysis_diagnostics = [analysis_diagnostic]
+        analysis_attempts = 1
+        analysis_schema_valid = _image_analysis_schema_valid(response)
+        if self.vlm_func and not analysis_schema_valid:
+            response, analysis_diagnostic = _call_json_model_diagnostic(
+                self.vlm_func,
+                IMAGE_ANALYSIS_PROMPT.replace("{context}", _json_for_prompt(compact_evidence, max_chars=12000)),
+                image_path=media.path,
+            )
+            analysis_diagnostics.append(analysis_diagnostic)
+            analysis_attempts = 2
+            analysis_schema_valid = _image_analysis_schema_valid(response)
         semantic = {
             "visual_facts": _string_list(response.get("visual_facts")),
             "visible_text": _string_list(response.get("visible_text")),
@@ -35,7 +69,8 @@ class ImageProcessor:
             "spatial_relations": _json_list(response.get("spatial_relations")),
             "image_type": _choice(response.get("image_type"), {"photo", "diagram", "screenshot", "map", "other"}, "other"),
             "caption_consistency": str(response.get("caption_consistency") or ""),
-            "grounded_summary": str(response.get("grounded_summary") or ""),
+            "grounded_summary": "",
+            "summary_grounding": [],
             "uncertain_items": _string_list(response.get("uncertain_items")),
             "confidence": _confidence(response.get("confidence")),
         }
@@ -47,6 +82,11 @@ class ImageProcessor:
             "caption": _source_quotes(
                 requested_sources.get("caption"),
                 str(media_context.get("direct_evidence", {}).get("caption") or ""),
+                fallback_to_source=True,
+            ),
+            "footnote": _source_quotes(
+                requested_sources.get("footnote"),
+                str(media_context.get("direct_evidence", {}).get("footnote") or ""),
                 fallback_to_source=True,
             ),
             "nearby_text": _source_quotes(
@@ -65,15 +105,177 @@ class ImageProcessor:
         semantic["semantic_confidence"] = _confidence(
             response.get("semantic_confidence", semantic["confidence"])
         )
-        if not response:
+        if not analysis_schema_valid:
             semantic["uncertain_items"].append("VLM analysis unavailable or returned invalid JSON")
+
+        summary_evidence = _image_summary_evidence(semantic)
+        if self.vlm_func and summary_evidence.get("validated_claims"):
+            summary_response, summary_diagnostic = _call_json_model_diagnostic(
+                self.vlm_func,
+                IMAGE_SUMMARY_PROMPT.replace("{evidence}", _json_for_prompt(summary_evidence)),
+            )
+            summary_diagnostics = [summary_diagnostic]
+            summary_attempts = 1
+            summary_schema_valid = _image_summary_schema_valid(summary_response)
+            if not summary_schema_valid:
+                summary_response, summary_diagnostic = _call_json_model_diagnostic(
+                    self.vlm_func,
+                    IMAGE_SUMMARY_PROMPT.replace("{evidence}", _json_for_prompt(summary_evidence)),
+                )
+                summary_diagnostics.append(summary_diagnostic)
+                summary_attempts = 2
+                summary_schema_valid = _image_summary_schema_valid(summary_response)
+        else:
+            summary_response = {}
+            summary_diagnostics = [{
+                "status": "skipped_no_grounded_claims",
+                "error": "",
+                "response_excerpt": "",
+            }]
+            summary_attempts = 0
+            summary_schema_valid = False
+        grounded_summary, summary_grounding = _validated_image_summary(summary_response, summary_evidence)
+        summary_mode = "model_selected_claims"
+        if not grounded_summary:
+            grounded_summary, summary_grounding = _fallback_image_summary(summary_evidence)
+            summary_mode = "deterministic_fallback" if grounded_summary else "unavailable"
+        semantic["grounded_summary"] = grounded_summary
+        semantic["summary_grounding"] = summary_grounding
         confidence = {
             "overall": semantic["confidence"],
             "visual_model_available": bool(self.vlm_func),
             "model_response_valid": bool(response),
+            "analysis_schema_valid": analysis_schema_valid,
+            "analysis_attempts": analysis_attempts,
+            "analysis_response_status": analysis_diagnostics[-1]["status"],
+            "analysis_response_error": analysis_diagnostics[-1]["error"],
+            "analysis_response_excerpt": analysis_diagnostics[-1]["response_excerpt"],
+            "analysis_attempt_diagnostics": analysis_diagnostics,
+            "summary_response_valid": bool(summary_response) and summary_schema_valid,
+            "summary_attempts": summary_attempts,
+            "summary_response_status": summary_diagnostics[-1]["status"],
+            "summary_response_error": summary_diagnostics[-1]["error"],
+            "summary_response_excerpt": summary_diagnostics[-1]["response_excerpt"],
+            "summary_attempt_diagnostics": summary_diagnostics,
+            "summary_mode": summary_mode,
+            "summary_grounding_complete": bool(grounded_summary and summary_grounding),
+            "image_path_available": bool(structured.get("path_available")),
             "evidence_separation": "visual fields use image pixels; caption/OCR/nearby text remain in media_context",
         }
         return structured, semantic, confidence
+
+
+def _compact_image_evidence(media: MMMedia, media_context: dict[str, Any]) -> dict[str, Any]:
+    context = media_context if isinstance(media_context, dict) else {}
+    direct = context.get("direct_evidence") if isinstance(context.get("direct_evidence"), dict) else {}
+    layout = context.get("layout_context") if isinstance(context.get("layout_context"), dict) else {}
+    return {
+        "image_path": str(media.path or ""),
+        "caption": str(direct.get("caption") or media.caption or "")[:800],
+        "footnote": str(direct.get("footnote") or media.footnote or "")[:800],
+        "ocr": str(direct.get("ocr") or media.ocr_text or "")[:1600],
+        "section_path": str(layout.get("section") or "")[:300],
+        "nearby_text": str(layout.get("nearby_text") or "")[:2400],
+        "reference_context": str(context.get("reference_context") or "")[:1600],
+        "uncertainty": str(context.get("uncertainty") or "")[:500],
+    }
+
+
+def _image_analysis_schema_valid(response: Any) -> bool:
+    if not isinstance(response, dict):
+        return False
+    required = {"visual_facts", "visible_text", "image_type", "uncertain_items"}
+    return required.issubset(response)
+
+
+def _image_summary_schema_valid(response: Any) -> bool:
+    return isinstance(response, dict) and bool(_json_list(response.get("summary_sentences")))
+
+
+def _image_summary_evidence(semantic: dict[str, Any]) -> dict[str, Any]:
+    claims: list[dict[str, Any]] = []
+    for index, statement in enumerate(_string_list(semantic.get("visual_facts"))[:8]):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "visual_fact",
+            "statement": statement,
+            "source_path": f"/semantic_content/visual_facts/{index}",
+        })
+    for index, statement in enumerate(_string_list(semantic.get("visible_text"))[:6]):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "visible_text",
+            "statement": statement,
+            "source_path": f"/semantic_content/visible_text/{index}",
+        })
+    return {
+        "image_type": str(semantic.get("image_type") or "other"),
+        "semantic_role": list(semantic.get("semantic_role") or []),
+        "validated_claims": claims,
+    }
+
+
+def _validated_image_summary(
+    response: dict[str, Any],
+    summary_evidence: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    claims_by_id = {
+        str(item.get("claim_id")): item
+        for item in summary_evidence.get("validated_claims", [])
+        if isinstance(item, dict) and item.get("claim_id")
+    }
+    grounding = []
+    seen_ids = set()
+    for item in _json_list(response.get("summary_sentences"))[:3]:
+        if not isinstance(item, dict):
+            continue
+        role = str(item.get("role") or "").strip().lower()
+        text = str(item.get("text") or "").strip()
+        claim_ids = [str(value) for value in _json_list(item.get("supporting_claim_ids"))]
+        if role not in {"overview", "detail", "visible_text"} or len(claim_ids) != 1:
+            continue
+        claim_id = claim_ids[0]
+        claim = claims_by_id.get(claim_id)
+        if not claim or claim_id in seen_ids or text != str(claim.get("statement") or "").strip():
+            continue
+        if role == "visible_text" and claim.get("kind") != "visible_text":
+            continue
+        if role != "visible_text" and claim.get("kind") != "visual_fact":
+            continue
+        seen_ids.add(claim_id)
+        grounding.append(_image_summary_grounding_item(text, role, claim))
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _fallback_image_summary(summary_evidence: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+    claims = [
+        item for item in summary_evidence.get("validated_claims", [])
+        if isinstance(item, dict) and item.get("kind") == "visual_fact"
+    ][:3]
+    if not claims:
+        claims = [
+            item for item in summary_evidence.get("validated_claims", [])
+            if isinstance(item, dict) and item.get("kind") == "visible_text"
+        ][:2]
+    grounding = []
+    for index, claim in enumerate(claims):
+        statement = str(claim.get("statement") or "").strip()
+        if not statement:
+            continue
+        role = "visible_text" if claim.get("kind") == "visible_text" else ("overview" if index == 0 else "detail")
+        grounding.append(_image_summary_grounding_item(statement, role, claim))
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _image_summary_grounding_item(text: str, role: str, claim: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "claim": text,
+        "role": role,
+        "supporting_claim_ids": [str(claim.get("claim_id"))],
+        "source_kind": str(claim.get("kind") or "visual_fact"),
+        "source_paths": [str(claim.get("source_path") or "")],
+        "source_values": [str(claim.get("statement") or "")],
+    }
 
 
 class ChartProcessor:
@@ -97,14 +299,22 @@ class ChartProcessor:
             raise RuntimeError(
                 f"Chart OCR unavailable for {media.media_id}: {structured.get('ocr_error') or 'unknown error'}"
             )
-        response = _call_json_model(
+        compact_evidence = _compact_chart_evidence(structured, media_context, media.caption)
+        response, analysis_diagnostic = _call_json_model_diagnostic(
             self.vlm_func,
-            CHART_PROMPT.replace("{structured}", _json_for_prompt(structured)).replace(
-                "{context}", _json_for_prompt(media_context)
-            ),
+            CHART_ANALYSIS_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence, max_chars=18000)),
             image_path=media.path,
         )
+        analysis_attempts = 1
+        if not response and self.vlm_func:
+            response, analysis_diagnostic = _call_json_model_diagnostic(
+                self.vlm_func,
+                CHART_ANALYSIS_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence, max_chars=18000)),
+                image_path=media.path,
+            )
+            analysis_attempts = 2
         allowed_numbers = set(NUMBER_RE.findall(structured.get("ocr_text") or ""))
+        claim_allowed_numbers = _chart_claim_allowed_numbers(structured)
         response_grounding = response.get("chart_grounding") if isinstance(response.get("chart_grounding"), dict) else {}
         chart_grounding = {
             "visual_evidence": _safe_numeric_items(response_grounding.get("visual_evidence"), allowed_numbers),
@@ -115,6 +325,13 @@ class ChartProcessor:
                 response_grounding.get("context_evidence"), _flatten_text(media_context)
             ),
         }
+        qualitative_trends = _validated_chart_trends(
+            response.get("qualitative_trends"),
+            allowed_numbers,
+            claim_allowed_numbers,
+            structured.get("ocr_text") or "",
+            chart_grounding,
+        )
         semantic = {
             "chart_type": _safe_numeric_text(response.get("chart_type"), allowed_numbers) or "unknown",
             "title": _safe_numeric_text(response.get("title"), allowed_numbers) or structured["title"] or "unknown",
@@ -124,24 +341,83 @@ class ChartProcessor:
             "y_axis": _validated_axis(response.get("y_axis"), allowed_numbers),
             "legends": _safe_numeric_items(response.get("legends"), allowed_numbers) or ["unknown"],
             "series": _safe_numeric_items(response.get("series"), allowed_numbers) or ["unknown"],
-            # Readable values are program-derived only; model values are intentionally ignored.
-            "readable_data_points": structured["readable_data_points"],
-            "qualitative_trends": _validated_trends(response.get("qualitative_trends"), allowed_numbers),
-            "extrema_and_intersections": _safe_numeric_items(response.get("extrema_and_intersections"), allowed_numbers),
+            "qualitative_trends": qualitative_trends,
+            "extrema_and_intersections": _safe_numeric_items(
+                response.get("extrema_and_intersections"), allowed_numbers
+            )[:4],
             "caption_consistency": _safe_numeric_text(
                 response.get("caption_consistency"),
                 allowed_numbers.union(NUMBER_RE.findall(media.caption or "")),
             ),
             "unreadable_regions": _safe_numeric_items(response.get("unreadable_regions"), allowed_numbers),
-            "grounded_summary": _safe_numeric_text(response.get("grounded_summary"), allowed_numbers),
+            "grounded_summary": "",
             "confidence": _confidence(response.get("confidence")),
             "chart_grounding": chart_grounding,
             "semantic_confidence": _confidence(
                 response.get("semantic_confidence", response.get("confidence"))
             ),
         }
+        semantic["main_message"] = _validated_chart_main_message(
+            response.get("main_message"), allowed_numbers, claim_allowed_numbers, structured.get("ocr_text") or ""
+        )
+        semantic["document_relation"] = _validated_chart_document_relation(
+            response.get("document_relation"), media_context
+        )
+        semantic["method_assessment"] = _validated_chart_method_assessment(
+            response.get("method_assessment"),
+            semantic,
+            media_context,
+            allowed_numbers,
+            claim_allowed_numbers,
+            structured.get("ocr_text") or "",
+        )
+        semantic["qualitative_trends"], semantic["semantic_conflicts"] = _remove_conflicting_chart_trends(
+            semantic["qualitative_trends"]
+        )
+        if not semantic["main_message"] and not semantic["qualitative_trends"]:
+            semantic["document_relation"] = {}
+        _merge_chart_claim_grounding(semantic)
         if not response:
             semantic["unreadable_regions"].append("VLM interpretation unavailable or returned invalid JSON")
+        summary_evidence = _chart_summary_evidence(semantic, structured)
+        if self.vlm_func and summary_evidence.get("validated_claims"):
+            summary_response, summary_diagnostic = _call_json_model_diagnostic(
+                self.vlm_func,
+                CHART_SUMMARY_PROMPT.replace("{evidence}", _json_for_prompt(summary_evidence)),
+            )
+        else:
+            summary_response = {}
+            summary_diagnostic = {
+                "status": "skipped_no_grounded_claims",
+                "error": "",
+                "response_excerpt": "",
+            }
+        grounded_summary, summary_grounding = _validated_chart_summary(
+            summary_response,
+            summary_evidence,
+            claim_allowed_numbers,
+        )
+        summary_mode = "validated_model" if grounded_summary else ""
+        if not grounded_summary:
+            grounded_summary, summary_grounding = _fallback_chart_summary(summary_evidence)
+            if grounded_summary:
+                summary_mode = "validated_fallback"
+        if not grounded_summary:
+            grounded_summary = _unvalidated_chart_summary(
+                response,
+                semantic,
+                structured,
+                media.caption,
+            )
+            summary_grounding = []
+            summary_mode = "unvalidated_fallback"
+        semantic["grounded_summary"] = grounded_summary
+        semantic["summary_grounding"] = summary_grounding
+        summary_validated = summary_mode in {"validated_model", "validated_fallback"}
+        grounding_complete = bool(
+            semantic["chart_grounding"]["visual_evidence"]
+            or semantic["chart_grounding"]["ocr_evidence"]
+        )
         confidence = {
             "overall": semantic["confidence"],
             "programmatic_parse": structured["parse_confidence"],
@@ -150,6 +426,26 @@ class ChartProcessor:
             "ocr_error": structured.get("ocr_error"),
             "visual_model_available": bool(self.vlm_func),
             "model_response_valid": bool(response),
+            "analysis_attempts": analysis_attempts,
+            "analysis_response_status": analysis_diagnostic["status"],
+            "analysis_response_error": analysis_diagnostic["error"],
+            "analysis_response_excerpt": analysis_diagnostic["response_excerpt"],
+            "summary_response_valid": bool(summary_response),
+            "summary_response_status": summary_diagnostic["status"],
+            "summary_response_error": summary_diagnostic["error"],
+            "summary_response_excerpt": summary_diagnostic["response_excerpt"],
+            "summary_mode": summary_mode,
+            "summary_validated": summary_validated,
+            "summary_numeric_provenance_complete": _chart_summary_numeric_provenance_complete(
+                grounded_summary, summary_grounding
+            ),
+            "grounding_complete": grounding_complete,
+            "relation_consistent": not bool(semantic["semantic_conflicts"]),
+            "context_relation_grounded": bool(semantic["document_relation"].get("context_quotes")),
+            "method_assessment_grounded": bool(
+                semantic["method_assessment"].get("preferred_method")
+                and semantic["method_assessment"].get("preferred_method") != "unknown"
+            ),
         }
         return structured, semantic, confidence
 
@@ -162,18 +458,47 @@ class TableProcessor:
 
     def process(self, media: MMMedia, media_context: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
         structured = _parse_table_evidence(media)
-        response = _call_json_model(
+        compact_evidence = _compact_table_evidence(structured, media.caption)
+        comparison_response = _call_json_model(
             self.llm_func,
-            TABLE_PROMPT.replace("{structured}", _json_for_prompt(structured)).replace(
-                "{context}", _json_for_prompt(media_context)
-            ),
+            TABLE_COMPARISON_PROMPT.replace("{evidence}", _json_for_prompt(compact_evidence)),
         )
-        semantic = _validated_table_semantics(response, structured, media.caption)
+        semantic = _validated_table_semantics(comparison_response, structured, media.caption)
+        summary_evidence = _table_summary_evidence(compact_evidence, semantic, structured)
+        structurally_ambiguous = bool(structured.get("structural_ambiguity"))
+        if structurally_ambiguous:
+            summary_response = {}
+            grounded_summary, summary_grounding = _ambiguous_table_description(
+                compact_evidence, structured
+            )
+        else:
+            summary_response = _call_json_model(
+                self.llm_func,
+                TABLE_SUMMARY_PROMPT.replace("{evidence}", _json_for_prompt(summary_evidence)),
+            ) if self.llm_func and summary_evidence.get("grounded_facts") else {}
+            grounded_summary, summary_grounding = _validated_table_summary(
+                summary_response,
+                structured,
+                summary_evidence,
+            )
+            if not grounded_summary:
+                grounded_summary, summary_grounding = _fallback_table_summary(summary_evidence, structured)
+        semantic["grounded_summary"] = grounded_summary
+        semantic["summary_grounding"] = summary_grounding
+        semantic["cell_grounding"] = _dedupe_grounding(
+            list(semantic.get("cell_grounding") or [])
+            + [item for item in summary_grounding if item.get("source_cells")]
+        )
         confidence = {
             "overall": semantic["confidence"],
             "source_parse": structured["parse_confidence"],
             "language_model_available": bool(self.llm_func),
-            "model_response_valid": bool(response),
+            "model_response_valid": bool(comparison_response),
+            "comparison_response_valid": bool(comparison_response),
+            "summary_response_valid": bool(summary_response),
+            "structurally_ambiguous": structurally_ambiguous,
+            "comparisons_allowed": not structurally_ambiguous,
+            "summary_mode": "descriptive_only" if structurally_ambiguous else "validated_facts",
             "numeric_provenance_complete": _table_numeric_provenance_complete(semantic, structured),
         }
         return structured, semantic, confidence
@@ -207,10 +532,588 @@ def _parse_chart_evidence(
     return {
         **_image_file_metadata(media.path),
         **parsed,
-        "axis_candidates": {"x": parsed.get("x_axis", {}), "y": parsed.get("y_axis", {})},
-        "legend_candidates": parsed.get("legends", []),
-        "ocr_source": parsed.get("ocr_backend", ""),
     }
+
+
+def _compact_chart_evidence(
+    structured: dict[str, Any],
+    media_context: dict[str, Any],
+    caption: str,
+) -> dict[str, Any]:
+    """Keep chart semantics and bounded OCR geometry while dropping duplicated raw OCR payloads."""
+    context = media_context if isinstance(media_context, dict) else {}
+    layout = context.get("layout_context") if isinstance(context.get("layout_context"), dict) else {}
+    return {
+        "image": {
+            "width": structured.get("width"),
+            "height": structured.get("height"),
+            "format": structured.get("format"),
+        },
+        "caption": str(caption or "")[:500],
+        "document_context": {
+            "section": str(layout.get("section") or "")[:200],
+            "reference": str(context.get("reference_context") or "")[:1600],
+            "nearby_text": str(layout.get("nearby_text") or "")[:2400],
+        },
+        "program_ocr": {
+            "status": structured.get("ocr_status"),
+            "title": structured.get("title") or "",
+            "x_axis": _compact_chart_axis(structured.get("x_axis")),
+            "y_axis": _compact_chart_axis(structured.get("y_axis")),
+            "legends": [
+                _compact_chart_item(item) for item in (structured.get("legends") or [])[:12]
+            ],
+            "readable_data_points": [
+                _compact_chart_item(item) for item in (structured.get("readable_data_points") or [])[:20]
+            ],
+            "ocr_lines": [
+                _compact_chart_item(item) for item in (structured.get("ocr_lines") or [])[:CHART_MAX_OCR_LINES]
+            ],
+        },
+    }
+
+
+def _compact_chart_axis(value: Any) -> dict[str, Any]:
+    axis = value if isinstance(value, dict) else {}
+    return {
+        "label": str(axis.get("label") or ""),
+        "tick_labels": [
+            _compact_chart_item(item) for item in (axis.get("tick_labels") or [])[:16]
+        ],
+    }
+
+
+def _compact_chart_item(value: Any) -> dict[str, Any] | str:
+    if not isinstance(value, dict):
+        return str(value or "")
+    return {
+        key: value[key]
+        for key in ("text", "bbox", "confidence", "role", "region")
+        if key in value and value[key] not in (None, "", [])
+    }
+
+
+def _chart_claim_allowed_numbers(structured: dict[str, Any]) -> set[str]:
+    values = [str(structured.get("title") or "")]
+    values.extend(_chart_item_text(item) for item in structured.get("legends", []))
+    values.extend(_chart_item_text(item) for item in structured.get("readable_data_points", []))
+    for axis_name in ("x_axis", "y_axis"):
+        axis = structured.get(axis_name) if isinstance(structured.get(axis_name), dict) else {}
+        values.append(str(axis.get("label") or ""))
+    return {token for value in values for token in NUMBER_RE.findall(value)}
+
+
+def _validated_chart_main_message(
+    value: Any,
+    allowed_numbers: set[str],
+    claim_allowed_numbers: set[str],
+    ocr_text: str,
+) -> dict[str, Any]:
+    item = value if isinstance(value, dict) else {}
+    statement = str(item.get("statement") or "").strip()
+    visual = _safe_numeric_items(item.get("visual_evidence"), allowed_numbers)
+    ocr = _source_quotes(item.get("ocr_evidence"), ocr_text)
+    required = set(NUMBER_RE.findall(statement))
+    if not statement or not (visual or ocr) or not required.issubset(claim_allowed_numbers):
+        return {}
+    return {"statement": statement, "visual_evidence": visual, "ocr_evidence": ocr}
+
+
+def _validated_chart_document_relation(value: Any, media_context: dict[str, Any]) -> dict[str, Any]:
+    item = value if isinstance(value, dict) else {}
+    relation = str(item.get("relation") or "unclear").strip().lower()
+    statement = str(item.get("statement") or "").strip()
+    quotes = _source_quotes(item.get("context_quotes"), _flatten_text(media_context))
+    if relation not in {"supports", "illustrates", "qualifies", "contradicts"} or not statement or not quotes:
+        return {}
+    allowed_numbers = set(NUMBER_RE.findall("\n".join(quotes)))
+    if not set(NUMBER_RE.findall(statement)).issubset(allowed_numbers):
+        return {}
+    return {"relation": relation, "statement": statement, "context_quotes": quotes}
+
+
+def _validated_chart_method_assessment(
+    value: Any,
+    semantic: dict[str, Any],
+    media_context: dict[str, Any],
+    allowed_numbers: set[str],
+    claim_allowed_numbers: set[str],
+    ocr_text: str,
+) -> dict[str, Any]:
+    item = value if isinstance(value, dict) else {}
+    preferred = str(item.get("preferred_method") or "unknown").strip()
+    criterion = str(item.get("criterion") or "").strip()
+    direction = str(item.get("direction") or "unknown").strip().lower()
+    statement = str(item.get("statement") or "").strip()
+    if not preferred or preferred.casefold() == "unknown" or direction not in {
+        "higher_is_better", "lower_is_better", "explicit_text_preference"
+    }:
+        return {}
+    known_series = {
+        _normalize_chart_series(_chart_item_text(candidate))
+        for key in ("series", "legends")
+        for candidate in semantic.get(key, [])
+        if _chart_item_text(candidate)
+    }
+    if _normalize_chart_series(preferred) not in known_series:
+        return {}
+    quotes = _source_quotes(item.get("context_quotes"), _flatten_text(media_context))
+    if not quotes or not _context_supports_method_preference(direction, preferred, quotes):
+        return {}
+    visual = _safe_numeric_items(item.get("visual_evidence"), allowed_numbers)
+    ocr = _source_quotes(item.get("ocr_evidence"), ocr_text)
+    if not statement or not criterion or not (visual or ocr):
+        return {}
+    supported_numbers = claim_allowed_numbers.union(NUMBER_RE.findall("\n".join(quotes)))
+    if not set(NUMBER_RE.findall(statement)).issubset(supported_numbers):
+        return {}
+    if _normalize_chart_series(preferred) not in _normalize_chart_series(statement):
+        return {}
+    return {
+        "preferred_method": preferred,
+        "criterion": criterion,
+        "direction": direction,
+        "statement": statement,
+        "visual_evidence": visual,
+        "ocr_evidence": ocr,
+        "context_quotes": quotes,
+    }
+
+
+def _context_supports_method_preference(direction: str, preferred: str, quotes: list[str]) -> bool:
+    text = " ".join(quotes).casefold()
+    comparative = re.search(
+        r"\b(?:better|best|outperform|outperforms|higher|lower|reduce|reduces|reduced|"
+        r"increase|increases|decrease|decreases|minimi[sz]|maximi[sz]|improv|stable|stability)\w*\b",
+        text,
+    )
+    if not comparative:
+        return False
+    if direction == "explicit_text_preference":
+        return _normalize_chart_series(preferred) in _normalize_chart_series(text)
+    return True
+
+
+def _normalize_chart_series(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
+
+
+def _validated_chart_trends(
+    value: Any,
+    allowed_numbers: set[str],
+    claim_allowed_numbers: set[str],
+    ocr_text: str,
+    default_grounding: dict[str, Any],
+) -> list[dict[str, Any]]:
+    result = []
+    for item in _json_list(value)[:CHART_MAX_TRENDS]:
+        if not isinstance(item, dict):
+            continue
+        series = str(item.get("series") or "").strip()
+        trend = str(item.get("trend") or "").strip()
+        basis = str(item.get("evidence") or "").strip()
+        if not series or not trend or not basis or not _numbers_supported(item, allowed_numbers):
+            continue
+        claim_numbers = set(NUMBER_RE.findall(" ".join((series, trend, basis))))
+        if not claim_numbers.issubset(claim_allowed_numbers):
+            continue
+        visual_evidence = _safe_numeric_items(item.get("visual_evidence"), allowed_numbers)
+        ocr_evidence = _source_quotes(item.get("ocr_evidence"), ocr_text)
+        if not visual_evidence and not ocr_evidence:
+            visual_evidence = list(default_grounding.get("visual_evidence") or [])
+            ocr_evidence = list(default_grounding.get("ocr_evidence") or [])
+        if not visual_evidence and not ocr_evidence:
+            continue
+        result.append({
+            "series": series,
+            "trend": trend,
+            "evidence": basis,
+            "grounding": {
+                "visual_evidence": visual_evidence,
+                "ocr_evidence": ocr_evidence,
+            },
+        })
+    return result
+
+
+def _remove_conflicting_chart_trends(
+    trends: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    conflicts: set[int] = set()
+    messages = []
+    directions: dict[str, dict[str, list[int]]] = {}
+    for index, trend in enumerate(trends):
+        series = _normalize_chart_series(trend.get("series"))
+        text = str(trend.get("trend") or "").casefold()
+        direction = "increase" if re.search(r"\b(?:increase|increasing|rise|rising|upward)\b", text) else (
+            "decrease" if re.search(r"\b(?:decrease|decreasing|fall|falling|downward)\b", text) else ""
+        )
+        if direction:
+            directions.setdefault(series, {}).setdefault(direction, []).append(index)
+    for series, values in directions.items():
+        if values.get("increase") and values.get("decrease"):
+            conflicts.update(values["increase"] + values["decrease"])
+            messages.append(f"conflicting_trend_direction:{series}")
+
+    series_names = [_normalize_chart_series(trend.get("series")) for trend in trends]
+    relations: dict[tuple[str, str, str], list[int]] = {}
+    for index, trend in enumerate(trends):
+        subject = series_names[index]
+        evidence = _normalize_chart_series(json.dumps(trend.get("grounding") or {}, ensure_ascii=False))
+        for other in set(series_names):
+            if not other or other == subject or other not in evidence:
+                continue
+            if "below" in evidence:
+                relations.setdefault((subject, "<", other), []).append(index)
+            if "above" in evidence:
+                relations.setdefault((subject, ">", other), []).append(index)
+    for (left, operator, right), indexes in list(relations.items()):
+        reverse = (right, operator, left)
+        if reverse in relations:
+            conflicts.update(indexes + relations[reverse])
+            messages.append(f"conflicting_relative_order:{left}:{operator}:{right}")
+    return [trend for index, trend in enumerate(trends) if index not in conflicts], sorted(set(messages))
+
+
+def _merge_chart_claim_grounding(semantic: dict[str, Any]) -> None:
+    chart_grounding = semantic.get("chart_grounding") if isinstance(semantic.get("chart_grounding"), dict) else {}
+    visual = list(chart_grounding.get("visual_evidence") or [])
+    ocr = list(chart_grounding.get("ocr_evidence") or [])
+    context = list(chart_grounding.get("context_evidence") or [])
+    main = semantic.get("main_message") if isinstance(semantic.get("main_message"), dict) else {}
+    visual.extend(main.get("visual_evidence") or [])
+    ocr.extend(main.get("ocr_evidence") or [])
+    for trend in semantic.get("qualitative_trends", []):
+        grounding = trend.get("grounding") if isinstance(trend.get("grounding"), dict) else {}
+        visual.extend(grounding.get("visual_evidence") or [])
+        ocr.extend(grounding.get("ocr_evidence") or [])
+    method = semantic.get("method_assessment") if isinstance(semantic.get("method_assessment"), dict) else {}
+    visual.extend(method.get("visual_evidence") or [])
+    ocr.extend(method.get("ocr_evidence") or [])
+    context.extend(method.get("context_quotes") or [])
+    relation = semantic.get("document_relation") if isinstance(semantic.get("document_relation"), dict) else {}
+    context.extend(relation.get("context_quotes") or [])
+    semantic["chart_grounding"] = {
+        "visual_evidence": _dedupe_json_items(visual),
+        "ocr_evidence": list(dict.fromkeys(str(item) for item in ocr)),
+        "context_evidence": list(dict.fromkeys(str(item) for item in context)),
+    }
+
+
+def _chart_summary_evidence(
+    semantic: dict[str, Any],
+    structured: dict[str, Any],
+) -> dict[str, Any]:
+    claims: list[dict[str, Any]] = []
+    semantic_series = list(dict.fromkeys(
+        text
+        for text in (
+            [_chart_item_text(item) for item in semantic.get("series", [])]
+            + [str(item.get("series") or "") for item in semantic.get("qualitative_trends", [])]
+        )
+        if text and text.casefold() != "unknown"
+    ))
+    chart_grounding = semantic.get("chart_grounding") if isinstance(semantic.get("chart_grounding"), dict) else {}
+    visual_evidence = list(chart_grounding.get("visual_evidence") or [])
+    ocr_evidence = list(chart_grounding.get("ocr_evidence") or [])
+    main = semantic.get("main_message") if isinstance(semantic.get("main_message"), dict) else {}
+    if main.get("statement"):
+        claims.append({
+            "claim_id": "claim_0",
+            "kind": "main_point",
+            "statement": main["statement"],
+            "basis": "Validated main chart message.",
+            "series": semantic_series,
+            "visual_evidence": list(main.get("visual_evidence") or []),
+            "ocr_evidence": list(main.get("ocr_evidence") or []),
+            "context_evidence": [],
+        })
+    else:
+        description = _chart_description_claim(semantic)
+        if description and (visual_evidence or ocr_evidence):
+            claims.append({
+                "claim_id": "claim_0",
+                "kind": "main_point",
+                "statement": description,
+                "basis": "Validated chart type, axes, legends, and series.",
+                "series": [
+                    text for text in (_chart_item_text(item) for item in semantic.get("series", []))
+                    if text.casefold() != "unknown"
+                ],
+                "visual_evidence": visual_evidence,
+                "ocr_evidence": ocr_evidence,
+                "context_evidence": [],
+            })
+    for trend in semantic.get("qualitative_trends", [])[:CHART_MAX_TRENDS]:
+        grounding = trend.get("grounding") if isinstance(trend.get("grounding"), dict) else {}
+        statement = " ".join(
+            part for part in (str(trend.get("series") or "").strip(), str(trend.get("trend") or "").strip()) if part
+        )
+        if not statement:
+            continue
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "qualitative_trend",
+            "statement": statement,
+            "basis": str(trend.get("evidence") or ""),
+            "series": [str(trend.get("series") or "")],
+            "visual_evidence": list(grounding.get("visual_evidence") or []),
+            "ocr_evidence": list(grounding.get("ocr_evidence") or []),
+            "context_evidence": [],
+        })
+    relation = semantic.get("document_relation") if isinstance(semantic.get("document_relation"), dict) else {}
+    if relation.get("statement"):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "document_relation",
+            "statement": relation["statement"],
+            "basis": relation.get("relation"),
+            "series": semantic_series,
+            "visual_evidence": [],
+            "ocr_evidence": [],
+            "context_evidence": list(relation.get("context_quotes") or []),
+        })
+    method = semantic.get("method_assessment") if isinstance(semantic.get("method_assessment"), dict) else {}
+    if method.get("statement"):
+        claims.append({
+            "claim_id": f"claim_{len(claims)}",
+            "kind": "method_assessment",
+            "statement": method["statement"],
+            "basis": method.get("criterion"),
+            "series": [method.get("preferred_method")],
+            "visual_evidence": list(method.get("visual_evidence") or []),
+            "ocr_evidence": list(method.get("ocr_evidence") or []),
+            "context_evidence": list(method.get("context_quotes") or []),
+        })
+    return {
+        "program_ocr": {
+            "title": structured.get("title") or "",
+            "x_axis_label": (structured.get("x_axis") or {}).get("label") or "",
+            "y_axis_label": (structured.get("y_axis") or {}).get("label") or "",
+        },
+        "known_series": semantic_series,
+        "validated_claims": claims[: CHART_MAX_TRENDS + 3],
+    }
+
+
+def _chart_description_claim(semantic: dict[str, Any]) -> str:
+    parts = []
+    chart_type = str(semantic.get("chart_type") or "").strip()
+    if chart_type and chart_type.casefold() != "unknown":
+        parts.append(f"Chart type: {chart_type}")
+    for key, label in (("x_axis", "x-axis"), ("y_axis", "y-axis")):
+        axis = semantic.get(key) if isinstance(semantic.get(key), dict) else {}
+        value = str(axis.get("meaning") or axis.get("label") or "").strip()
+        if value and value.casefold() != "unknown":
+            parts.append(f"{label}: {value}")
+    series = [text for text in (_chart_item_text(item) for item in semantic.get("series", [])) if text.casefold() != "unknown"]
+    if series:
+        parts.append(f"series: {', '.join(series[:8])}")
+    return "; ".join(parts)
+
+
+def _chart_item_text(value: Any) -> str:
+    if isinstance(value, dict):
+        for key in ("name", "text", "label", "series"):
+            candidate = value.get(key)
+            if isinstance(candidate, list):
+                return ", ".join(str(item) for item in candidate)
+            if candidate:
+                return str(candidate)
+        return ""
+    return str(value or "").strip()
+
+
+def _validated_chart_summary(
+    response: dict[str, Any],
+    summary_evidence: dict[str, Any],
+    allowed_numbers: set[str],
+) -> tuple[str, list[dict[str, Any]]]:
+    claims = {
+        str(item.get("claim_id")): item
+        for item in summary_evidence.get("validated_claims", [])
+        if item.get("claim_id")
+    }
+    known_series = {
+        _normalize_chart_series(value): str(value)
+        for value in summary_evidence.get("known_series", [])
+        if _normalize_chart_series(value)
+    }
+    grounding = []
+    for item in _json_list(response.get("summary_sentences")):
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("text") or "").strip()
+        role = str(item.get("role") or "").strip().lower()
+        claim_ids = [str(value) for value in _json_list(item.get("supporting_claim_ids"))]
+        if role not in {"main_point", "trend", "document_relation", "method_assessment"}:
+            continue
+        if not text or not claim_ids or any(claim_id not in claims for claim_id in claim_ids):
+            continue
+        cited_claims = [claims[claim_id] for claim_id in claim_ids]
+        cited_kinds = {str(claim.get("kind") or "") for claim in cited_claims}
+        expected_kinds = {
+            "main_point": {"main_point"},
+            "trend": {"qualitative_trend"},
+            "document_relation": {"document_relation"},
+            "method_assessment": {"method_assessment"},
+        }[role]
+        if not cited_kinds.issubset(expected_kinds):
+            continue
+        if cited_kinds.intersection({"document_relation", "method_assessment"}):
+            if len(cited_claims) != 1 or text != str(cited_claims[0].get("statement") or ""):
+                continue
+        normalized_text = _normalize_chart_series(text)
+        mentioned_series = {name for name in known_series if name and name in normalized_text}
+        cited_series = {
+            _normalize_chart_series(series)
+            for claim in cited_claims
+            for series in claim.get("series", [])
+            if _normalize_chart_series(series)
+        }
+        if not mentioned_series.issubset(cited_series):
+            continue
+        supported_numbers = {
+            token
+            for claim in cited_claims
+            for token in NUMBER_RE.findall(json.dumps(claim, ensure_ascii=False))
+        }
+        required_numbers = set(NUMBER_RE.findall(text))
+        if not required_numbers.issubset(supported_numbers):
+            continue
+        grounding.append({
+            "role": role,
+            "claim": text,
+            "supporting_claim_ids": claim_ids,
+            "supporting_claims": [claim.get("statement") for claim in cited_claims],
+            "visual_evidence": _dedupe_json_items(
+                item for claim in cited_claims for item in claim.get("visual_evidence", [])
+            ),
+            "ocr_evidence": list(dict.fromkeys(
+                str(item) for claim in cited_claims for item in claim.get("ocr_evidence", [])
+            )),
+            "context_evidence": list(dict.fromkeys(
+                str(item) for claim in cited_claims for item in claim.get("context_evidence", [])
+            )),
+        })
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _fallback_chart_summary(summary_evidence: dict[str, Any]) -> tuple[str, list[dict[str, Any]]]:
+    grounding = []
+    role_by_kind = {
+        "main_point": "main_point",
+        "qualitative_trend": "trend",
+        "document_relation": "document_relation",
+        "method_assessment": "method_assessment",
+    }
+    selected = []
+    for kind in ("main_point", "qualitative_trend", "document_relation", "method_assessment"):
+        match = next(
+            (claim for claim in summary_evidence.get("validated_claims", []) if claim.get("kind") == kind),
+            None,
+        )
+        if match:
+            selected.append(match)
+    for claim in selected:
+        statement = str(claim.get("statement") or "").strip()
+        if not statement:
+            continue
+        grounding.append({
+            "role": role_by_kind.get(str(claim.get("kind") or ""), "main_point"),
+            "claim": statement,
+            "supporting_claim_ids": [str(claim.get("claim_id"))],
+            "supporting_claims": [statement],
+            "visual_evidence": list(claim.get("visual_evidence") or []),
+            "ocr_evidence": list(claim.get("ocr_evidence") or []),
+            "context_evidence": list(claim.get("context_evidence") or []),
+        })
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _unvalidated_chart_summary(
+    response: dict[str, Any],
+    semantic: dict[str, Any],
+    structured: dict[str, Any],
+    caption: str,
+) -> str:
+    """Temporary recall-first fallback; its output must never be treated as grounded."""
+    candidates: list[str] = []
+
+    def add(value: Any) -> None:
+        if isinstance(value, dict):
+            value = value.get("statement") or value.get("text") or value.get("claim") or ""
+        text = " ".join(str(value or "").split()).strip()
+        if text:
+            candidates.append(text)
+
+    add(response.get("main_message"))
+    for trend in _json_list(response.get("qualitative_trends"))[:2]:
+        if isinstance(trend, dict):
+            statement = trend.get("statement")
+            if statement:
+                add(statement)
+                continue
+            series = " ".join(str(trend.get("series") or "").split()).strip()
+            direction = " ".join(str(trend.get("trend") or "").split()).strip()
+            if series and direction:
+                add(f"{series}: {direction}")
+        else:
+            add(trend)
+    add(response.get("document_relation"))
+    add(response.get("method_assessment"))
+    add(response.get("grounded_summary"))
+
+    unique = []
+    seen = set()
+    for value in candidates:
+        key = re.sub(r"\W+", " ", value.casefold()).strip()
+        if key and key not in seen:
+            seen.add(key)
+            unique.append(value)
+    if unique:
+        return " ".join(_as_sentence(value) for value in unique[:4])
+
+    caption_text = " ".join(str(caption or "").split()).strip()
+    if caption_text:
+        return _as_sentence(f"Chart caption: {caption_text}")
+    title = " ".join(str(structured.get("title") or semantic.get("title") or "").split()).strip()
+    if title and title.casefold() != "unknown":
+        return _as_sentence(f"Chart title: {title}")
+    chart_type = " ".join(str(semantic.get("chart_type") or "").split()).strip()
+    if chart_type and chart_type.casefold() != "unknown":
+        return _as_sentence(f"Chart type: {chart_type}")
+    return "Chart image; no validated semantic claims were available."
+
+
+def _as_sentence(value: str) -> str:
+    text = str(value or "").strip()
+    return text if not text or text[-1] in ".!?。！？" else f"{text}."
+
+
+def _chart_summary_numeric_provenance_complete(summary: str, grounding: list[dict[str, Any]]) -> bool:
+    supported = {
+        token
+        for item in grounding
+        for token in NUMBER_RE.findall(json.dumps({
+            "supporting_claims": item.get("supporting_claims") or [],
+            "visual_evidence": item.get("visual_evidence") or [],
+            "ocr_evidence": item.get("ocr_evidence") or [],
+            "context_evidence": item.get("context_evidence") or [],
+        }, ensure_ascii=False))
+    }
+    return set(NUMBER_RE.findall(str(summary or ""))).issubset(supported)
+
+
+def _dedupe_json_items(values: Any) -> list[Any]:
+    seen = set()
+    result = []
+    for value in values:
+        key = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        if key not in seen:
+            seen.add(key)
+            result.append(value)
+    return result
 
 
 def _parse_table_evidence(media: MMMedia) -> dict[str, Any]:
@@ -230,6 +1133,7 @@ def _parse_table_evidence(media: MMMedia) -> dict[str, Any]:
         for text in column_keys + row_keys
         for match in re.finditer(r"%|[$€£¥]|\b(?:kg|g|mg|km|m|cm|mm|ms|s|min|h|hz|mhz|ghz)\b", text, re.I)
     ))
+    structural_ambiguity = _detect_table_structural_ambiguity(parsed, lookup)
     return {
         **parsed,
         "header_hierarchy": [column_keys] if any(column_keys) else [],
@@ -237,15 +1141,415 @@ def _parse_table_evidence(media: MMMedia) -> dict[str, Any]:
         "column_keys": [value for value in column_keys if value],
         "units": units,
         "numeric_cells": numeric_cells,
-        "source_kind": parsed.get("format", "none"),
+        "structural_ambiguity": structural_ambiguity,
+    }
+
+
+def _detect_table_structural_ambiguity(
+    parsed: dict[str, Any],
+    lookup: dict[tuple[int, int], str],
+) -> list[str]:
+    reasons = []
+    if parsed.get("has_rowspan"):
+        reasons.append("rowspan_present")
+    if parsed.get("has_colspan"):
+        reasons.append("colspan_present")
+    row_widths = [int(value) for value in parsed.get("row_widths", []) if int(value) >= 0]
+    if row_widths and len(set(row_widths)) > 1:
+        reasons.append("inconsistent_row_widths_or_missing_columns")
+    n_rows, n_cols = int(parsed.get("n_rows") or 0), int(parsed.get("n_cols") or 0)
+    header = [str(lookup.get((0, col), "")).strip() for col in range(n_cols)] if n_rows else []
+    normalized_header = [normalize for value in header if (normalize := _normalize_table_label(value))]
+    if len(normalized_header) != len(set(normalized_header)):
+        reasons.append("duplicate_header_labels")
+    for col in range(1, n_cols):
+        if not header[col] and any(str(lookup.get((row, col), "")).strip() for row in range(1, n_rows)):
+            reasons.append("missing_column_header")
+            break
+    header_signature = tuple(_normalize_table_label(value) for value in header)
+    if any(
+        tuple(_normalize_table_label(lookup.get((row, col), "")) for col in range(n_cols)) == header_signature
+        for row in range(1, n_rows)
+    ):
+        reasons.append("repeated_header_row")
+    return list(dict.fromkeys(reasons))
+
+
+def _normalize_table_label(value: Any) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(value or "").casefold()).strip()
+
+
+def _compact_table_evidence(structured: dict[str, Any], caption: str) -> dict[str, Any]:
+    """Select a bounded, deterministic set of rows without duplicating the raw table."""
+    rows: dict[int, list[dict[str, Any]]] = {}
+    for cell in structured.get("cells", []):
+        try:
+            row, col = int(cell["row"]), int(cell["col"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        text = str(cell.get("text") or "").strip()
+        if text:
+            rows.setdefault(row, []).append({"row": row, "col": col, "value": text})
+    for cells in rows.values():
+        cells.sort(key=lambda item: item["col"])
+
+    header_rows = [0] if 0 in rows else []
+    data_rows = [row for row in sorted(rows) if row not in header_rows]
+    reasons: dict[int, set[str]] = {row: set() for row in data_rows}
+    if len(data_rows) <= TABLE_MAX_CANDIDATE_ROWS:
+        for row in data_rows:
+            reasons[row].add("complete_table")
+    else:
+        for row in data_rows[:2]:
+            reasons[row].add("leading_row")
+        for row in data_rows[-2:]:
+            reasons[row].add("trailing_row")
+        for row in data_rows:
+            label = str(rows[row][0].get("value") or "").casefold()
+            if re.search(r"\b(overall|total|average|avg|mean|baseline|aggregate|all)\b", label):
+                reasons[row].add("aggregate_or_baseline")
+        numeric_by_col: dict[int, list[tuple[float, int]]] = {}
+        for row in data_rows:
+            for cell in rows[row]:
+                numeric = _single_numeric_value(cell["value"])
+                if numeric is not None:
+                    numeric_by_col.setdefault(cell["col"], []).append((numeric, row))
+        for values in numeric_by_col.values():
+            if len(values) < 2:
+                continue
+            minimum = min(value for value, _ in values)
+            maximum = max(value for value, _ in values)
+            for value, row in values:
+                if value == minimum:
+                    reasons[row].add("column_minimum")
+                if value == maximum:
+                    reasons[row].add("column_maximum")
+
+    ranked_rows = sorted(
+        data_rows,
+        key=lambda row: (-len(reasons[row]), row),
+    )[:TABLE_MAX_CANDIDATE_ROWS]
+    selected_rows = ranked_rows
+    return {
+        "title": str(caption or "").strip(),
+        "shape": {"rows": int(structured.get("n_rows") or 0), "columns": int(structured.get("n_cols") or 0)},
+        "structural_ambiguity": list(structured.get("structural_ambiguity") or []),
+        "comparisons_allowed": not bool(structured.get("structural_ambiguity")),
+        "headers": [
+            {"row": row, "cells": rows[row]}
+            for row in header_rows
+        ],
+        "candidate_rows": [
+            {
+                "row": row,
+                "selection_reasons": sorted(reasons[row]) or ["representative_row"],
+                "cells": rows[row],
+            }
+            for row in selected_rows
+        ],
+        "units": list(structured.get("units") or []),
+    }
+
+
+def _single_numeric_value(text: str) -> float | None:
+    tokens = NUMBER_RE.findall(str(text or ""))
+    if len(tokens) != 1:
+        return None
+    normalized = tokens[0].rstrip("%").replace(",", "")
+    try:
+        return float(normalized)
+    except ValueError:
+        return None
+
+
+def _comparable_table_value(text: str) -> tuple[float, str] | None:
+    match = TABLE_COMPARABLE_NUMBER_RE.fullmatch(str(text or ""))
+    if not match:
+        return None
+    currency, number, suffix = match.groups()
+    if currency and suffix == "%":
+        return None
+    try:
+        value = float(number.replace(",", ""))
+    except ValueError:
+        return None
+    multiplier = {"k": 1e3, "m": 1e6, "b": 1e9, "t": 1e12}.get(str(suffix or "").casefold(), 1.0)
+    unit = f"currency:{currency}" if currency else ("percent" if suffix == "%" else "number")
+    return value * multiplier, unit
+
+
+def _validated_table_comparison(
+    item: dict[str, Any],
+    lookup: dict[tuple[int, int], str],
+) -> dict[str, Any] | None:
+    left_coords = _valid_source_cells([item.get("left_cell")], lookup)
+    right_coords = _valid_source_cells([item.get("right_cell")], lookup)
+    if len(left_coords) != 1 or len(right_coords) != 1:
+        return None
+    left, right = left_coords[0], right_coords[0]
+    if left == right or left[0] <= 0 or right[0] <= 0 or left[1] <= 0 or right[1] <= 0:
+        return None
+    operator = str(item.get("operator") or "").strip()
+    if operator not in TABLE_COMPARISON_OPERATORS:
+        return None
+    left_parsed = _comparable_table_value(lookup[left])
+    right_parsed = _comparable_table_value(lookup[right])
+    if not left_parsed or not right_parsed or left_parsed[1] != right_parsed[1]:
+        return None
+    if not _table_relation_holds(left_parsed[0], operator, right_parsed[0]):
+        return None
+    left_row_label = str(lookup.get((left[0], 0), "")).strip()
+    right_row_label = str(lookup.get((right[0], 0), "")).strip()
+    left_header = str(lookup.get((0, left[1]), "")).strip()
+    right_header = str(lookup.get((0, right[1]), "")).strip()
+    if not all((left_row_label, right_row_label, left_header, right_header)):
+        return None
+    statement = (
+        f"{left_row_label} {left_header} ({lookup[left]}) {operator} "
+        f"{right_row_label} {right_header} ({lookup[right]})."
+    )
+    source_cells = []
+    for coord in (left, right, (left[0], 0), (right[0], 0), (0, left[1]), (0, right[1])):
+        if coord in lookup and coord not in source_cells:
+            source_cells.append(coord)
+    return {
+        "left_cell": [left[0], left[1]],
+        "operator": operator,
+        "right_cell": [right[0], right[1]],
+        "left_value": lookup[left],
+        "right_value": lookup[right],
+        "statement": statement,
+        "source_cells": [[row, col] for row, col in source_cells],
+    }
+
+
+def _table_relation_holds(left: float, operator: str, right: float) -> bool:
+    if operator == ">":
+        return left > right
+    if operator == "<":
+        return left < right
+    if operator == ">=":
+        return left >= right
+    if operator == "<=":
+        return left <= right
+    if operator == "==":
+        return left == right
+    if operator == "!=":
+        return left != right
+    return False
+
+
+def _table_summary_evidence(
+    compact: dict[str, Any],
+    semantic: dict[str, Any],
+    structured: dict[str, Any],
+) -> dict[str, Any]:
+    lookup = _table_cell_lookup(structured)
+    facts: list[dict[str, Any]] = []
+    for comparison in semantic.get("comparisons", [])[:TABLE_MAX_COMPARISONS]:
+        coords = _valid_source_cells(comparison.get("source_cells"), lookup)
+        if not coords:
+            continue
+        facts.append({
+            "kind": "validated_comparison",
+            "statement": str(comparison.get("statement") or ""),
+            "left_cell": comparison.get("left_cell"),
+            "operator": comparison.get("operator"),
+            "right_cell": comparison.get("right_cell"),
+            "source_cells": [[row, col] for row, col in coords],
+            "source_values": [lookup[coord] for coord in coords],
+        })
+    candidate_facts = _candidate_row_facts(compact)
+    if not facts:
+        facts.extend(candidate_facts[:TABLE_MAX_SUMMARY_FACTS])
+    else:
+        facts.extend(candidate_facts[: max(0, TABLE_MAX_SUMMARY_FACTS - len(facts))])
+    for important in semantic.get("important_cells", []):
+        if len(facts) >= TABLE_MAX_SUMMARY_FACTS:
+            break
+        coord = (int(important["row"]), int(important["col"]))
+        if coord not in lookup:
+            continue
+        reason = str(important.get("reason") or "").strip()
+        value = lookup[coord]
+        statement = f"{reason}: {value}" if reason else value
+        facts.append({
+            "kind": "validated_important_cell",
+            "statement": statement,
+            "source_cells": [[coord[0], coord[1]]],
+            "source_values": [value],
+        })
+    facts = facts[:TABLE_MAX_SUMMARY_FACTS]
+    for index, fact in enumerate(facts):
+        fact["fact_id"] = f"fact_{index}"
+        fact["descriptive_only"] = fact.get("kind") != "validated_comparison"
+    return {
+        "title": semantic.get("title_and_purpose") or compact.get("title") or "",
+        "headers": compact.get("headers") or [],
+        "structural_ambiguity": compact.get("structural_ambiguity") or [],
+        "grounded_facts": facts,
+    }
+
+
+def _candidate_row_facts(compact: dict[str, Any]) -> list[dict[str, Any]]:
+    headers = {
+        int(cell["col"]): str(cell.get("value") or "")
+        for header in compact.get("headers", [])
+        for cell in header.get("cells", [])
+    }
+    facts = []
+    for row in compact.get("candidate_rows", []):
+        cells = list(row.get("cells") or [])
+        if not cells:
+            continue
+        label = str(cells[0].get("value") or "").strip()
+        parts = []
+        for cell in cells[1:]:
+            value = str(cell.get("value") or "").strip()
+            header = headers.get(int(cell["col"]), f"column {cell['col']}")
+            if value:
+                parts.append(f"{header} = {value}")
+        statement = f"{label}: {'; '.join(parts)}" if label and parts else "; ".join(
+            str(cell.get("value") or "") for cell in cells
+        )
+        facts.append({
+            "kind": "programmatic_candidate_row",
+            "statement": statement,
+            "source_cells": [[int(cell["row"]), int(cell["col"])] for cell in cells],
+            "source_values": [str(cell.get("value") or "") for cell in cells],
+        })
+    return facts
+
+
+def _validated_table_summary(
+    response: dict[str, Any],
+    structured: dict[str, Any],
+    summary_evidence: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    lookup = _table_cell_lookup(structured)
+    allowed_cells = {
+        (int(row), int(col))
+        for fact in summary_evidence.get("grounded_facts", [])
+        for row, col in fact.get("source_cells", [])
+    }
+    allowed_cells.update(
+        (int(cell["row"]), int(cell["col"]))
+        for header in summary_evidence.get("headers", [])
+        for cell in header.get("cells", [])
+    )
+    facts_by_id = {
+        str(fact.get("fact_id")): fact
+        for fact in summary_evidence.get("grounded_facts", [])
+        if fact.get("fact_id")
+    }
+    grounding = []
+    for item in _json_list(response.get("summary_sentences")):
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("text") or item.get("statement") or "").strip()
+        coords = _valid_source_cells(item.get("source_cells"), lookup)
+        fact_ids = [str(value) for value in _json_list(item.get("supporting_fact_ids"))]
+        if (
+            not text or not coords or not fact_ids
+            or any(coord not in allowed_cells for coord in coords)
+            or any(fact_id not in facts_by_id for fact_id in fact_ids)
+        ):
+            continue
+        cited_facts = [facts_by_id[fact_id] for fact_id in fact_ids]
+        required_cells = {
+            (int(row), int(col))
+            for fact in cited_facts
+            for row, col in fact.get("source_cells", [])
+        }
+        if not required_cells.issubset(set(coords)):
+            continue
+        comparison_facts = [fact for fact in cited_facts if fact.get("kind") == "validated_comparison"]
+        if comparison_facts:
+            if len(cited_facts) != 1 or text != str(comparison_facts[0].get("statement") or ""):
+                continue
+        elif TABLE_COMPARATIVE_LANGUAGE_RE.search(text):
+            continue
+        cited_numbers = {token for coord in coords for token in NUMBER_RE.findall(lookup[coord])}
+        if not set(NUMBER_RE.findall(text)).issubset(cited_numbers):
+            continue
+        grounding.append({
+            "claim": text,
+            "supporting_fact_ids": fact_ids,
+            "source_cells": [[row, col] for row, col in coords],
+            "source_values": [lookup[coord] for coord in coords],
+        })
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _fallback_table_summary(
+    summary_evidence: dict[str, Any],
+    structured: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    lookup = _table_cell_lookup(structured)
+    facts = list(summary_evidence.get("grounded_facts") or [])
+    comparisons = [fact for fact in facts if fact.get("kind") == "validated_comparison"]
+    selected = (comparisons or facts)[:2]
+    grounding = []
+    for fact in selected:
+        coords = _valid_source_cells(fact.get("source_cells"), lookup)
+        statement = str(fact.get("statement") or "").strip()
+        if not statement or not coords:
+            continue
+        grounding.append({
+            "claim": statement,
+            "supporting_fact_ids": [str(fact.get("fact_id"))],
+            "source_cells": [[row, col] for row, col in coords],
+            "source_values": [lookup[coord] for coord in coords],
+        })
+    return " ".join(item["claim"] for item in grounding), grounding
+
+
+def _ambiguous_table_description(
+    compact: dict[str, Any],
+    structured: dict[str, Any],
+) -> tuple[str, list[dict[str, Any]]]:
+    caption = str(compact.get("title") or "").strip()
+    title = re.sub(r"^\s*table\s+\d+[a-z]?\s*[:.\-]?\s*", "", caption, flags=re.I).strip()
+    if title:
+        claim = f"Table title: {title}"
+        return claim, [{
+            "claim": claim,
+            "source_kind": "caption",
+            "source_text": caption,
+            "source_cells": [],
+            "source_values": [],
+            "descriptive_only": True,
+            "structural_ambiguity": list(structured.get("structural_ambiguity") or []),
+        }]
+    lookup = _table_cell_lookup(structured)
+    header_cells = [
+        (coord, value) for coord, value in sorted(lookup.items()) if coord[0] == 0 and value.strip()
+    ]
+    if not header_cells:
+        return "", []
+    claim = "Table columns: " + ", ".join(value for _, value in header_cells)
+    return claim, [{
+        "claim": claim,
+        "source_kind": "table_headers",
+        "source_cells": [[row, col] for (row, col), _ in header_cells],
+        "source_values": [value for _, value in header_cells],
+        "descriptive_only": True,
+        "structural_ambiguity": list(structured.get("structural_ambiguity") or []),
+    }]
+
+
+def _table_cell_lookup(structured: dict[str, Any]) -> dict[tuple[int, int], str]:
+    return {
+        (int(cell["row"]), int(cell["col"])): str(cell.get("text") or "")
+        for cell in structured.get("cells", [])
     }
 
 
 def _validated_table_semantics(response: dict[str, Any], structured: dict[str, Any], caption: str) -> dict[str, Any]:
-    lookup = {(int(cell["row"]), int(cell["col"])): str(cell.get("text") or "") for cell in structured.get("cells", [])}
+    lookup = _table_cell_lookup(structured)
     all_numbers = {token for value in lookup.values() for token in NUMBER_RE.findall(value)}
     important = []
-    for item in _json_list(response.get("important_cells")):
+    for item in _json_list(response.get("important_cells"))[:8]:
         if not isinstance(item, dict):
             continue
         try:
@@ -261,15 +1565,15 @@ def _validated_table_semantics(response: dict[str, Any], structured: dict[str, A
                 "reason": _safe_numeric_text(item.get("reason"), set(NUMBER_RE.findall(value))),
             })
     comparisons = []
-    for item in _json_list(response.get("comparisons")):
-        if not isinstance(item, dict):
-            continue
-        coords = _valid_source_cells(item.get("source_cells"), lookup)
-        statement = str(item.get("statement") or "")
-        cited_numbers = {token for coord in coords for token in NUMBER_RE.findall(lookup[coord])}
-        if coords and set(NUMBER_RE.findall(statement)).issubset(cited_numbers):
-            comparisons.append({"statement": statement, "source_cells": [[row, col] for row, col in coords]})
-    ambiguity = [str(item) for item in _safe_numeric_items(response.get("ambiguous_structure"), all_numbers)]
+    if not structured.get("structural_ambiguity"):
+        for item in _json_list(response.get("comparisons"))[:TABLE_MAX_COMPARISONS]:
+            if not isinstance(item, dict):
+                continue
+            comparison = _validated_table_comparison(item, lookup)
+            if comparison:
+                comparisons.append(comparison)
+    ambiguity = list(structured.get("structural_ambiguity") or [])
+    ambiguity.extend(str(item) for item in _safe_numeric_items(response.get("ambiguous_structure"), all_numbers))
     if not structured.get("table_parse_available"):
         ambiguity.append("HTML/Markdown table source could not be parsed")
     title_and_purpose = _safe_numeric_text(response.get("title_and_purpose"), all_numbers)
@@ -304,10 +1608,10 @@ def _validated_table_semantics(response: dict[str, Any], structured: dict[str, A
     semantic_confidence = _confidence(response.get("semantic_confidence", response.get("confidence", structured.get("parse_confidence", 0.0))))
     return {
         "title_and_purpose": title_and_purpose,
-        "header_hierarchy": _safe_numeric_items(response.get("header_hierarchy") or structured.get("header_hierarchy"), all_numbers),
-        "row_keys": _safe_numeric_items(response.get("row_keys") or structured.get("row_keys"), all_numbers),
-        "column_keys": _safe_numeric_items(response.get("column_keys") or structured.get("column_keys"), all_numbers),
-        "units": _safe_numeric_items(response.get("units") or structured.get("units"), all_numbers),
+        "header_hierarchy": _safe_numeric_items(response.get("header_hierarchy"), all_numbers),
+        "row_keys": _safe_numeric_items(response.get("row_keys"), all_numbers),
+        "column_keys": _safe_numeric_items(response.get("column_keys"), all_numbers),
+        "units": _safe_numeric_items(response.get("units"), all_numbers),
         "important_cells": important,
         "comparisons": comparisons,
         "grounded_summary": grounded_summary,
@@ -387,9 +1691,8 @@ def _table_numeric_provenance_complete(semantic: dict[str, Any], structured: dic
         if lookup.get((item["row"], item["col"])) != item["value"]:
             return False
     for item in semantic.get("comparisons", []):
-        coords = [(coord[0], coord[1]) for coord in item.get("source_cells", [])]
-        cited = {token for coord in coords for token in NUMBER_RE.findall(lookup.get(coord, ""))}
-        if not set(NUMBER_RE.findall(item.get("statement", ""))).issubset(cited):
+        revalidated = _validated_table_comparison(item, lookup)
+        if not revalidated or revalidated.get("statement") != item.get("statement"):
             return False
     for item in semantic.get("cell_grounding", []):
         coords = _valid_source_cells(item.get("source_cells"), lookup)
@@ -399,6 +1702,31 @@ def _table_numeric_provenance_complete(semantic: dict[str, Any], structured: dic
         claim = str(item.get("claim") or item.get("meaning") or "")
         if not set(NUMBER_RE.findall(claim)).issubset(cited):
             return False
+    summary_grounding = semantic.get("summary_grounding", [])
+    for item in summary_grounding:
+        if item.get("source_kind") == "caption":
+            cited = set(NUMBER_RE.findall(str(item.get("source_text") or "")))
+            if not set(NUMBER_RE.findall(str(item.get("claim") or ""))).issubset(cited):
+                return False
+            continue
+        coords = _valid_source_cells(item.get("source_cells"), lookup)
+        if not coords:
+            return False
+        cited = {token for coord in coords for token in NUMBER_RE.findall(lookup[coord])}
+        if not set(NUMBER_RE.findall(str(item.get("claim") or ""))).issubset(cited):
+            return False
+    summary_numbers = set(NUMBER_RE.findall(str(semantic.get("grounded_summary") or "")))
+    supported_summary_numbers = {
+        token
+        for item in summary_grounding
+        for source in (
+            [item.get("source_text")] if item.get("source_kind") == "caption"
+            else item.get("source_values", [])
+        )
+        for token in NUMBER_RE.findall(str(source))
+    }
+    if not summary_numbers.issubset(supported_summary_numbers):
+        return False
     return True
 
 
@@ -475,21 +1803,50 @@ def _numbers_supported(value: Any, allowed_numbers: set[str]) -> bool:
 
 
 def _call_json_model(func: Callable | None, prompt: str, image_path: str = "") -> dict[str, Any]:
+    response, _ = _call_json_model_diagnostic(func, prompt, image_path)
+    return response
+
+
+def _call_json_model_diagnostic(
+    func: Callable | None,
+    prompt: str,
+    image_path: str = "",
+) -> tuple[dict[str, Any], dict[str, str]]:
     if not func:
-        return {}
+        return {}, {"status": "model_unavailable", "error": "", "response_excerpt": ""}
     kwargs = {"prompt": prompt, "query": prompt, "temperature": 0.0}
     if image_path:
         kwargs.update({"image_paths": [image_path], "image_path": image_path})
     try:
-        response = func(**kwargs)
+        raw_response = func(**kwargs)
     except TypeError:
         try:
-            response = func(prompt, [image_path]) if image_path else func(prompt)
-        except Exception:
-            return {}
-    except Exception:
-        return {}
-    return _parse_json_object(response)
+            raw_response = func(prompt, [image_path]) if image_path else func(prompt)
+        except Exception as exc:
+            return {}, {
+                "status": "model_exception",
+                "error": _diagnostic_text(exc),
+                "response_excerpt": "",
+            }
+    except Exception as exc:
+        return {}, {
+            "status": "model_exception",
+            "error": _diagnostic_text(exc),
+            "response_excerpt": "",
+        }
+    parsed = _parse_json_object(raw_response)
+    if parsed:
+        return parsed, {"status": "ok", "error": "", "response_excerpt": ""}
+    raw_text = str(raw_response or "").strip()
+    return {}, {
+        "status": "empty_response" if not raw_text else "invalid_json",
+        "error": "",
+        "response_excerpt": raw_text[:1000],
+    }
+
+
+def _diagnostic_text(value: Exception) -> str:
+    return f"{type(value).__name__}: {value}"[:1000]
 
 
 def _parse_json_object(value: Any) -> dict[str, Any]:

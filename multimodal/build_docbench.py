@@ -32,6 +32,7 @@ def build_docbench(
     use_media_caption: bool = False,
     use_table_summary: bool = False,
     model_config: dict | None = None,
+    build_hierarchy: bool = True,
 ) -> list[dict]:
     samples = load_docbench(docbench_dir)
     docs = _group_by_doc(samples)
@@ -42,7 +43,12 @@ def build_docbench(
         mineru_dir = working_dir / "mineru_output"
         working_dir.mkdir(parents=True, exist_ok=True)
         existing_manifest = _read_manifest(working_dir / "manifest.json")
-        if _can_reuse_manifest(existing_manifest, force=force, build_graph=build_graph):
+        if _can_reuse_manifest(
+            existing_manifest,
+            force=force,
+            build_graph=build_graph,
+            build_hierarchy=build_hierarchy,
+        ):
             # 已经构建成功的文档直接复用，避免重复解析 PDF 和重建图。
             existing_manifest["reused"] = True
             manifests.append(existing_manifest)
@@ -73,13 +79,17 @@ def build_docbench(
         artifact_paths = save_mm_artifacts(chunks, media_items, str(working_dir))
 
         graph_status = "skipped"
+        hierarchy_status = "skipped"
         if build_graph:
             # LeanRAG 原图构建依赖实体/关系文件；如果抽取失败，先生成一个最小可用版本兜底。
             _ensure_minimal_triples(working_dir, artifact_paths["leanrag_chunk_file"])
             media_items = link_media_to_entities(str(working_dir), chunks, media_items, embedding_func=None)
             save_dataclasses(media_items, working_dir / "mm_media.json")
             build_phase1_mm_graph(str(working_dir), validate=False)
-            graph_status = _try_build_leanrag_graph(working_dir, model_config or {})
+            graph_status = "prepared"
+            if build_hierarchy:
+                graph_status = _try_build_leanrag_graph(working_dir, model_config or {})
+                hierarchy_status = "completed" if graph_status == "built" else graph_status
 
         manifest = {
             "doc_id": doc_id,
@@ -96,6 +106,7 @@ def build_docbench(
             "entity_vector_db": str(working_dir / "milvus_demo.db"),
             "evidence_vector_db": str(working_dir / "evidence_milvus.db"),
             "graph_status": graph_status,
+            "hierarchy_status": hierarchy_status,
             "qa_count": len([row for row in rows if row.get("question")]),
             "reused": False,
         }
@@ -116,12 +127,20 @@ def _read_manifest(path: Path) -> dict:
         return {}
 
 
-def _can_reuse_manifest(manifest: dict, force: bool, build_graph: bool) -> bool:
+def _can_reuse_manifest(
+    manifest: dict,
+    force: bool,
+    build_graph: bool,
+    build_hierarchy: bool = True,
+) -> bool:
     if force or not manifest:
         return False
-    if build_graph:
-        # 需要图检索时，只有完整图构建成功的 manifest 才能复用。
+    if build_graph and build_hierarchy:
+        # 需要立即构建层级图时，只有完整图构建成功的 manifest 才能复用。
         return manifest.get("graph_status") == "built"
+    if build_graph:
+        # 跳过 hierarchy 时，prepared 表示实体/关系和阶段 A 图输入已经就绪。
+        return manifest.get("graph_status") in {"prepared", "built"}
     return True
 
 
@@ -326,6 +345,11 @@ def main() -> None:
     parser.add_argument("--overlap_token_size", type=int, default=128)
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--skip_graph", action="store_true")
+    parser.add_argument(
+        "--skip_hierarchy",
+        action="store_true",
+        help="Prepare text entities/relations and Phase A inputs, but do not build the text-only hierarchy.",
+    )
     parser.add_argument("--config", default="config.yaml")
     args = parser.parse_args()
     full_config = _load_config(args.config)
@@ -338,6 +362,7 @@ def main() -> None:
         overlap_token_size=args.overlap_token_size,
         force=args.force,
         build_graph=not args.skip_graph,
+        build_hierarchy=not args.skip_graph and not args.skip_hierarchy,
         use_media_caption=bool(config.get("use_media_caption", False)),
         use_table_summary=bool(config.get("use_table_summary", False)),
         model_config=full_config,
