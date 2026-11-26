@@ -3,13 +3,11 @@ from __future__ import annotations
 import json
 import math
 import re
-from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from .io_utils import write_json
-from .retrieval.media_ref import extract_figure_refs
 from .schema import MMChunk, MMMedia, is_indexable_media
 
 
@@ -23,30 +21,20 @@ def link_media_to_chunks(
 ) -> tuple[list[MMChunk], list[MMMedia]]:
     """Attach images/tables to nearby and semantically related text chunks."""
     indexable_media = [item for item in media_items if is_indexable_media(item)]
-    figure_media = [
-        item for item in indexable_media
-        if item.modality == "chart" or item.figure_id or item.candidate_figure_id
-    ]
-    figure_media_ids = {item.media_id for item in figure_media}
     noise_ids = {item.media_id for item in media_items if not is_indexable_media(item)}
-    reset_ids = noise_ids | figure_media_ids
     for chunk in chunks:
-        chunk.attached_media_ids = [media_id for media_id in chunk.attached_media_ids if media_id not in reset_ids]
-        chunk.figure_references.clear()
+        chunk.attached_media_ids = [media_id for media_id in chunk.attached_media_ids if media_id not in noise_ids]
     for item in media_items:
-        if item.media_id in reset_ids:
+        if item.media_id in noise_ids:
             item.nearby_chunk_ids.clear()
             item.attached_entity_names.clear()
             item.attach_scores.clear()
 
     text_chunks = [chunk for chunk in chunks if chunk.modality == "text" and chunk.text]
-    _link_figure_references(text_chunks, figure_media)
     chunk_vectors = _embed_texts(embedding_func, [chunk.text for chunk in text_chunks])
     media_vectors = _embed_texts(embedding_func, [_media_text(item) for item in indexable_media])
 
     for media_index, media in enumerate(indexable_media):
-        if media.media_id in figure_media_ids:
-            continue
         scored = []
         for chunk_index, chunk in enumerate(text_chunks):
             # 综合页码邻近、语义相似、文档顺序和显式提及四类信号打分。
@@ -62,47 +50,12 @@ def link_media_to_chunks(
         for score, chunk in scored[:topk_per_media]:
             if score <= 0:
                 continue
-            _attach_chunk(media, chunk, round(float(score), 6))
+            if media.media_id not in chunk.attached_media_ids:
+                chunk.attached_media_ids.append(media.media_id)
+            if chunk.chunk_id not in media.nearby_chunk_ids:
+                media.nearby_chunk_ids.append(chunk.chunk_id)
+            media.attach_scores[chunk.chunk_id] = round(float(score), 6)
     return chunks, media_items
-
-
-def _link_figure_references(chunks: list[MMChunk], media_items: list[MMMedia]) -> None:
-    figures: dict[str, dict[str, list[MMMedia]]] = defaultdict(lambda: defaultdict(list))
-    for media in media_items:
-        media.figure_reference_matches = {}
-        if media.figure_id and media.figure_group_status != "unresolved":
-            number = media.figure_id.rsplit("::", 1)[-1]
-            figures[media.doc_id][number].append(media)
-
-    for chunk in sorted(chunks, key=lambda item: (item.doc_id, item.order, item.chunk_id)):
-        by_number = figures.get(chunk.doc_id)
-        if not by_number or chunk.is_figure_caption:
-            continue
-        for reference in extract_figure_refs(chunk.text, set(by_number)):
-            members = by_number.get(reference["number"])
-            if not members:
-                continue
-            panel = reference["panel"]
-            targets = [member for member in members if member.panel_label == panel] if panel else members
-            if panel and len(targets) != 1:
-                targets = []
-            record = {
-                **reference,
-                "figure_id": str(members[0].figure_id),
-                "status": "matched" if targets else "unresolved_panel",
-            }
-            chunk.figure_references.append(record)
-            for media in targets:
-                _attach_chunk(media, chunk, 1.0)
-                media.figure_reference_matches.setdefault(chunk.chunk_id, []).append(record)
-
-
-def _attach_chunk(media: MMMedia, chunk: MMChunk, score: float) -> None:
-    if media.media_id not in chunk.attached_media_ids:
-        chunk.attached_media_ids.append(media.media_id)
-    if chunk.chunk_id not in media.nearby_chunk_ids:
-        media.nearby_chunk_ids.append(chunk.chunk_id)
-    media.attach_scores[chunk.chunk_id] = score
 
 
 def link_media_to_entities(
@@ -202,12 +155,7 @@ def _nearby_order_score(media_index: int, chunk_order: int, chunk_count: int) ->
 def _explicit_mention_score(text: str, media: MMMedia) -> float:
     # 如果文本显式出现 figure/table 等词，或与媒体摘要有词重合，则提高关联分。
     haystack = text.lower()
-    if media.modality == "chart":
-        keywords = ("figure", "fig.")
-    elif media.modality == "image":
-        keywords = ("figure", "fig.", "image", "table")
-    else:
-        keywords = ("table", "tab.")
+    keywords = ["figure", "fig.", "image", "table"] if media.modality == "image" else ["table", "tab."]
     score = 1.0 if any(keyword in haystack for keyword in keywords) else 0.0
     words = set(re.findall(r"[A-Za-z0-9_%-]+", _media_text(media).lower()))
     text_words = set(re.findall(r"[A-Za-z0-9_%-]+", haystack))

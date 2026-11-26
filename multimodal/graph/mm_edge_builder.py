@@ -42,51 +42,20 @@ def build_phase4_edges(
 
 
 def enhance_edges(nodes: list[dict[str, Any]], edges: list[dict[str, Any]], working_dir: str | Path | None = None) -> list[dict[str, Any]]:
+    edge_list = [edge for edge in edges if edge.get("edge_type") != "node_semantic_similar_node"]
+    seen = {(edge.get("src"), edge.get("dst"), edge.get("edge_type")) for edge in edge_list}
     by_type = defaultdict(list)
     for node in nodes:
         if node.get("node_type") == "media" and str((node.get("metadata") or {}).get("media_type") or "generic").lower() == "noise":
             continue
         by_type[node.get("node_type")].append(node)
-    figure_media = {
-        media["node_id"]: media for media in by_type["media"]
-        if media.get("node_id") and (media.get("metadata") or {}).get("figure_reference_matches") is not None
-    }
-    edge_list = [
-        edge for edge in edges
-        if edge.get("edge_type") != "node_semantic_similar_node"
-        and not (
-            edge.get("dst") in figure_media
-            and edge.get("edge_type") in {"text_caption_of_media", "text_refers_to_media"}
-            and (edge.get("evidence") or {}).get("source") != "figure_reference"
-        )
-    ]
-    seen = {(edge.get("src"), edge.get("dst"), edge.get("edge_type")) for edge in edge_list}
     chunks_by_id = _chunks_by_id(working_dir)
     entity_media = _entity_media(working_dir)
     nearby_link_counts: dict[str, int] = defaultdict(int)
 
-    # Reuse the confirmed matches even when the optional seed file is absent.
-    text_by_chunk = {(node.get("raw_ref") or {}).get("chunk_id"): node for node in by_type["text"]}
-    for media in figure_media.values():
-        metadata = media["metadata"]
-        for chunk_id, references in metadata["figure_reference_matches"].items():
-            text = text_by_chunk.get(chunk_id)
-            if text and references:
-                _add_edge(
-                    edge_list, seen, text, media, "text_refers_to_media", 1.0,
-                    "explicit numbered Figure reference", source="figure_reference",
-                    metadata={
-                        "media_id": (media.get("raw_ref") or {}).get("media_id"),
-                        "chunk_id": chunk_id,
-                        "figure_id": metadata.get("figure_id"),
-                        "references": references,
-                    },
-                )
-
-    legacy_media = [media for media in by_type["media"] if media.get("node_id") not in figure_media]
     for text in by_type["text"]:
         text_body = _node_text(text)
-        for media in _same_page_media(text, legacy_media):
+        for media in _same_page_media(text, by_type["media"]):
             if _caption_match(text, media, text_body):
                 _add_edge(edge_list, seen, text, media, "text_caption_of_media", 1.0, "caption rule or overlap")
             if REF_PAT.search(text_body):
@@ -156,9 +125,6 @@ def _add_edge(
     weight: float,
     reason: str,
     direction: str = "directed",
-    *,
-    source: str = "rule",
-    metadata: dict[str, Any] | None = None,
 ) -> None:
     key = (src.get("node_id"), dst.get("node_id"), edge_type)
     if key in seen:
@@ -175,8 +141,8 @@ def _add_edge(
             "edge_type": edge_type,
             "weight": float(weight),
             "direction": direction,
-            "evidence": {"source": source, "reason": reason},
-            "metadata": metadata or {},
+            "evidence": {"source": "rule", "reason": reason},
+            "metadata": {},
         }
     )
 

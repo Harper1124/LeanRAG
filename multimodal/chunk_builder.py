@@ -13,7 +13,6 @@ try:
 except ImportError:
     tiktoken = None
 
-from .figure_grouping import group_figures
 from .io_utils import save_dataclasses, write_json
 from .schema import MEDIA_TYPES, MMChunk, MMMedia, dataclass_to_dict
 
@@ -63,7 +62,6 @@ def build_mm_chunks_from_mineru(
 
     chunks: list[MMChunk] = []
     media_items: list[MMMedia] = []
-    caption_inputs: dict[str, tuple[str, str]] = {}
     text_order = 0
     media_order = 0
     section_title = None
@@ -106,8 +104,6 @@ def build_mm_chunks_from_mineru(
             table_markdown = _clean_text(_first(item, ["table_markdown", "markdown", "md"], ""))
             ocr_text = _clean_text(_first(item, ["ocr_text", "ocr", "text"], ""))
             summary = _make_media_summary(item_type, caption, ocr_text, table_markdown or table_html, footnote)
-            if item_type in {"chart", "image"}:
-                caption_inputs[media_id] = (table_markdown or table_html, footnote)
             media_items.append(
                 MMMedia(
                     media_id=media_id,
@@ -127,15 +123,6 @@ def build_mm_chunks_from_mineru(
                 )
             )
             media_order += 1
-
-    if content_file:
-        group_figures(content_file, chunks, media_items)
-        for media in media_items:
-            if media.figure_id and media.caption != media.original_caption:
-                table_text, footnote = caption_inputs[media.media_id]
-                media.summary = _make_media_summary(
-                    media.modality, media.caption, media.ocr_text, table_text, footnote
-                )
 
     stats = media_type_statistics(media_items)
     logger.info("MinerU media type statistics: %s", " ".join(f"{name}={stats[name]}" for name in sorted(MEDIA_TYPES)))
