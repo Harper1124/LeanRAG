@@ -10,6 +10,8 @@ from pathlib import Path
 
 from .chunk_builder import build_mm_chunks_from_mineru, media_type_statistics, save_mm_artifacts
 from .docbench_loader import load_docbench
+from .figure_grouping import FIGURE_GROUPING_VERSION
+from .graph.mm_edge_builder import build_phase4_edges
 from .io_utils import save_dataclasses, write_json, write_jsonl
 from .media_captioner import caption_images, summarize_tables
 from .media_linker import link_media_to_chunks, link_media_to_entities
@@ -80,6 +82,8 @@ def build_docbench(
             save_dataclasses(media_items, working_dir / "mm_media.json")
             build_phase1_mm_graph(str(working_dir), validate=False)
             graph_status = _try_build_leanrag_graph(working_dir, model_config or {})
+        if build_graph or (working_dir / "mm_edges.jsonl").exists():
+            build_phase4_edges(working_dir)
 
         manifest = {
             "doc_id": doc_id,
@@ -92,6 +96,7 @@ def build_docbench(
             "leanrag_chunk_file": artifact_paths["leanrag_chunk_file"],
             "media_type_stats_file": artifact_paths["media_type_stats_file"],
             "media_type_counts": media_stats,
+            "figure_grouping_version": FIGURE_GROUPING_VERSION,
             "working_dir": str(working_dir),
             "entity_vector_db": str(working_dir / "milvus_demo.db"),
             "evidence_vector_db": str(working_dir / "evidence_milvus.db"),
@@ -117,7 +122,7 @@ def _read_manifest(path: Path) -> dict:
 
 
 def _can_reuse_manifest(manifest: dict, force: bool, build_graph: bool) -> bool:
-    if force or not manifest:
+    if force or manifest.get("figure_grouping_version") != FIGURE_GROUPING_VERSION:
         return False
     if build_graph:
         # 需要图检索时，只有完整图构建成功的 manifest 才能复用。

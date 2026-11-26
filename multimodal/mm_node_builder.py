@@ -180,13 +180,21 @@ def build_mm_edges(
         if not media_node_id:
             continue
         nearby = list(media.nearby_chunk_ids or [])
-        if not nearby:
+        if media.figure_reference_matches is not None:
+            nearby = [chunk_id for chunk_id in nearby if chunk_id in media.figure_reference_matches]
+        elif not nearby:
             nearby = _attached_text_chunks(media.media_id, chunks)
         for chunk_id in nearby:
             text_node_id = indexes["text_by_chunk_id"].get(chunk_id)
             if not text_node_id:
                 continue
             weight = float((media.attach_scores or {}).get(chunk_id, 1.0))
+            references = (media.figure_reference_matches or {}).get(chunk_id, [])
+            evidence = {"source": "mineru_layout", "reason": "media nearby_chunk_ids or attached_media_ids"}
+            metadata = {"media_id": media.media_id, "chunk_id": chunk_id}
+            if references:
+                evidence = {"source": "figure_reference", "reason": "explicit numbered Figure reference"}
+                metadata.update({"figure_id": media.figure_id, "references": references})
             _add_edge(
                 edges,
                 seen,
@@ -196,10 +204,9 @@ def build_mm_edges(
                 "text",
                 "media_near_text",
                 weight=weight,
-                evidence={"source": "mineru_layout", "reason": "media nearby_chunk_ids or attached_media_ids"},
+                evidence=evidence,
                 metadata={
-                    "media_id": media.media_id,
-                    "chunk_id": chunk_id,
+                    **metadata,
                     "media_page": media.page,
                     "text_page": node_by_id[text_node_id].page_id,
                 },
@@ -213,9 +220,14 @@ def build_mm_edges(
                 "media",
                 "media_near_text",
                 weight=weight,
-                evidence={"source": "mineru_layout", "reason": "reverse edge for bidirectional near relation"},
-                metadata={"media_id": media.media_id, "chunk_id": chunk_id},
+                evidence=evidence if references else {"source": "mineru_layout", "reason": "reverse edge for bidirectional near relation"},
+                metadata=metadata,
             )
+            if references:
+                _add_edge(
+                    edges, seen, text_node_id, media_node_id, "text", "media", "text_refers_to_media",
+                    weight=weight, evidence=evidence, metadata=metadata,
+                )
 
     return edges
 
@@ -270,9 +282,13 @@ def validate_phase1_outputs(
         name = entity.get("entity_name")
         if name and name not in entity_nodes_by_name:
             errors.append(f"missing entity node for {name}")
-    for required_edge in ("page_contains_node", "media_near_text"):
-        if required_edge not in edge_types:
-            errors.append(f"missing edge_type {required_edge}")
+    if "page_contains_node" not in edge_types:
+        errors.append("missing edge_type page_contains_node")
+    has_attachments = any(item.nearby_chunk_ids for item in media_items) or any(
+        chunk.attached_media_ids for chunk in chunks
+    )
+    if has_attachments and "media_near_text" not in edge_types:
+        errors.append("missing edge_type media_near_text")
 
     report = {
         "ok": not errors,
@@ -342,6 +358,8 @@ def _build_text_node(chunk: MMChunk) -> MMNode:
             "source_path": chunk.source_path,
             "order": chunk.order,
             "attached_media_ids": chunk.attached_media_ids,
+            "is_figure_caption": chunk.is_figure_caption,
+            "figure_references": chunk.figure_references,
         },
         bbox=chunk.bbox,
         source="mineru",
@@ -375,6 +393,14 @@ def _build_media_node(media: MMMedia, chunk_by_id: dict[str, MMChunk]) -> MMNode
         raw_ref=raw_ref,
         metadata={
             "media_type": media.mapped_type,
+            "figure_id": media.figure_id,
+            "panel_label": media.panel_label,
+            "original_caption": media.original_caption,
+            "figure_group_status": media.figure_group_status,
+            "candidate_figure_id": media.candidate_figure_id,
+            "candidate_caption": media.candidate_caption,
+            "candidate_alternatives": media.candidate_alternatives,
+            "figure_reference_matches": media.figure_reference_matches,
             "modality": media.modality,
             "nearby_chunk_ids": media.nearby_chunk_ids,
             "attached_entity_names": media.attached_entity_names,

@@ -23,6 +23,8 @@ class MMChunk:
     bbox: list[float] | None = None
     order: int = 0
     attached_media_ids: list[str] = field(default_factory=list)
+    is_figure_caption: bool = False
+    figure_references: list[dict[str, str]] = field(default_factory=list)
 
 
 @dataclass
@@ -45,6 +47,14 @@ class MMMedia:
     nearby_chunk_ids: list[str] = field(default_factory=list)
     attached_entity_names: list[str] = field(default_factory=list)
     attach_scores: dict[str, float] = field(default_factory=dict)
+    figure_id: str | None = None
+    panel_label: str | None = None
+    original_caption: str | None = None
+    figure_group_status: str = ""
+    candidate_figure_id: str | None = None
+    candidate_caption: str | None = None
+    candidate_alternatives: list[dict[str, str]] = field(default_factory=list)
+    figure_reference_matches: dict[str, list[dict[str, str]]] | None = None
 
     def __post_init__(self) -> None:
         # mapped_type/type are the canonical Phase 1 fields. Keep modality in
