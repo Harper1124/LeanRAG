@@ -160,3 +160,4 @@ multimodal:
     use_answer_format_oracle_abstention: true
     answer_not_enough_evidence: "Not answerable"
     max_prompt_chars: 24000
+    reserve_vlm_evidence: false

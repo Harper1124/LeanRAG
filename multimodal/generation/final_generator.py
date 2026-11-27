@@ -8,13 +8,14 @@ from multimodal.retrieval.media_ref import extract_media_refs
 from .table_utils import has_structured_table
 
 
-FINAL_PROMPT = """Question:
+PROMPT_HEADER = """Question:
 {question}
 
 Expected Answer Type:
 {answer_type}
 
-Text Evidence:
+"""
+EVIDENCE_PROMPT = """Text Evidence:
 {text_evidence}
 
 Entity Evidence:
@@ -32,7 +33,8 @@ Visual Evidence:
 Table Evidence:
 {table_evidence}
 
-Instruction:
+"""
+PROMPT_INSTRUCTIONS = """Instruction:
 Answer using only the evidence above.
 Before answering, silently check whether the evidence directly supports the requested value.
 If the evidence is insufficient or only related to a nearby topic, answer exactly: "Not answerable".
@@ -42,6 +44,7 @@ For float questions, return only the number or percent.
 For list questions, return only a comma-separated list of answer items.
 For string questions, return only the shortest answer span.
 """
+FINAL_PROMPT = PROMPT_HEADER + EVIDENCE_PROMPT + PROMPT_INSTRUCTIONS
 
 
 def generate_final_answer(
@@ -78,31 +81,39 @@ def generate_final_answer(
             "evidence_sufficiency": sufficiency,
             "postprocess": {"target": answer_type, "changed": True, "rule": "evidence_insufficient"},
         }
+    max_prompt_chars = int(generation["max_prompt_chars"])
+    reserve_vlm_evidence = bool(generation["reserve_vlm_evidence"])
     prompt = _build_prompt(
         question,
         evidence_package,
         vlm_calls,
         table_reasoner_calls,
-        int(generation["max_prompt_chars"]),
+        max_prompt_chars,
         answer_type,
+        reserve_vlm_evidence=reserve_vlm_evidence,
     )
+    prompt_trace = {
+        "prompt_preview": prompt[:1000],
+        "evidence_sufficiency": sufficiency,
+        "prompt_budget": _prompt_budget_trace(prompt, vlm_calls, max_prompt_chars, reserve_vlm_evidence),
+    }
     llm_func = global_config.get("use_llm_func")
     if llm_func:
         try:
             answer = str(llm_func(prompt))
-            return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None, sufficiency)
+            return _with_postprocess(answer, question, answer_plan, global_config, prompt_trace, True, None)
         except TypeError:
             try:
                 answer = str(llm_func(question, system_prompt=prompt))
-                return _with_postprocess(answer, question, answer_plan, global_config, prompt, True, None, sufficiency)
+                return _with_postprocess(answer, question, answer_plan, global_config, prompt_trace, True, None)
             except Exception as exc:
                 answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
-                return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc), sufficiency)
+                return _with_postprocess(answer, question, answer_plan, global_config, prompt_trace, False, str(exc))
         except Exception as exc:
             answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
-            return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, str(exc), sufficiency)
+            return _with_postprocess(answer, question, answer_plan, global_config, prompt_trace, False, str(exc))
     answer = _fallback_answer(vlm_calls, table_reasoner_calls, generation)
-    return _with_postprocess(answer, question, answer_plan, global_config, prompt, False, "llm_func_missing", sufficiency)
+    return _with_postprocess(answer, question, answer_plan, global_config, prompt_trace, False, "llm_func_missing")
 
 
 def _with_postprocess(
@@ -110,18 +121,16 @@ def _with_postprocess(
     question: str,
     answer_plan: dict[str, Any],
     global_config: dict[str, Any],
-    prompt: str,
+    prompt_trace: dict[str, Any],
     used_llm: bool,
     error: str | None,
-    sufficiency: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     processed, postprocess = postprocess_final_answer(raw_answer, question, answer_plan, global_config)
     return processed, {
-        "prompt_preview": prompt[:1000],
+        **prompt_trace,
         "used_llm": used_llm,
         "error": error,
         "raw_answer": raw_answer,
-        "evidence_sufficiency": sufficiency or {},
         "postprocess": postprocess,
     }
 
@@ -535,18 +544,52 @@ def _build_prompt(
     table_reasoner_calls: list[dict[str, Any]],
     max_chars: int,
     answer_type: str,
+    *,
+    reserve_vlm_evidence: bool = False,
 ) -> str:
-    text = FINAL_PROMPT.format(
+    vlm_answers = _completed_vlm_answers(vlm_calls) if reserve_vlm_evidence else []
+    fields = dict(
         question=question,
         answer_type=answer_type,
         text_evidence=_dump_nodes(evidence_package.get("text_evidence", []), include_raw=False),
         entity_evidence=_dump_nodes(evidence_package.get("entity_evidence", []), include_raw=False),
         page_evidence=_dump_nodes(evidence_package.get("page_evidence", []), include_raw=False),
         aggregation_context=str(evidence_package.get("aggregation_context") or ""),
-        visual_evidence=_visual_text(evidence_package.get("visual_evidence", []), vlm_calls),
+        visual_evidence=_visual_text(evidence_package.get("visual_evidence", []), [] if vlm_answers else vlm_calls),
         table_evidence=_table_text(evidence_package.get("table_evidence", []), table_reasoner_calls),
     )
-    return text[:max_chars]
+    if not vlm_answers:
+        return FINAL_PROMPT.format(**fields)[:max_chars]
+
+    header = PROMPT_HEADER.format(**fields)
+    protected = f"Visual Model Answers:\n{json.dumps(vlm_answers, ensure_ascii=False, indent=2)}\n\n"
+    body = header + protected + EVIDENCE_PROMPT.format(**fields)
+    instructions_budget = len(PROMPT_INSTRUCTIONS) + 2
+    if max_chars < instructions_budget:
+        return body[:max(0, max_chars)]
+    return body[: max_chars - instructions_budget].rstrip() + "\n\n" + PROMPT_INSTRUCTIONS
+
+
+def _completed_vlm_answers(vlm_calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        {"node_ids": call.get("node_ids") or [], "vlm_answer": call["vlm_answer"]}
+        for call in vlm_calls
+        if not call.get("error") and isinstance(call.get("vlm_answer"), str) and call["vlm_answer"].strip()
+    ]
+
+
+def _prompt_budget_trace(
+    prompt: str, vlm_calls: list[dict[str, Any]], max_chars: int, reserve_vlm_evidence: bool
+) -> dict[str, Any]:
+    answers = {json.dumps(call["vlm_answer"], ensure_ascii=False) for call in _completed_vlm_answers(vlm_calls)}
+    return {
+        "reserve_vlm_evidence": reserve_vlm_evidence,
+        "max_chars": max_chars,
+        "prompt_chars": len(prompt),
+        "instructions_retained": PROMPT_INSTRUCTIONS.strip() in prompt,
+        "vlm_answers_total": len(answers),
+        "vlm_answers_retained": sum(f'"vlm_answer": {answer}' in prompt for answer in answers),
+    }
 
 
 def _dump_nodes(nodes: list[dict[str, Any]], include_raw: bool) -> str:
@@ -644,6 +687,7 @@ def _generation_config(config: dict[str, Any]) -> dict[str, Any]:
     value = {
         "answer_not_enough_evidence": "Not answerable",
         "max_prompt_chars": 24000,
+        "reserve_vlm_evidence": False,
     }
     for key in list(value):
         if key in config:
